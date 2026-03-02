@@ -1,0 +1,64 @@
+{
+  "$schema": "https://raw.githubusercontent.com/govuk-one-login/quality-gates/refs/tags/v0.1.0/schemas/schema.json",
+  "services": [
+    {
+      "quality-gates": [
+        {
+          "check-types": ["code style and linting", "secret scanning"],
+          "config": {
+            "file": ".github/workflows/check-pr.yml",
+            "name": "pre-commit",
+            "path": "jobs.pre-commit"
+          },
+          "phase": "pre-merge",
+          "provider": "GitHub"
+        },
+        {
+          "check-types": ["code style and linting"],
+          "config": {
+            "file": ".github/workflows/check-pr.yml",
+            "name": "Run vite build check",
+            "path": "jobs.vite-build-check"
+          },
+          "phase": "pre-merge",
+          "provider": "GitHub"
+        },
+        {
+          "check-types": ["code style and linting"],
+          "config": {
+            "file": ".github/workflows/check-pr.yml",
+            "name": "Run ts style check",
+            "path": "jobs.ts-style-check"
+          },
+          "phase": "pre-merge",
+          "provider": "GitHub"
+        },
+        {
+          "check-types": ["unit"],
+          "config": {
+            "file": ".github/workflows/check-pr.yml",
+            "name": "Run Unit tests",
+            "path": "jobs.unit-tests"
+          },
+          "phase": "pre-merge",
+          "provider": "GitHub"
+        },
+        {
+          "check-types": [
+            "code style and linting",
+            "unit test coverage",
+            "vulnerability detection"
+          ],
+          "config": {
+            "file": ".github/workflows/check-pr.yml",
+            "name": "Sonar Scan",
+            "path": "jobs.sonar-scan"
+          },
+          "phase": "pre-merge",
+          "provider": "GitHub"
+        }
+      ],
+      "service-tag": "ipv-cri-ob-api"
+    }
+  ]
+}

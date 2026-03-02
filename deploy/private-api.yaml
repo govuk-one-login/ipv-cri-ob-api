@@ -1,0 +1,15 @@
+openapi: "3.0.1"
+info:
+  version: "0.1"
+  title: "Open Banking Credential Issuer Private API"
+paths:
+  /basic-function:
+    post:
+      responses:
+        "200":
+          description: "200 response"
+      x-amazon-apigateway-integration:
+        httpMethod: "POST"
+        uri:
+          Fn::Sub: arn:${AWS::Partition}:apigateway:${AWS::Region}:lambda:path/2015-03-31/functions/${BasicFunction.Arn}:live/invocations
+        type: "aws_proxy"
