@@ -30,9 +30,6 @@ See the Lime onboarding guide for detailed setup instructions.
 ##### Install dependencies
 `npm ci`
 
-### Build
-`npm run build`
-
 ### Testing
 
 ### Run all tests
@@ -63,14 +60,15 @@ To run manually on all files
 `npm run lint:fix`
 
 ### Formatting
+
 `npm run format`
 `npm run format:fix`
 
 ## Local Development
 
-The project uses Vite for building and Vitest for testing. All source code is in TypeScript and follows ESLint configuration with Prettier formatting.
+The project uses `esbuild` for building and `vitest` for unit testing. All source code is in TypeScript and follows ESLint configuration with Prettier formatting.
 
-The custom Vite build uses a Makefile pattern referenced in `template.yaml` under each Lambda's `Metadata` section and handles TypeScript compilation and dependency bundling. When adding a new lambda the Makefile must be updated too.
+`esbuild` config is per handler, is managed in `template.yaml` under each Lambda's `Metadata` section and handles TypeScript compilation and dependency bundling.
 
 ### Deployment into Development environment
 
@@ -90,7 +88,6 @@ To skip canaries such as when releasing urgent changes to production, set the la
 Note: To update LambdaDeploymentPreference, update the LambdaCanaryDeployment pipeline parameter in the [identity-common-infra repository](https://github.com/govuk-one-login/identity-common-infra/tree/main/terraform/lime/open-banking). To update the LambdaDeploymentPreference for a stack in dev using sam deploy, parameter override needs to be set in the [deploy script](./deploy.sh).
 `--parameter-overrides LambdaDeploymentPreference=<define-strategy> \`
 
-
 ## Parameter prefix
 
 This allows a deploying stack to use parameters of another stack.
@@ -103,7 +100,6 @@ Can also be used with the following limitations in development.
 - Existing stack needs to have all the parameters needed for the stack with the prefix enabled.
 - Existing stack parameters values if changed will trigger behaviour changes in the stack with the prefix enabled.
 - Existing stack if deleted will cause errors in the deployed stack.
-
 
 ## Quality Gate Tags
 

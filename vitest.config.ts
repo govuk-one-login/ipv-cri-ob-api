@@ -14,6 +14,10 @@ export default defineConfig({
       reporter: ['lcov'],
       reportsDirectory: 'coverage'
     },
+    env: {
+      POWERTOOLS_METRICS_NAMESPACE: 'ob-api',
+      POWERTOOLS_SERVICE_NAME: 'ob-api-vitest'
+    },
     include: ['test/unit/**/*.test.ts'],
     silent: 'passed-only'
   }

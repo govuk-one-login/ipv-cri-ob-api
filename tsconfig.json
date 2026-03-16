@@ -19,6 +19,7 @@
     "isolatedModules": true,
     "noUncheckedSideEffectImports": true,
     "moduleDetection": "force",
+    "experimentalDecorators": true,
     "skipLibCheck": true,
     "baseUrl": ".",
     "paths": {

@@ -8,37 +8,31 @@ repos:
       - id: detect-aws-credentials
         args: [--allow-missing-credentials]
       - id: detect-private-key
-
   - repo: https://github.com/aws-cloudformation/cfn-lint
-    rev: v1.43.2
+    rev: v1.46.0
     hooks:
       - id: cfn-lint
         files: template\.ya?ml$
-
   - repo: https://github.com/bridgecrewio/checkov.git
-    rev: '3.2.506'
+    rev: 3.2.506
     hooks:
       - id: checkov
-        verbose: true
+        files: template\.ya?ml$
         args: [--soft-fail]
-        files: deploy/.*\.ya?ml$
-
   - repo: https://github.com/Yelp/detect-secrets
     rev: v1.5.0
     hooks:
       - id: detect-secrets
         args: ['--baseline', '.secrets.baseline']
-
   - repo: local
     hooks:
       - id: eslint
-        name: eslint
+        name: ESLint
         entry: npm run lint
         language: system
         pass_filenames: false
-
       - id: prettier
-        name: prettier
+        name: Prettier
         entry: npm run format
         language: system
         pass_filenames: false

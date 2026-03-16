@@ -360,7 +360,18 @@ Resources:
         - ProvisionedConcurrentExecutions: !FindInMap [ ProvisionedConcurrency, Environment, !Ref 'Environment' ]
         - !Ref AWS::NoValue
     Metadata:
-      BuildMethod: makefile
+      BuildMethod: esbuild
+      BuildProperties:
+        Minify: false
+        Sourcemap: true
+        Target: node24
+        Format: esm
+        OutExtension:
+          - .js=.mjs
+        EntryPoints:
+          - src/handler/basic-function.ts
+        External:
+          - '@aws-sdk/*'
 
   BasicFunctionLogGroup:
     Type: AWS::Logs::LogGroup

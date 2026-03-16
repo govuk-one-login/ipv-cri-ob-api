@@ -1,19 +1,29 @@
-import type { LambdaInterface } from '@aws-lambda-powertools/commons/types'
 import type { APIGatewayProxyEvent, APIGatewayProxyResult, Context } from 'aws-lambda'
 
-import { Logger } from '@aws-lambda-powertools/logger'
+import { logger } from '@govuk-one-login/cri-logger'
+import { captureMetric, metrics, MetricUnit } from '@govuk-one-login/cri-metrics'
 
-export const logger = new Logger()
+export class BasicFunction {
+  @metrics.logMetrics({
+    captureColdStartMetric: true
+  })
+  public async handler(
+    event: APIGatewayProxyEvent,
+    _context: Context
+  ): Promise<APIGatewayProxyResult> {
+    logger.info('Lambda invoked')
+    captureMetric('INVOKE_COUNT', 1, MetricUnit.Count)
+    return this.process(event)
+  }
 
-export class BasicFunction implements LambdaInterface {
-  public handler(_event: APIGatewayProxyEvent, _context: Context): APIGatewayProxyResult {
-    logger.info('Basic Lambda invoked')
-    return {
+  private process(event: APIGatewayProxyEvent): Promise<APIGatewayProxyResult> {
+    return Promise.resolve({
       body: JSON.stringify({
-        message: 'Basic Open Banking CRI API'
+        message: 'Hello from the basic function',
+        path: event.path
       }),
       statusCode: 200
-    }
+    })
   }
 }
 
