@@ -1,0 +1,17 @@
+openapi: "3.0.1"
+info:
+  version: "0.1"
+  title: "Open Banking Credential Issuer Public API"
+paths:
+  /health:
+    get:
+      responses:
+        "200":
+          description: "200 response"
+      x-amazon-apigateway-integration:
+        type: "mock"
+        requestTemplates:
+          application/json: '{"statusCode": 200}'
+        responses:
+          default:
+            statusCode: "200"

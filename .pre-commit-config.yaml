@@ -1,0 +1,38 @@
+repos:
+  - repo: https://github.com/pre-commit/pre-commit-hooks
+    rev: v6.0.0
+    hooks:
+      - id: check-json
+      - id: end-of-file-fixer
+      - id: trailing-whitespace
+      - id: detect-aws-credentials
+        args: [--allow-missing-credentials]
+      - id: detect-private-key
+  - repo: https://github.com/aws-cloudformation/cfn-lint
+    rev: v1.46.0
+    hooks:
+      - id: cfn-lint
+        files: template\.ya?ml$
+  - repo: https://github.com/bridgecrewio/checkov.git
+    rev: 3.2.506
+    hooks:
+      - id: checkov
+        files: template\.ya?ml$
+        args: [--soft-fail]
+  - repo: https://github.com/Yelp/detect-secrets
+    rev: v1.5.0
+    hooks:
+      - id: detect-secrets
+        args: ['--baseline', '.secrets.baseline']
+  - repo: local
+    hooks:
+      - id: eslint
+        name: ESLint
+        entry: npm run lint
+        language: system
+        pass_filenames: false
+      - id: prettier
+        name: Prettier
+        entry: npm run format
+        language: system
+        pass_filenames: false

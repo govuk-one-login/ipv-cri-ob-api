@@ -1,0 +1,37 @@
+version: 2
+updates:
+  - package-ecosystem: 'npm'
+    directory: '/'
+    schedule:
+      interval: daily
+      time: '03:00'
+    pull-request-branch-name:
+      separator: '-'
+    target-branch: main
+    labels:
+      - dependabot
+    open-pull-requests-limit: 20
+    ignore:
+      - dependency-name: 'node'
+        versions: ['24.x']
+    commit-message:
+      prefix: BAU
+  - package-ecosystem: 'docker'
+    directory: '/test/acceptance-tests'
+    schedule:
+      interval: daily
+      time: '03:00'
+    target-branch: main
+    labels:
+      - dependabot
+    commit-message:
+      prefix: BAU
+  - package-ecosystem: 'github-actions'
+    directory: '/'
+    schedule:
+      interval: 'weekly'
+    target-branch: main
+    labels:
+      - dependabot
+    commit-message:
+      prefix: BAU

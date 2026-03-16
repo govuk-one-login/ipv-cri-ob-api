@@ -1,0 +1,696 @@
+AWSTemplateFormatVersion: "2010-09-09"
+Transform:
+  - AWS::Serverless-2016-10-31
+
+Description: "Digital Identity IPV CRI Open Banking API"
+Metadata:
+  cfn-lint:
+    config:
+      ignore_checks:
+        - E3030 # ignore as nodejs24.x is available for lambda runtime
+
+Parameters:
+  Environment:
+    Description: The environment type
+    Type: "String"
+    AllowedValues:
+      - "dev"
+      - "build"
+      - "staging"
+      - "integration"
+      - "production"
+    ConstraintDescription: must be dev, build, staging, integration or production
+  VpcStackName:
+    Description: >
+      The name of the stack that defines the VPC in which this container will
+      run.
+    Type: String
+    Default: "cri-vpc"
+  PermissionsBoundary:
+    Description: The ARN of the permissions boundary to apply when creating IAM roles
+    Type: String
+    Default: "none"
+  CodeSigningConfigArn:
+    Type: String
+    Description: >
+      The ARN of the Code Signing Config to use, provided by the deployment pipeline
+    Default: "none"
+  AuditEventNamePrefix:
+    Description: The audit event name prefix
+    Type: AWS::SSM::Parameter::Value<String>
+    Default: "/common-cri-parameters/AuditEventNamePrefix"
+  CriIdentifier:
+    Description: The unique credential issuer identifier
+    Type: AWS::SSM::Parameter::Value<String>
+    Default: "/common-cri-parameters/CriIdentifier"
+  ParameterPrefix:
+    Type: String
+    Default: "none"
+    Description: If set the this value will be used for ParameterStore prefix instead of AWS::StackName
+  DeploymentType:
+    Type: String
+    Default: "pipeline"
+    Description: Private Api gateway resources are not be reachable in stacks deployed via pipelines, this override enables less restrictive settings for manual/pre-merge-test deployments.
+  LogGroupRetentionInDays:
+    Description: Retention for all log groups
+    Type: Number
+    Default: "30"
+  LambdaDeploymentPreference:
+    Description: "Specifies the configuration to enable gradual Lambda deployments"
+    Type: String
+    Default: AllAtOnce
+
+Conditions:
+  IsDeployedFromPipeline: !Equals
+    - !Ref DeploymentType
+    - "pipeline"
+  # Alarms only enabled in pipelines by default
+  AlarmsEnabled: !Equals
+    - !Ref DeploymentType
+    - "pipeline"
+  # Don't send logs in dev to avoid overwhelming the destination with debug
+  LogSendingEnabled: !And
+    - !Not [ !Equals [ !Ref Environment, "dev" ] ]
+    - !Condition IsDeployedFromPipeline
+  IsProduction: !Equals [ !Ref Environment, production ]
+  UsePermissionsBoundary: !Not
+    - !Equals [ !Ref PermissionsBoundary, "none" ]
+  UseCodeSigning: !Not
+    - !Equals [ !Ref CodeSigningConfigArn, "none" ]
+  UseCanaryDeploymentAlarms: !Not
+      - !Equals [ !Ref LambdaDeploymentPreference, AllAtOnce ]
+  AddProvisionedConcurrency: !Not
+    - !Equals
+      - !FindInMap [ ProvisionedConcurrency, Environment, !Ref 'Environment' ]
+      - 0
+  UseParameterPrefix: !Not
+    - !Equals [ !Ref ParameterPrefix, "none"]
+
+Globals:
+  Function:
+    CodeSigningConfigArn: !If
+      - UseCodeSigning
+      - !Ref CodeSigningConfigArn
+      - !Ref AWS::NoValue
+    PermissionsBoundary: !If
+      - UsePermissionsBoundary
+      - !Ref PermissionsBoundary
+      - !Ref AWS::NoValue
+    Runtime: nodejs24.x
+    Tracing: Active
+    Timeout: 40
+    MemorySize: !FindInMap [ MemorySizeMapping, Environment, !Ref 'Environment' ]
+    Architectures:
+      - arm64
+    Environment:
+      Variables:
+        AWS_LAMBDA_EXEC_WRAPPER: /opt/dynatrace
+        DT_CONNECTION_AUTH_TOKEN: !Sub
+          - '{{resolve:secretsmanager:${SecretArn}:SecretString:DT_CONNECTION_AUTH_TOKEN}}'
+          - SecretArn: !FindInMap [ EnvironmentConfiguration, !Ref Environment, dynatraceSecretArn ]
+        DT_CONNECTION_BASE_URL: !Sub
+          - '{{resolve:secretsmanager:${SecretArn}:SecretString:DT_CONNECTION_BASE_URL}}'
+          - SecretArn: !FindInMap [ EnvironmentConfiguration, !Ref Environment, dynatraceSecretArn ]
+        DT_CLUSTER: !Sub
+          - '{{resolve:secretsmanager:${SecretArn}:SecretString:DT_CLUSTER_ID}}'
+          - SecretArn: !FindInMap [ EnvironmentConfiguration, !Ref Environment, dynatraceSecretArn ]
+        DT_LOG_COLLECTION_AUTH_TOKEN: !Sub
+          - '{{resolve:secretsmanager:${SecretArn}:SecretString:DT_LOG_COLLECTION_AUTH_TOKEN}}'
+          - SecretArn: !FindInMap [ EnvironmentConfiguration, !Ref Environment, dynatraceSecretArn ]
+        DT_TENANT: !Sub
+          - '{{resolve:secretsmanager:${SecretArn}:SecretString:DT_TENANT}}'
+          - SecretArn: !FindInMap [ EnvironmentConfiguration, !Ref Environment, dynatraceSecretArn ]
+        AWS_STACK_NAME: !Sub ${AWS::StackName}
+        POWERTOOLS_LOG_LEVEL: INFO
+        POWERTOOLS_METRICS_NAMESPACE: !Ref CriIdentifier
+        ENVIRONMENT: !Ref Environment
+        PARAMETER_PREFIX: !If [UseParameterPrefix, !Ref ParameterPrefix , !Ref AWS::StackName]
+    Layers:
+      # SEE https://github.com/govuk-one-login/observability-infrastructure/tree/main/lambdalayer
+      - !FindInMap [ EnvironmentConfiguration, !Ref Environment, dynatraceLayer ]
+Mappings:
+  EnvironmentConfiguration: #commented until layer arn published in org for node24
+    dev:
+      dynatraceSecretArn: arn:aws:secretsmanager:eu-west-2:216552277552:secret:DynatraceNonProductionVariables
+      dynatraceLayer: arn:aws:lambda:eu-west-2:216552277552:layer:Dynatrace_OneAgent_1_329_73_20260123-140641_with_collector_nodejs_arm:1
+    build:
+      dynatraceSecretArn: arn:aws:secretsmanager:eu-west-2:216552277552:secret:DynatraceNonProductionVariables
+      dynatraceLayer: arn:aws:lambda:eu-west-2:216552277552:layer:Dynatrace_OneAgent_1_329_73_20260123-140641_with_collector_nodejs_arm:1
+    staging:
+      dynatraceSecretArn: arn:aws:secretsmanager:eu-west-2:216552277552:secret:DynatraceNonProductionVariables
+      dynatraceLayer: arn:aws:lambda:eu-west-2:216552277552:layer:Dynatrace_OneAgent_1_329_73_20260123-140641_with_collector_nodejs_arm:1
+    integration:
+      dynatraceSecretArn: arn:aws:secretsmanager:eu-west-2:216552277552:secret:DynatraceNonProductionVariables
+      dynatraceLayer: arn:aws:lambda:eu-west-2:216552277552:layer:Dynatrace_OneAgent_1_329_73_20260123-140641_with_collector_nodejs_arm:1
+    production:
+      dynatraceSecretArn: arn:aws:secretsmanager:eu-west-2:216552277552:secret:DynatraceProductionVariables
+      dynatraceLayer: arn:aws:lambda:eu-west-2:216552277552:layer:Dynatrace_OneAgent_1_329_73_20260123-140641_with_collector_nodejs_arm:1
+
+  ProvisionedConcurrency:
+    Environment:
+      dev: 0
+      build: 1
+      staging: 1
+      integration: 1
+      production: 1
+
+  MemorySizeMapping: #starting out at 1GB
+    Environment:
+      dev: 1024
+      build: 1024
+      staging: 1024
+      integration: 1024
+      production: 1024
+
+Resources:
+
+  ####################################################################
+  #                                                                  #
+  # API Gateway                                                      #
+  #                                                                  #
+  ####################################################################
+
+  PublicAPI:
+    Type: AWS::Serverless::Api
+    Properties:
+      Name: !Sub ${AWS::StackName}-PublicOpenBankingAPI
+      Description: Public Open Banking CRI API
+      StageName: !Ref Environment
+      MethodSettings:
+        - LoggingLevel: INFO
+          ResourcePath: '/*'
+          HttpMethod: '*'
+          # Disable data trace in production to avoid logging customer sensitive information
+          DataTraceEnabled: !If [IsProduction, false, true]
+          MetricsEnabled: true
+          ThrottlingRateLimit: 200
+          ThrottlingBurstLimit: 400
+      AccessLogSetting:
+        DestinationArn: !GetAtt PublicAPILogGroup.Arn
+        Format: >-
+          {
+          "requestId":"$context.requestId",
+          "ip":"$context.identity.sourceIp",
+          "requestTime":"$context.requestTime",
+          "httpMethod":"$context.httpMethod",
+          "path":"$context.path",
+          "routeKey":"$context.routeKey",
+          "status":"$context.status",
+          "protocol":"$context.protocol",
+          "responseLatency":"$context.responseLatency",
+          "responseLength":"$context.responseLength"
+          }
+      TracingEnabled: true
+      DefinitionBody:
+        openapi: "3.0.1" # workaround to get `sam validate` to work
+        paths: # workaround to get `sam validate` to work
+          /never-created:
+            options: { } # workaround to get `sam validate` to work
+        Fn::Transform:
+          Name: AWS::Include
+          Parameters:
+            Location: './public-api.yaml'
+      OpenApiVersion: 3.0.1
+      EndpointConfiguration:
+        Type: REGIONAL
+      Tags:
+        FMSRegionalPolicy: "false"
+        CustomPolicy: "true"
+
+  PublicAPILogGroup:
+    Type: AWS::Logs::LogGroup
+    Properties:
+      LogGroupName: !Sub /aws/apigateway/${AWS::StackName}-${PublicAPI}-public-AccessLogs
+      RetentionInDays: !Ref LogGroupRetentionInDays
+      KmsKeyId: !GetAtt LoggingKmsKey.Arn
+
+#  PublicAPILogGroupSubscriptionFilter: #to be confirmed
+#    Type: AWS::Logs::SubscriptionFilter
+#    Condition: LogSendingEnabled
+#    Properties:
+#      DestinationArn: "arn:aws:logs:eu-west-2:885513274347:destination:csls_cw_logs_destination_prodpython-2"
+#      FilterPattern: ""
+#      LogGroupName: !Ref PublicAPILogGroup
+
+  PrivateAPI:
+    Type: AWS::Serverless::Api
+    Properties:
+      Name: !Sub ${AWS::StackName}-PrivateOpenBankingAPI
+      Description: Private Open Banking CRI API
+      MethodSettings:
+        - LoggingLevel: INFO
+          ResourcePath: '/*'
+          HttpMethod: '*'
+          # Disable data trace in production to avoid logging customer sensitive information
+          DataTraceEnabled: !If [IsProduction, false, true]
+          MetricsEnabled: true
+          ThrottlingRateLimit: 200
+          ThrottlingBurstLimit: 400
+      AccessLogSetting:
+        DestinationArn: !GetAtt PrivateAPILogGroup.Arn
+        Format: >-
+          {
+          "requestId":"$context.requestId",
+          "ip":"$context.identity.sourceIp",
+          "requestTime":"$context.requestTime",
+          "httpMethod":"$context.httpMethod",
+          "path":"$context.path",
+          "routeKey":"$context.routeKey",
+          "status":"$context.status",
+          "protocol":"$context.protocol",
+          "responseLatency":"$context.responseLatency",
+          "responseLength":"$context.responseLength"
+          }
+      TracingEnabled: true
+      StageName: !Ref Environment
+      DefinitionBody:
+        openapi: "3.0.1" # workaround to get `sam validate` to work
+        paths: # workaround to get `sam validate` to work
+          /never-created:
+            options: { } # workaround to get `sam validate` to work
+        Fn::Transform:
+          Name: AWS::Include
+          Parameters:
+            Location: './private-api.yaml'
+      OpenApiVersion: 3.0.1
+      EndpointConfiguration:
+        Type: !If [IsDeployedFromPipeline, PRIVATE, REGIONAL]
+      Auth:
+        ResourcePolicy:
+          CustomStatements:
+            - Action: 'execute-api:Invoke'
+              Effect: Allow
+              Principal: '*'
+              Resource:
+                - 'execute-api:/*'
+            - !If
+              - IsDeployedFromPipeline
+              - Action: 'execute-api:Invoke'
+                Effect: Deny
+                Principal: '*'
+                Resource:
+                  - 'execute-api:/*'
+                Condition:
+                  StringNotEquals:
+                    aws:SourceVpce:
+                      - Fn::ImportValue:
+                          !Sub "${VpcStackName}-ExecuteApiGatewayEndpointId"
+              - !Ref AWS::NoValue
+      Tags:
+        FMSRegionalPolicy: "false"
+        CustomPolicy: "true"
+
+  PrivateAPILogGroup:
+    Type: AWS::Logs::LogGroup
+    Properties:
+      LogGroupName: !Sub /aws/apigateway/${AWS::StackName}-${PrivateAPI}-private-AccessLogs
+      RetentionInDays: !Ref LogGroupRetentionInDays
+      KmsKeyId: !GetAtt LoggingKmsKey.Arn
+
+#  PrivateAPILogGroupSubscriptionFilter: #to be confirmed
+#    Type: AWS::Logs::SubscriptionFilter
+#    Condition: LogSendingEnabled
+#    Properties:
+#      DestinationArn: "arn:aws:logs:eu-west-2:885513274347:destination:csls_cw_logs_destination_prodpython"
+#      FilterPattern: ""
+#      LogGroupName: !Ref PrivateAPILogGroup
+
+  ####################################################################
+  #                                                                  #
+  # Basic Function                                                   #
+  #                                                                  #
+  ####################################################################
+  BasicFunction:
+    Type: AWS::Serverless::Function
+    Properties:
+      VpcConfig:
+        SecurityGroupIds:
+          - Fn::ImportValue:
+              !Sub "${VpcStackName}-AWSServicesEndpointSecurityGroupId"
+        SubnetIds:
+          - Fn::ImportValue:
+              !Sub "${VpcStackName}-ProtectedSubnetIdA"
+          - Fn::ImportValue:
+              !Sub "${VpcStackName}-ProtectedSubnetIdB"
+          - Fn::ImportValue:
+              !Sub "${VpcStackName}-ProtectedSubnetIdC"
+      Handler: basic-function.lambdaHandler
+      CodeUri: ../
+      DeploymentPreference:
+        Enabled: true
+        Type: !Ref LambdaDeploymentPreference
+        Role: !GetAtt CodeDeployServiceRole.Arn
+        Alarms: !If
+          - UseCanaryDeploymentAlarms
+          - [ !Ref BasicFunctionCanaryErrors, !Ref BasicFunctionCanary5xxErrors ]
+          - [ !Ref AWS::NoValue ]
+      Environment:
+        Variables:
+          POWERTOOLS_SERVICE_NAME: !Sub "${CriIdentifier}-basicFunction"
+      AutoPublishAlias: live
+      AutoPublishAliasAllProperties: true
+      Policies:
+       - AWSLambdaBasicExecutionRole
+       - AWSXrayWriteOnlyAccess
+       - KMSDecryptPolicy:
+           KeyId: !ImportValue core-infrastructure-CriDecryptionKey1Id
+      ProvisionedConcurrencyConfig:
+        !If
+        - AddProvisionedConcurrency
+        - ProvisionedConcurrentExecutions: !FindInMap [ ProvisionedConcurrency, Environment, !Ref 'Environment' ]
+        - !Ref AWS::NoValue
+    Metadata:
+      BuildMethod: esbuild
+      BuildProperties:
+        Minify: false
+        Sourcemap: true
+        Target: node24
+        Format: esm
+        OutExtension:
+          - .js=.mjs
+        EntryPoints:
+          - src/handler/basic-function.ts
+        External:
+          - '@aws-sdk/*'
+
+  BasicFunctionLogGroup:
+    Type: AWS::Logs::LogGroup
+    Properties:
+      LogGroupName: !Sub "/aws/lambda/${BasicFunction}"
+      RetentionInDays: !Ref LogGroupRetentionInDays
+
+  BasicFunctionLogGroupSubscriptionFilterCsls:
+    Type: AWS::Logs::SubscriptionFilter
+    Condition: LogSendingEnabled
+    Properties:
+      DestinationArn: "arn:aws:logs:eu-west-2:885513274347:destination:csls_cw_logs_destination_prodpython-2"
+      FilterPattern: ""
+      LogGroupName: !Ref BasicFunctionLogGroup
+
+  BasicFunctionPermission:
+    Type: AWS::Lambda::Permission
+    Properties:
+      Action: lambda:InvokeFunction
+      FunctionName: !GetAtt BasicFunction.Arn
+      Principal: apigateway.amazonaws.com
+
+  BasicFunctionAliasPermission:
+    Type: AWS::Lambda::Permission
+    Properties:
+      Action: lambda:InvokeFunction
+      FunctionName: !Ref BasicFunction.Alias
+      Principal: apigateway.amazonaws.com
+
+  ####################################################################
+  #                                                                  #
+  # API config                                                       #
+  #                                                                  #
+  ####################################################################
+
+  PublicAPIUsagePlan:
+    Type: AWS::ApiGateway::UsagePlan
+    Condition: IsDeployedFromPipeline
+    DependsOn:
+      - PublicAPIStage
+    Properties:
+      ApiStages:
+        - ApiId: !Ref PublicAPI
+          Stage: !Ref Environment
+      Quota:
+        Limit: 500000
+        Period: DAY
+      Throttle:
+        RateLimit: 200 # allowed requests per second
+        BurstLimit: 400 # requests the API can handle concurrently
+
+  PrivateAPIUsagePlan:
+    Type: AWS::ApiGateway::UsagePlan
+    Condition: IsDeployedFromPipeline
+    DependsOn:
+      - PrivateAPIStage
+    Properties:
+      ApiStages:
+        - ApiId: !Ref PrivateAPI
+          Stage: !Ref Environment
+      Quota:
+        Limit: 500000
+        Period: DAY
+      Throttle:
+        RateLimit: 200 # allowed requests per second
+        BurstLimit: 400 # requests the API can handle concurrently
+
+  LinkUsagePlanApiKey1:
+    Condition: IsDeployedFromPipeline
+    Type: AWS::ApiGateway::UsagePlanKey
+    Properties:
+      KeyId: !ImportValue core-infrastructure-ApiKey1
+      KeyType: API_KEY
+      UsagePlanId: !Ref PublicAPIUsagePlan
+
+  LinkUsagePlanApiKey2:
+    Condition: IsDeployedFromPipeline
+    Type: AWS::ApiGateway::UsagePlanKey
+    Properties:
+      KeyId: !ImportValue core-infrastructure-ApiKey2
+      KeyType: API_KEY
+      UsagePlanId: !Ref PublicAPIUsagePlan
+
+  ####################################################################
+  #                                                                  #
+  # Parameters                                                       #
+  #                                                                  #
+  ####################################################################
+
+  VerifiableCredentialKmsSigningKeyParameter:
+    Type: AWS::SSM::Parameter
+    Properties:
+      Name: !Sub "/${AWS::StackName}/verifiableCredentialKmsSigningKeyId"
+      Type: String
+      Value: !ImportValue core-infrastructure-CriVcSigningKey1Id
+      Description: Verifiable Credential Key Id
+
+  LoggingKmsKey:
+    Type: AWS::KMS::Key
+    Properties:
+      EnableKeyRotation: true
+      KeyPolicy:
+        Version: 2012-10-17
+        Statement:
+          - Effect: Allow
+            Principal:
+              AWS: !Sub "arn:aws:iam::${AWS::AccountId}:root"
+            Action:
+              - kms:*
+            Resource: "*"
+          - Effect: Allow
+            Principal:
+              Service: !Sub "logs.${AWS::Region}.amazonaws.com"
+            Action:
+              - "kms:Encrypt*"
+              - "kms:Decrypt*"
+              - "kms:ReEncrypt*"
+              - "kms:GenerateDataKey*"
+              - "kms:Describe*"
+            Resource: "*"
+            Condition:
+              ArnLike:
+                "kms:EncryptionContext:aws:logs:arn": !Sub "arn:aws:logs:${AWS::Region}:${AWS::AccountId}:*"
+
+  ####################################################################
+  #                                                                  #
+  # Alarms                                                           #
+  #                                                                  #
+  ####################################################################
+
+  LambdaErrors:
+    Type: AWS::CloudWatch::Alarm
+    Condition: AlarmsEnabled
+    Properties:
+      AlarmName: !Sub "${AWS::StackName}-${Environment} - Open Banking CRI"
+      AlarmDescription: !Sub Open Banking ${Environment} lambda errors
+      ActionsEnabled: true
+      AlarmActions:
+        - !If [IsProduction, !ImportValue build-notifications-PagerDutySNSTopicArn, !ImportValue build-notifications-CriticalAlertsTopicArn]
+      OKActions:
+        - !If [IsProduction, !ImportValue build-notifications-PagerDutySNSTopicArn, !ImportValue build-notifications-CriticalAlertsTopicArn]
+      InsufficientDataActions: []
+      MetricName: Errors
+      Namespace: AWS/Lambda
+      Statistic: Sum
+      Dimensions: []
+      Period: 300
+      DatapointsToAlarm: 3
+      EvaluationPeriods: 3
+      Threshold: 1
+      ComparisonOperator: GreaterThanThreshold
+      TreatMissingData: notBreaching
+
+  APIGW5XXErrors:
+    Type: AWS::CloudWatch::Alarm
+    Condition: AlarmsEnabled
+    Properties:
+      AlarmName: !Sub "${AWS::StackName}-${Environment}-APIGW-5XX-Errors"
+      AlarmDescription: !Sub Open Banking ${Environment} API Gateway 5XX errors
+      ActionsEnabled: true
+      AlarmActions:
+        - !If [IsProduction, !ImportValue build-notifications-PagerDutySNSTopicArn, !ImportValue build-notifications-CriticalAlertsTopicArn]
+      OKActions:
+        - !If [IsProduction, !ImportValue build-notifications-PagerDutySNSTopicArn, !ImportValue build-notifications-CriticalAlertsTopicArn]
+      InsufficientDataActions: [ ]
+      DatapointsToAlarm: 3
+      EvaluationPeriods: 3
+      Threshold: 1
+      ComparisonOperator: GreaterThanThreshold
+      TreatMissingData: notBreaching
+      Metrics:
+        - Id: e1
+          Label: Expression1
+          ReturnData: true
+          Expression: SUM(METRICS())
+        - Id: m1
+          ReturnData: false
+          MetricStat:
+            Metric:
+              Namespace: AWS/ApiGateway
+              MetricName: 5XXError
+              Dimensions:
+                - Name: ApiName
+                  Value: !Sub "${AWS::StackName}-PublicAPI"
+            Period: 300
+            Stat: Sum
+        - Id: m2
+          ReturnData: false
+          MetricStat:
+            Metric:
+              Namespace: AWS/ApiGateway
+              MetricName: 5XXError
+              Dimensions:
+                - Name: ApiName
+                  Value: !Sub "${AWS::StackName}-PrivateAPI"
+            Period: 300
+            Stat: Sum
+  ###################################################################
+  #                                                                 #
+  # Canary Alarms                                                   #
+  #                                                                 #
+  ###################################################################
+
+  BasicFunctionCanaryErrors:
+    Type: AWS::CloudWatch::Alarm
+    Condition: UseCanaryDeploymentAlarms
+    Properties:
+      ActionsEnabled: true
+      AlarmActions:
+        - !ImportValue build-notifications-WarningAlertsTopicArn
+      OKActions:
+        - !ImportValue build-notifications-WarningAlertsTopicArn
+      AlarmName: !Sub "${AWS::StackName}-${Environment}-BasicFunction-Canary-Errors"
+      AlarmDescription: !Sub "Errors returned from the Basic Function Lambda."
+      MetricName: Errors
+      Dimensions:
+        - Name: FunctionName
+          Value: !Ref BasicFunction
+        - Name: ExecutedVersion
+          Value: !GetAtt BasicFunction.Version.Version
+      Namespace: AWS/Lambda
+      Statistic: Sum
+      Unit: Count
+      Period: 60
+      EvaluationPeriods: 3
+      DatapointsToAlarm: 2
+      Threshold: 1
+      ComparisonOperator: GreaterThanOrEqualToThreshold
+      TreatMissingData: notBreaching
+
+  BasicFunctionCanary5xxErrors:
+    Type: AWS::CloudWatch::Alarm
+    Condition: UseCanaryDeploymentAlarms
+    Properties:
+      ActionsEnabled: true
+      AlarmActions:
+        - !ImportValue build-notifications-WarningAlertsTopicArn
+      OKActions:
+        - !ImportValue build-notifications-WarningAlertsTopicArn
+      AlarmName: !Sub "${AWS::StackName}-${Environment}-BasicFunction-Canary-5XX"
+      AlarmDescription: !Sub "Basic Lambda returning 5xx response."
+      Namespace: AWS/ApiGateway
+      MetricName: 5XXError
+      Dimensions:
+        - Name: ApiName
+          Value: !Sub "${AWS::StackName}-PrivateAPI"
+        - Name: Method
+          Value: POST
+        - Name: Stage
+          Value: !Ref Environment
+        - Name: Resource
+          Value: /basic-function
+      Statistic: Sum
+      Unit: Count
+      Period: 60
+      EvaluationPeriods: 3
+      DatapointsToAlarm: 2
+      Threshold: 1
+      ComparisonOperator: GreaterThanOrEqualToThreshold
+      TreatMissingData: notBreaching
+
+  ####################################################################
+  #                                                                  #
+  # Code Deploy Service Role                                         #
+  #                                                                  #
+  ####################################################################
+
+  CodeDeployServiceRole:
+    Type: AWS::IAM::Role
+    Properties:
+      AssumeRolePolicyDocument:
+        Version: "2012-10-17"
+        Statement:
+          - Action:
+              - sts:AssumeRole
+            Effect: Allow
+            Principal:
+              Service:
+                - codedeploy.amazonaws.com
+      ManagedPolicyArns:
+        - arn:aws:iam::aws:policy/service-role/AWSCodeDeployRoleForLambda
+      PermissionsBoundary: !If [ UsePermissionsBoundary, !Ref PermissionsBoundary, !Ref AWS::NoValue ]
+
+####################################################################
+#                                                                  #
+# Outputs                                                          #
+#                                                                  #
+####################################################################
+
+Outputs:
+  StackName:
+    Description: CloudFormation stack name
+    Value: !Sub "${AWS::StackName}"
+
+  PublicAPIGatewayID:
+    Description: CRI Open Banking Public API Gateway ID
+    Value: !Sub "${PublicAPI}"
+    Export:
+      Name: !Sub ${AWS::StackName}-PublicAPIGatewayID
+
+  PublicApiBaseUrl:
+    Description: Base url of the Public Open Banking API Gateway
+    Value: !Sub "https://${PublicAPI}.execute-api.${AWS::Region}.amazonaws.com/${Environment}/"
+    Export:
+      Name: !Sub ${AWS::StackName}-PublicApiBaseUrl
+
+  PrivateAPIGatewayID:
+    Description: CRI Open Banking Private API Gateway ID
+    Value: !Sub "${PrivateAPI}"
+    Export:
+      Name: !Sub ${AWS::StackName}-PrivateAPIGatewayID
+
+  PrivateAPIBaseUrl:
+    Description: Base url of the Private Open Banking API Gateway
+    Value: !Sub "https://${PrivateAPI}.execute-api.${AWS::Region}.amazonaws.com/${Environment}/"
+    Export:
+      Name: !Sub ${AWS::StackName}-PrivateAPIBaseUrl
+
+  IpvCoreBackApiKeyId:
+    Condition: IsDeployedFromPipeline
+    Description: The key id of the api key used by IPV Core to access open banking back external api gateway
+    Value: !Ref LinkUsagePlanApiKey1
