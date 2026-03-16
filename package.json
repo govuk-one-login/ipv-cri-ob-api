@@ -28,7 +28,7 @@
     "@types/aws-lambda": "8.10.160",
     "@types/node": "25.3.0",
     "@vitest/coverage-v8": "4.0.18",
-    "eslint": "10.0.1",
+    "eslint": "10.0.3",
     "eslint-config-prettier": "10.1.8",
     "eslint-plugin-perfectionist": "5.6.0",
     "jiti": "2.6.1",
