@@ -14,6 +14,24 @@ updates:
     ignore:
       - dependency-name: 'node'
         versions: ['24.x']
+    groups:
+      vitest:
+        patterns:
+          - '@vitest/*'
+          - 'vitest'
+      eslint:
+        patterns:
+          - '@eslint/js'
+          - 'eslint'
+          - 'eslint-plugin-*'
+      prettier:
+        patterns:
+          - 'prettier'
+          - 'eslint-config-prettier'
+      typescript:
+        patterns:
+          - 'typescript'
+          - 'typescript-eslint'
     commit-message:
       prefix: BAU
   - package-ecosystem: 'docker'
