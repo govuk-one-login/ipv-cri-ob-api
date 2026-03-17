@@ -129,22 +129,27 @@ Globals:
       # SEE https://github.com/govuk-one-login/observability-infrastructure/tree/main/lambdalayer
       - !FindInMap [ EnvironmentConfiguration, !Ref Environment, dynatraceLayer ]
 Mappings:
-  EnvironmentConfiguration: #commented until layer arn published in org for node24
+  EnvironmentConfiguration:
     dev:
       dynatraceSecretArn: arn:aws:secretsmanager:eu-west-2:216552277552:secret:DynatraceNonProductionVariables
       dynatraceLayer: arn:aws:lambda:eu-west-2:216552277552:layer:Dynatrace_OneAgent_1_329_73_20260123-140641_with_collector_nodejs_arm:1
+      vcDomain: review-ob.dev.account.gov.uk
     build:
       dynatraceSecretArn: arn:aws:secretsmanager:eu-west-2:216552277552:secret:DynatraceNonProductionVariables
       dynatraceLayer: arn:aws:lambda:eu-west-2:216552277552:layer:Dynatrace_OneAgent_1_329_73_20260123-140641_with_collector_nodejs_arm:1
+      vcDomain: review-ob.build.account.gov.uk
     staging:
       dynatraceSecretArn: arn:aws:secretsmanager:eu-west-2:216552277552:secret:DynatraceNonProductionVariables
       dynatraceLayer: arn:aws:lambda:eu-west-2:216552277552:layer:Dynatrace_OneAgent_1_329_73_20260123-140641_with_collector_nodejs_arm:1
+      vcDomain: review-ob.staging.account.gov.uk
     integration:
       dynatraceSecretArn: arn:aws:secretsmanager:eu-west-2:216552277552:secret:DynatraceNonProductionVariables
       dynatraceLayer: arn:aws:lambda:eu-west-2:216552277552:layer:Dynatrace_OneAgent_1_329_73_20260123-140641_with_collector_nodejs_arm:1
+      vcDomain: review-ob.integration.account.gov.uk
     production:
       dynatraceSecretArn: arn:aws:secretsmanager:eu-west-2:216552277552:secret:DynatraceProductionVariables
       dynatraceLayer: arn:aws:lambda:eu-west-2:216552277552:layer:Dynatrace_OneAgent_1_329_73_20260123-140641_with_collector_nodejs_arm:1
+      vcDomain: review-ob.production.account.gov.uk
 
   ProvisionedConcurrency:
     Environment:
@@ -163,6 +168,55 @@ Mappings:
       production: 1024
 
 Resources:
+  OAuth:
+    Type: AWS::Serverless::Application
+    Properties:
+      Location:
+        ApplicationId: arn:aws:serverlessrepo:eu-west-2:667736788427:applications/di-ipv-cri-oauth-common
+        SemanticVersion: 0.0.0
+      Parameters:
+        AuditEventNamePrefix: IPV_OPEN_BANKING_CRI
+        CriIdentifier: di-ipv-open-banking-api
+        CriAudience: !Sub
+          - "https://${domain}"
+          - domain: !FindInMap [EnvironmentConfiguration, !Ref Environment, vcDomain]
+        CriVcIssuer: !Sub
+          - "https://${domain}"
+          - domain: !FindInMap [EnvironmentConfiguration, !Ref Environment, vcDomain]
+        CriPrivateApiGwName: !Sub ${AWS::StackName}-private
+        CriPublicApiGwName: !Sub ${AWS::StackName}-public
+        Environment: !Ref Environment
+        IPVCoreRedirectURI: https://cri.core.build.stubs.account.gov.uk/callback
+        IPVCoreStubJwksEndpoint: https://cri.core.stubs.account.gov.uk/.well-known/jwks.json
+        LambdaVpcConfiguration: di-devplatform-deploy
+
+  JWKSBucketRole:
+    Type: "AWS::IAM::Role"
+    Properties:
+      AssumeRolePolicyDocument:
+        Statement:
+          - Action: "sts:AssumeRole"
+            Effect: Allow
+            Principal:
+              Service: apigateway.amazonaws.com
+        Version: 2012-10-17
+      Policies:
+        - PolicyName: AccessJWKSJson
+          PolicyDocument:
+            Version: "2012-10-17"
+            Statement:
+              - Effect: Allow
+                Action:
+                  - "s3:Get*"
+                Resource:
+                  - !Sub "arn:aws:s3:::govuk-one-login-ob-published-keys-${Environment}/jwks.json"
+      PermissionsBoundary: !If
+        - UsePermissionsBoundary
+        - !Ref PermissionsBoundary
+        - !Ref AWS::NoValue
+      Tags:
+        - Key: "key_consumer_type"
+          Value: "use"
 
   ####################################################################
   #                                                                  #
