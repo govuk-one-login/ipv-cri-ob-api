@@ -31,7 +31,7 @@ sam deploy --stack-name "$stack_name" \
   --no-confirm-changeset \
   --resolve-s3 \
   --region eu-west-2 \
-  --capabilities CAPABILITY_IAM \
+  --capabilities CAPABILITY_IAM CAPABILITY_AUTO_EXPAND \
   --tags \
   cri:component=ipv-cri-ob-api \
   cri:stack-type=dev \
