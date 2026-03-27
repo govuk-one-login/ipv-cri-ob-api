@@ -48,7 +48,7 @@ jobs:
 
       - name: Build app
         # uses: govuk-one-login/github-actions/sam/build-application@b2f2c762e88ff7b5656d87c733c57871997e350f
-        uses: govuk-one-login/github-actions/sam/build-application@a069a5f73bbfeea0e71901cee95c441f018e83cb
+        uses: govuk-one-login/github-actions/sam/build-serverless-application@55d0d0d822b1c78d600e12059e475ec05eb78053
         id: build
         with:
           template: deploy/template.yaml
