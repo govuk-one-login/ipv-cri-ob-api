@@ -1,67 +1,143 @@
 name: PR check
 
-on:
-  pull_request:
-    types:
-      - opened
-      - reopened
-      - ready_for_review
-      - synchronize
+on: pull_request
+permissions: {}
 
 jobs:
   pre-commit:
+    name: Run pre-commit
     runs-on: ubuntu-latest
+    concurrency:
+      group: pre-commit-${{ github.event.pull_request.number }}
+      cancel-in-progress: true
     steps:
-      - name: Pre-commit checks
-        uses: govuk-one-login/github-actions/code-quality/run-pre-commit@3b0015c58dd0e19e1572fda59dda4184df387d1e
+      - name: Run pre-commit
+        uses: govuk-one-login/github-actions/code-quality/run-pre-commit@350c58b28e56f0fd67c4a8d8c8cd4fdc6355bdf3 # my branch - change once merged
         with:
-          package-manager: 'npm'
+          all-files: true
           install-dependencies: 'true'
-          all-files: 'true'
-
-  type-check:
-    runs-on: ubuntu-latest
-    permissions:
-      contents: read
-    steps:
-      - name: Checkout
-        uses: actions/checkout@v6
-      - name: Setup Node
-        uses: ./.github/actions/node-setup
-      - name: Type check
-        run: npm run type-check
+          node-version-file: '.nvmrc'
 
   unit-tests:
+    name: Run unit tests
     runs-on: ubuntu-latest
+    concurrency:
+      group: unit-tests-${{ github.event.pull_request.number }}
+      cancel-in-progress: true
     permissions:
       contents: read
-    needs: type-check
     steps:
-      - name: Checkout
-        uses: actions/checkout@v6
-        with:
-          fetch-depth: 0 # required for sonar
       - name: Setup Node
-        uses: ./.github/actions/node-setup
+        uses: govuk-one-login/github-actions/node/install-dependencies@350c58b28e56f0fd67c4a8d8c8cd4fdc6355bdf3 # my branch - change once merged
+
       - name: Unit tests
         run: npm run test:coverage
-      - name: Sonar scan # runs after unit tests in order to consume coverage report
-        if: ${{ github.actor != 'dependabot[bot]' }}
-        uses: SonarSource/sonarqube-scan-action@v7.0.0
+
+      - name: Upload coverage report
+        uses: actions/upload-artifact@v4
+        with:
+          name: coverage
+          path: coverage/
+          retention-days: 1
+
+  sonar:
+    name: Sonar scan
+    runs-on: ubuntu-latest
+    concurrency:
+      group: sonar-${{ github.event.pull_request.number }}
+      cancel-in-progress: true
+    needs: unit-tests
+    if: github.actor != 'dependabot[bot]'
+    permissions:
+      contents: read
+    steps:
+      - name: Run Sonar scan
+        uses: govuk-one-login/github-actions/code-quality/sonarcloud@9d6ee027d0b9167dfc25e67124951956278bb585
+        with:
+          github-token: ${{ secrets.GITHUB_TOKEN }}
+          sonar-token: ${{ secrets.SONAR_TOKEN }}
+          coverage-run-id: ${{ github.event_name != 'pull_request' && github.run_id || null }}
+
+  codeql:
+    name: CodeQL scan
+    runs-on: ubuntu-latest
+    concurrency:
+      group: codeql-${{ github.event.pull_request.number }}
+      cancel-in-progress: true
+    permissions:
+      security-events: write
+    steps:
+      - name: Run CodeQL scan
+        uses: govuk-one-login/github-actions/code-quality/codeql@f5362528578198e7851e96e0594f593beff0162e
+
+  # pact test placeholder
+
+  # infra test placholder
+
+  deploy-preview:
+    name: Deploy preview stack
+    permissions:
+      id-token: write
+      contents: read
+    uses: ./.github/workflows/deploy-preview.yml
+    secrets:
+      role_arn: ${{ secrets.DEV_GHA_PREVIEW_ROLE_ARN }}
+      bucket_name: ${{ secrets.DEV_PREVIEW_ARTIFACT_BUCKET }}
+
+  api-tests:
+    name: Run api tests
+    permissions:
+      id-token: write
+      contents: read
+    concurrency:
+      group: api-tests-${{ github.event.pull_request.number }}
+    needs: deploy-preview
+    timeout-minutes: 15
+    runs-on: ubuntu-latest
+
+    steps:
+      - name: Setup Node
+        uses: govuk-one-login/github-actions/node/install-dependencies@350c58b28e56f0fd67c4a8d8c8cd4fdc6355bdf3 # my branch - change once merged
+
+      - name: Assume AWS Role
+        uses: aws-actions/configure-aws-credentials@8df5847569e6427dd6c4fb1cf565c83acfa8afa7 # v6.0.0
+        with:
+          role-to-assume: ${{ secrets.DEV_GHA_PREVIEW_ROLE_ARN }}
+          aws-region: ${{ needs.deploy-preview.outputs.aws-region }}
+
+      - name: Run tests
         env:
-          SONAR_TOKEN: ${{ secrets.SONAR_TOKEN }}
+          STACK_NAME: ${{ needs.deploy-preview.outputs.stack-name }}
+          AWS_REGION: ${{ needs.deploy-preview.outputs.aws-region }}
+        run: |
+          API_GATEWAY_ID_PRIVATE=$(aws cloudformation describe-stacks --stack-name $STACK_NAME | jq -r '.Stacks[].Outputs[] | select(.OutputKey == "PrivateApiGatewayId").OutputValue')
+          API_GATEWAY_ID_PUBLIC=$(aws cloudformation describe-stacks --stack-name $STACK_NAME | jq -r '.Stacks[].Outputs[] | select(.OutputKey == "PublicApiGatewayId").OutputValue')
+          export API_GATEWAY_ID_PRIVATE=$API_GATEWAY_ID_PRIVATE
+          export API_GATEWAY_ID_PUBLIC=$API_GATEWAY_ID_PUBLIC
+          npm run test:api
+
+      - name: Delete preview test stack
+        if: always()
+        run: |
+          aws cloudformation delete-stack --region eu-west-2 --stack-name ${{ needs.deploy-preview.outputs.stack-name }}
 
   merge-status:
+    name: Merge status
     runs-on: ubuntu-latest
-    needs: [pre-commit, type-check, unit-tests]
+    concurrency:
+      group: merge-status-${{ github.event.pull_request.number }}
+      cancel-in-progress: true
+    needs:
+      - pre-commit
+      - unit-tests
+      - api-tests
     if: always()
     steps:
       - run: |
           failed=()
           [[ "${{ needs.pre-commit.result }}" != "success" ]] && failed+=("pre-commit")
-          [[ "${{ needs.type-check.result }}" != "success" ]] && failed+=("type-check")
           [[ "${{ needs.unit-tests.result }}" != "success" ]] && failed+=("unit-tests")
-
+          [[ "${{ needs.api-tests.result }}" != "success" ]] && failed+=("api-tests")
           if [[ ${#failed[@]} -gt 0 ]]; then
             echo "The following jobs failed: ${failed[*]}"
             exit 1
