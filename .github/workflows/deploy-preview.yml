@@ -10,6 +10,9 @@ on:
       aws-region:
         description: The region the stack was deployed into #need?
         value: ${{ jobs.deploy.outputs.aws-region}}
+      secrets:
+        role_arn:
+          required: true
       # stack-outputs:
       #   descriptioon: The deployed stack outputs
       #   value: $ {{ jobs.deploy.outputs.aws-region }}
@@ -17,6 +20,10 @@ on:
       # is this for the name? so they're not too long
       # passport also has base dir? not sure why
     # secrets: are these the stack outputs? like role arn, s3 premerge bucket name, parameter prefix???
+
+permissions:
+  id-token: write
+  contents: read
 
 jobs:
   build-preview:
@@ -41,7 +48,7 @@ jobs:
       - name: Set up AWS creds
         uses: aws-actions/configure-aws-credentials@v4
         with:
-          role-to-assume: ${{ secrets.DEV_GHA_ROLE_ARN }}
+          role-to-assume: ${{ secrets.role_arn }}
           aws-region: eu-west-2
 
       # - name: Install SAM

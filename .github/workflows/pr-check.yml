@@ -86,6 +86,8 @@ jobs:
     permissions:
       id-token: write
       contents: read
+    secrets:
+      role_arn: ${{ secrets.DEV_GHA_ROLE_ARN }}
 
   api-tests:
     name: Run api pre-merge tests
