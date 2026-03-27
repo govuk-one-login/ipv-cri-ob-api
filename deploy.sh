@@ -22,9 +22,9 @@ echo -e "\tstack name: ${GREEN}$stack_name${NOCOLOR}"
 echo -e "🔎 Checking with cfn-lint"
 cfn-lint deploy/template.yaml -f pretty
 echo -e "🔎 Checking with sam validate --lint"
-sam validate -t deploy/template.yaml --config-env dev --lint
+sam validate -t deploy/template.yaml --lint
 echo -e "🧱 Building with SAM"
-sam build -t deploy/template.yaml --config-env dev
+sam build -t deploy/template.yaml --region eu-west-2
 echo -e "🚀 Deploying..."
 sam deploy --stack-name "$stack_name" \
   --no-fail-on-empty-changeset \
