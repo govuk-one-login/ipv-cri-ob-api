@@ -5,21 +5,90 @@ on:
     branches:
       - main
 
+permissions: {}
+
 jobs:
-  sonar-scan:
+  unit-tests:
     runs-on: ubuntu-latest
+    concurrency:
+      group: unit-tests-${{ github.ref }}
+      cancel-in-progress: true
     permissions:
       contents: read
     steps:
-      - name: Checkout
-        uses: actions/checkout@v6
-        with:
-          fetch-depth: 0 # required for sonar
       - name: Setup Node
-        uses: ./.github/actions/node-setup
+        uses: govuk-one-login/github-actions/node/install-dependencies@4c76410195b5fcb1804fc7c183ed20704252830f
+
       - name: Unit tests
         run: npm run test:coverage
-      - name: Sonar scan
-        uses: SonarSource/sonarqube-scan-action@v7.0.0
-        env:
-          SONAR_TOKEN: ${{ secrets.SONAR_TOKEN }}
+
+      - name: Upload coverage report
+        uses: actions/upload-artifact@v4
+        with:
+          name: coverage
+          path: coverage/
+          retention-days: 1
+
+  sonar-scan:
+    name: Sonar scan
+    runs-on: ubuntu-latest
+    concurrency:
+      group: sonar-${{ github.ref }}
+      cancel-in-progress: true
+    needs: unit-tests
+    permissions:
+      contents: read
+    steps:
+      - name: Run Sonar scan
+        uses: govuk-one-login/github-actions/code-quality/sonarcloud@9d6ee027d0b9167dfc25e67124951956278bb585
+        with:
+          github-token: ${{ secrets.GITHUB_TOKEN }}
+          sonar-token: ${{ secrets.SONAR_TOKEN }}
+          coverage-artifact: coverage
+          coverage-run-id: ${{ github.run_id }}
+
+  codeql:
+    name: CodeQL scan
+    runs-on: ubuntu-latest
+    concurrency:
+      group: codeql-${{ github.ref }}
+      cancel-in-progress: true
+    permissions:
+      security-events: write
+    steps:
+      - name: Run CodeQL scan
+        uses: govuk-one-login/github-actions/code-quality/codeql@f5362528578198e7851e96e0594f593beff0162e
+
+  deploy-dev:
+    uses: ./.github/workflows/_secure-pipeline-deploy.yml
+    concurrency:
+      group: deploy-to-dev
+    permissions:
+      id-token: write
+      contents: read
+    secrets:
+      role_arn: ${{ secrets.DEV_GHA_ROLE_ARN }}
+      artifact_bucket: ${{ secrets.DEV_ARTIFACT_BUCKET }}
+      container_sign_kms_key: ${{ secrets.DEV_CONTAINER_SIGN_KMS_KEY }}
+      ecr_repository_test: ${{ secrets.DEV_ECR_TEST }}
+      ecr_repository_traffic_test: ${{ secrets.DEV_ECR_TRAFFIC_TEST }}
+      signing_profile: ${{ secrets.DEV_SIGNING_PROFILE_NAME }}
+    with:
+      environment: development
+
+  deploy-build:
+    uses: ./.github/workflows/_secure-pipeline-deploy.yml
+    concurrency:
+      group: deploy-to-build
+    permissions:
+      id-token: write
+      contents: read
+    secrets:
+      role_arn: ${{ secrets.BUILD_GHA_ROLE_ARN }}
+      artifact_bucket: ${{ secrets.BUILD_ARTIFACT_BUCKET }}
+      container_sign_kms_key: ${{ secrets.BUILD_CONTAINER_SIGN_KMS_KEY }}
+      ecr_repository_test: ${{ secrets.BUILD_ECR_TEST }}
+      ecr_repository_traffic_test: ${{ secrets.BUILD_ECR_TRAFFIC_TEST }}
+      signing_profile: $ {{ secrets.BUILD_SIGNING_PROFILE_NAME }}
+    with:
+      environment: build
