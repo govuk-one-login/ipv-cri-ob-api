@@ -1,0 +1,20 @@
+name: Deploy branch to dev
+on:
+  workflow_dispatch:
+
+jobs:
+  deploy-dev:
+    name: Deploy to dev
+    uses: ./.github/workflows/_secure-pipeline-deploy.yml
+    permissions:
+      id-token: write
+      contents: read
+    secrets:
+      role_arn:
+      role-to-assume: ${{ secrets.DEV_GH_ACTIONS_ROLE_ARN }}
+      artifact_bucket: ${{ secrets.DEV_ARTIFACT_BUCKET }}
+      ecr_repository_test: $ {{ secrets.DEV_TEST_REPOSITORY }}
+      ecr_repository_traffic_test: ${{ secrets.DEV_TRAFFIC_TEST_REPOSITORY }}
+      container_sign_kms_key: $ {{ secrets.DEV_CONTAINER_SIGN_KMS_KEY }}
+      signing_profile: $ {{ secrets.DEV_SIGNING_PROFILE }}
+      # dynatrace_paas_token: ${{ secrets.DYNATRACE_PAAS_TOKEN }}

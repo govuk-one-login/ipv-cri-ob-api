@@ -1,0 +1,98 @@
+name: Deploy preview
+
+on:
+  workflow-dispatch:
+  workflow_call:
+    outputs:
+      stack-name:
+        description: The deployed stack name # need?
+        value: ${{ jobs.deploy.outputs.stack-name }}
+      aws-region:
+        description: The region the stack was deployed into #need?
+        value: ${{ jobs.deploy.outputs.aws-region}}
+      # stack-outputs:
+      #   descriptioon: The deployed stack outputs
+      #   value: $ {{ jobs.deploy.outputs.aws-region }}
+      # sha_short: ${{ steps.vars.outputs.sha_short }}
+      # is this for the name? so they're not too long
+      # passport also has base dir? not sure why
+    # secrets: are these the stack outputs? like role arn, s3 premerge bucket name, parameter prefix???
+
+jobs:
+  build-preview:
+    name: Build app
+    runs-on: ubuntu-latest
+    # permissions: {}
+
+    # concurrency:
+    #   group: build-development-${{ github.head_ref || github.ref_name }}
+    outputs:
+      # repo_base_dir
+      sha_short: ${{ steps.vars.outputs.sha_short }}
+      # cache-key: ${{ steps.build.outputs.cache-key }}
+      # cache-restore-keys: ${{ steps.build.outputs.cache-restore-keys }}
+    steps:
+      # - name: Checkout
+      #   uses: actions/checkout@v6
+      # - name: Install SAM
+      #   uses: aws-actions/setup-sam@v2
+      # # need env for AWS_REGION??
+      # - name: SAM validate
+      #     run: sam validate --region ${{ env.AWS_REGION }} -t deploy/template.yaml --lint
+
+      # this checkouts, sets up SAM cli runs validate and builds
+      - name: Build app
+        uses: govuk-one-login/github-actions/sam/build-application@b2f2c762e88ff7b5656d87c733c57871997e350f
+        id: build
+        with:
+          template: deploy/template.yaml
+          cache-name: ipv-cri-ob-api-${{ steps.vars.outputs.sha_short }}
+          pull-repository: true
+
+  deploy-preview:
+    name: Deploy stack
+    runs-on: ubuntu-latest
+    permissions:
+      id-token: write
+      contents: read
+    timeout-minutes: 15
+    needs: build
+    # concurrency:
+    #   group: deploy-development-${{ github.head_ref || github.ref_name }}
+    environment:
+      name: development
+      # url: ${{ steps.deploy.outputs.stack-url }}
+    # do we need outputs if they're out puts of the deploy action below?
+    outputs:
+      aws-region: ${{ steps.deploy.outputs.aws-region }}
+      stack-name: ${{ steps.deploy.outputs.stack-name }}
+      # no other stack outputs?
+      # stack-url
+    steps:
+      - name: Deploy stack
+        uses: govuk-one-login/github-actions/sam/deploy-stack@aee3d3c95f0582c6db41a3aeeaf96348487b8e3c
+        id: deploy
+        with:
+          aws-role-arn: ${{ vars.DEPLOYMENT_ROLE_ARN }}
+          s3-prefix: preview
+          sam-deployment-bucket: ${{ vars.DEPLOYMENT_ARTIFACTS_BUCKET }}
+          stack-name: preview-${{ needs.build.outputs.sha_short}}
+          cache-name: ipv-cri-ob-api-${{ needs.build.outputs.sha_short}}
+          delete-failed-stack: true
+          # do we want disable rollback? I reckon so...
+
+          tags: |
+            cri:component=ipv-cri-ob-api
+            cri:stack-type=preview
+            cri:application=Lime
+            cri:deployment-source=github-actions
+          # parameters: |
+          #   DeploymentType=pre-merge-integration
+          #   ParameterPrefix=${{ secrets.PREMERGE_PARAMETER_PREFIX_STACK_NAME }}
+          #   Environment=dev
+          #   CommonStackName=passport-common-cri-api-local
+
+          #   ParameterPrefix=ob-cri-api
+          #   Environment=dev or local dev?
+          #   CommonStackName=ob-common-cri-api-local
+          #   DeploymentType=pre-merge-integration

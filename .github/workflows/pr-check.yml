@@ -1,68 +1,135 @@
 name: PR check
 
-on:
-  pull_request:
-    types:
-      - opened
-      - reopened
-      - ready_for_review
-      - synchronize
+on: pull_request
+permissions: {}
+
+# concurrency:
+#   group: pr-check-${{ github.event.pull_request.number || github.ref }}
+#   cancel-in-progress: true
 
 jobs:
   pre-commit:
+    name: pre-commit
     runs-on: ubuntu-latest
+    concurrency:
+      # group: pre-commit-${{ github.head_ref || github.ref_name }}
+      # cancel-in-progress: true
     steps:
-      - name: Pre-commit checks
-        uses: govuk-one-login/github-actions/code-quality/run-pre-commit@3b0015c58dd0e19e1572fda59dda4184df387d1e
+      - name: Run pre-commit
+        uses: govuk-one-login/github-actions/code-quality/run-pre-commit@7915556fc28d7299972796de8b5888e04e05687a # my branch - change once merged
         with:
-          package-manager: 'npm'
+          all-files: true
           install-dependencies: 'true'
-          all-files: 'true'
-
-  type-check:
-    runs-on: ubuntu-latest
-    permissions:
-      contents: read
-    steps:
-      - name: Checkout
-        uses: actions/checkout@v6
-      - name: Setup Node
-        uses: ./.github/actions/node-setup
-      - name: Type check
-        run: npm run type-check
+          node-version-file: '.nvmrc'
 
   unit-tests:
     runs-on: ubuntu-latest
     permissions:
       contents: read
-    needs: type-check
+    needs: static-checks
     steps:
       - name: Checkout
         uses: actions/checkout@v6
-        with:
-          fetch-depth: 0 # required for sonar
       - name: Setup Node
         uses: ./.github/actions/node-setup
       - name: Unit tests
-        run: npm run test:coverage
-      - name: Sonar scan # runs after unit tests in order to consume coverage report
-        if: ${{ github.actor != 'dependabot[bot]' }}
-        uses: SonarSource/sonarqube-scan-action@v7.0.0
-        env:
-          SONAR_TOKEN: ${{ secrets.SONAR_TOKEN }}
+        run: npm run test
+      - name: Upload coverage report
+        uses: actions/upload-artifact@v4
+        with:
+          name: coverage
+          path: coverage/
+          retention-days: 1
 
-  merge-status:
+      - name: Sonar scan
+        runs-on: ubuntu-latest
+        needs: unit-tests
+        if: github.actor != 'dependabot[bot]'
+        # permissions:
+        #   contents: read
+        steps:
+          # - name: Collect coverage
+          #   if: ${{ github.event_name != 'pull_request' }}
+          #   uses: ./.github/workflows/run-unit-tests.yml
+          #   with:
+          #     coverage-report: true
+          - name: Run Sonar scan
+            uses: govuk-one-login/github-actions/code-quality/sonarcloud@9d6ee027d0b9167dfc25e67124951956278bb585
+            with:
+              github-token: ${{ secrets.GITHUB_TOKEN }}
+              sonar-token: ${{ secrets.SONAR_TOKEN }}
+              coverage-artifact: coverage
+              coverage-run-id: ${{ github.run_id }} # || null?
+
+      - name: Code QL
+        runs-on: ubuntu-latest
+        permissions:
+          security-events: write
+        steps:
+          - name: Run CodeQL scan
+            uses: govuk-one-login/github-actions/code-quality/codeql@f5362528578198e7851e96e0594f593beff0162e
+
+  # potential to move scans out to run on cron - and call in above job
+
+  # pact test placeholder
+
+  # infra test placholder
+
+  # pre-merge tests (deploy pre-view stack hmrc check - test it)
+  # include the cleanup action run periodically instead of cleaning straight away
+
+  deploy:
+    name: Deploy preview stack
+    uses: ./.github/workflows/deploy-preview.yml
+    permissions:
+      id-token: write
+      contents: read
+
+  api-tests:
+    name: Run api pre-merge tests
+    needs: deploy
+    timeout-minutes: 15
     runs-on: ubuntu-latest
-    needs: [pre-commit, type-check, unit-tests]
-    if: always()
-    steps:
-      - run: |
-          failed=()
-          [[ "${{ needs.pre-commit.result }}" != "success" ]] && failed+=("pre-commit")
-          [[ "${{ needs.type-check.result }}" != "success" ]] && failed+=("type-check")
-          [[ "${{ needs.unit-tests.result }}" != "success" ]] && failed+=("unit-tests")
+    environment: development
 
-          if [[ ${#failed[@]} -gt 0 ]]; then
-            echo "The following jobs failed: ${failed[*]}"
-            exit 1
-          fi
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v6
+
+      - name: Setup Node # and install dependencies
+        uses: ./.github/actions/node-setup
+
+      - name: Assume AWS Role
+        uses: aws-actions/configure-aws-credentials@8df5847569e6427dd6c4fb1cf565c83acfa8afa7 # v6.0.0
+        with:
+          role-to-assume: ${{ vars.DEPLOYMENT_ROLE_ARN }}
+          aws-region: ${{ needs.deploy.outputs.aws-region }}
+
+      - name: Run tests
+        uses: govuk-one-login/github-actions/node/run-script@08b5999d95f151e0ce8b27f112741dce7f820a87
+        env:
+          STACK_NAME: ${{ needs.deploy.outputs.stack-name }}
+          AWS_REGION: ${{ needs.deploy.outputs.aws-region }}
+        with:
+          # working-directory: placeholder
+          # might move test script
+          # should be able to infer inputs from stack name output
+          # stack-outputs: ${{ needs.deploy.outputs.stack-outputs }}
+          script: npm run test:api # might need ci and non ci versions
+
+
+  # think about this...
+  # merge-status:
+  # runs-on: ubuntu-latest
+  # needs: [pre-commit, unit-tests]
+  # if: always()
+  # steps:
+  #   - run: |
+  #       failed=()
+  #       [[ "${{ needs.pre-commit.result }}" != "success" ]] && failed+=("pre-commit")
+  #       [[ "${{ needs.unit-tests.result }}" != "success" ]] && failed+=("unit-tests")
+
+  #       if [[ ${#failed[@]} -gt 0 ]]; then
+  #         echo "The following jobs failed: ${failed[*]}"
+  #         exit 1
+  #       fi

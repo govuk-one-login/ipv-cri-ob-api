@@ -16,11 +16,14 @@
   "scripts": {
     "format": "prettier --check .",
     "format:fix": "prettier --write .",
+    "format:pre-commit": "prettier --write",
     "lint": "eslint .",
     "lint:fix": "eslint . --fix",
+    "lint:pre-commit": "eslint",
     "test": "vitest run",
     "test:watch": "vitest",
     "test:coverage": "vitest run --coverage",
+    "test:api": "echo dummy test",
     "type-check": "tsc --noEmit"
   },
   "devDependencies": {
