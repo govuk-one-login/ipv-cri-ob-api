@@ -38,11 +38,12 @@ jobs:
       - name: Checkout
         uses: actions/checkout@v6
 
-      # - name: Set up AWS creds
-      #   uses: aws-actions/configure-aws-credentials@v4
-      #   with:
-      #     role-to-assume: ${{ inputs.role-to-assume-arn }}
-      #     aws-region: ${{ inputs.aws-region }}
+      - name: Set up AWS creds
+        uses: aws-actions/configure-aws-credentials@v4
+        with:
+          role-to-assume: ${{ secrets.DEV_GHA_ROLE_ARN }}
+          aws-region: eu-west-2
+
       # - name: Install SAM
       #   uses: aws-actions/setup-sam@v2
       # # need env for AWS_REGION??
