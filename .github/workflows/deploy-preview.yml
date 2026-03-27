@@ -23,6 +23,7 @@ jobs:
     name: Build app
     permissions:
       id-token: write
+      contents: read
     runs-on: ubuntu-latest
     # permissions: {}
 
@@ -37,6 +38,11 @@ jobs:
       - name: Checkout
         uses: actions/checkout@v6
 
+      # - name: Set up AWS creds
+      #   uses: aws-actions/configure-aws-credentials@v4
+      #   with:
+      #     role-to-assume: ${{ inputs.role-to-assume-arn }}
+      #     aws-region: ${{ inputs.aws-region }}
       # - name: Install SAM
       #   uses: aws-actions/setup-sam@v2
       # # need env for AWS_REGION??
@@ -56,6 +62,7 @@ jobs:
           template: deploy/template.yaml
           cache-name: ipv-cri-ob-api-${{ steps.vars.outputs.sha_short }}
           pull-repository: true
+          role-to-assume-arn: ${{ secrets.DEV_GHA_ROLE_ARN }}
 
   deploy-preview:
     name: Deploy stack
