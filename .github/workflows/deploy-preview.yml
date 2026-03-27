@@ -48,7 +48,7 @@ jobs:
 
       - name: Build app
         # uses: govuk-one-login/github-actions/sam/build-application@b2f2c762e88ff7b5656d87c733c57871997e350f
-        uses: govuk-one-login/github-actions/sam/build-application@0073d7e107de5f59284dfacde4029dd0d8d7c58b
+        uses: govuk-one-login/github-actions/sam/build-application@a069a5f73bbfeea0e71901cee95c441f018e83cb
         id: build
         with:
           template: deploy/template.yaml
@@ -76,7 +76,7 @@ jobs:
       # stack-url
     steps:
       - name: Deploy stack
-        uses: govuk-one-login/github-actions/sam/deploy-stack@0073d7e107de5f59284dfacde4029dd0d8d7c58b
+        uses: govuk-one-login/github-actions/sam/deploy-stack@a069a5f73bbfeea0e71901cee95c441f018e83cb
         id: deploy
         with:
           aws-role-arn: ${{ vars.DEPLOYMENT_ROLE_ARN }}
