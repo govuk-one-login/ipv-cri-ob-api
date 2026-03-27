@@ -21,6 +21,8 @@ on:
 jobs:
   build-preview:
     name: Build app
+    permissions:
+      id-token: write
     runs-on: ubuntu-latest
     # permissions: {}
 
