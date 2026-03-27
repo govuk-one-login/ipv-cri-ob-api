@@ -1,7 +1,7 @@
 name: Deploy preview
 
 on:
-  workflow-dispatch:
+  workflow_dispatch:
   workflow_call:
     outputs:
       stack-name:
@@ -56,7 +56,7 @@ jobs:
       id-token: write
       contents: read
     timeout-minutes: 15
-    needs: build
+    needs: build-preview
     # concurrency:
     #   group: deploy-development-${{ github.head_ref || github.ref_name }}
     environment:
