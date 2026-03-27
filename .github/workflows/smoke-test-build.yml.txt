@@ -1,0 +1,4 @@
+# tests against core stub build
+# we don't know if we are using new stub yet
+# also on every push seems excessive plus 4x a day
+# should also probs run smoke tests on frontends

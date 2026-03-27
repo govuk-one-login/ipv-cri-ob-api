@@ -392,6 +392,7 @@ Resources:
   # Basic Function                                                   #
   #                                                                  #
   ####################################################################
+
   BasicFunction:
     Type: AWS::Serverless::Function
     Properties:
@@ -422,10 +423,10 @@ Resources:
       AutoPublishAlias: live
       AutoPublishAliasAllProperties: true
       Policies:
-       - AWSLambdaBasicExecutionRole
-       - AWSXrayWriteOnlyAccess
-       - KMSDecryptPolicy:
-           KeyId: !ImportValue core-infrastructure-CriDecryptionKey1Id
+        - AWSLambdaBasicExecutionRole
+        - AWSXrayWriteOnlyAccess
+        - KMSDecryptPolicy:
+            KeyId: !ImportValue core-infrastructure-CriDecryptionKey1Id
       ProvisionedConcurrencyConfig:
         !If
         - AddProvisionedConcurrency
