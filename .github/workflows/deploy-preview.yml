@@ -10,9 +10,9 @@ on:
       aws-region:
         description: The region the stack was deployed into #need?
         value: ${{ jobs.deploy.outputs.aws-region}}
-      secrets:
-        role_arn:
-          required: true
+    secrets:
+      role_arn:
+        required: true
       # stack-outputs:
       #   descriptioon: The deployed stack outputs
       #   value: $ {{ jobs.deploy.outputs.aws-region }}
