@@ -3,27 +3,18 @@ name: Deploy preview
 on:
   workflow_dispatch:
   workflow_call:
-    outputs:
-      stack-name:
-        description: The deployed stack name # need?
-        value: ${{ jobs.deploy.outputs.stack-name }}
-      aws-region:
-        description: The region the stack was deployed into #need?
-        value: ${{ jobs.deploy.outputs.aws-region}}
     secrets:
       role_arn:
         required: true
-      # stack-outputs:
-      #   descriptioon: The deployed stack outputs
-      #   value: $ {{ jobs.deploy.outputs.aws-region }}
-      # sha_short: ${{ steps.vars.outputs.sha_short }}
-      # is this for the name? so they're not too long
-      # passport also has base dir? not sure why
-    # secrets: are these the stack outputs? like role arn, s3 premerge bucket name, parameter prefix???
+    outputs:
+      stack-name:
+        value: ${{ jobs.deploy.outputs.stack-name }}
+      aws-region:
+        value: ${{ jobs.deploy.outputs.aws-region}}
+      # sha-short:
+      #   value: ${{ jobs.build-preview.outputs.sha-short }}
 
-permissions:
-  id-token: write
-  contents: read
+permissions: {}
 
 jobs:
   build-preview:
@@ -32,35 +23,14 @@ jobs:
       id-token: write
       contents: read
     runs-on: ubuntu-latest
-    # permissions: {}
-
     # concurrency:
     #   group: build-development-${{ github.head_ref || github.ref_name }}
     outputs:
-      # repo_base_dir
-      sha_short: ${{ steps.vars.outputs.sha_short }}
-      # cache-key: ${{ steps.build.outputs.cache-key }}
-      # cache-restore-keys: ${{ steps.build.outputs.cache-restore-keys }}
+      sha-short: ${{ steps.get-sha.outputs.sha-short }}
     steps:
-      - name: Checkout
-        uses: actions/checkout@v6
-
-      - name: Set up AWS creds
-        uses: aws-actions/configure-aws-credentials@v4
-        with:
-          role-to-assume: ${{ secrets.role_arn }}
-          aws-region: eu-west-2
-
-      # - name: Install SAM
-      #   uses: aws-actions/setup-sam@v2
-      # # need env for AWS_REGION??
-      # - name: SAM validate
-      #     run: sam validate --region ${{ env.AWS_REGION }} -t deploy/template.yaml --lint
-
-      - name: Get short sha
-        id: vars
-        run: |
-          echo "sha_short=$(git rev-parse --short HEAD)" >> $GITHUB_OUTPUT
+      - name: Get short SHA
+        id: get-sha
+        run: echo "sha-short=${GITHUB_SHA::7}" >> "$GITHUB_OUTPUT"
 
       - name: Build app
         # uses: govuk-one-login/github-actions/sam/build-application@b2f2c762e88ff7b5656d87c733c57871997e350f
@@ -68,37 +38,32 @@ jobs:
         id: build
         with:
           template: deploy/template.yaml
-          cache-name: ipv-cri-ob-api-${{ steps.vars.outputs.sha_short }}
+          cache-name: ipv-cri-ob-api-${{ steps.get-sha.outputs.sha-short }}
+          role-to-assume-arn: ${{ secrets.role_arn }}
           pull-repository: true
-          role-to-assume-arn: ${{ secrets.DEV_GHA_ROLE_ARN }}
 
   deploy-preview:
     name: Deploy stack
     runs-on: ubuntu-latest
     permissions:
       id-token: write
-      contents: read
+      # contents: read
     timeout-minutes: 15
     needs: build-preview
     # concurrency:
     #   group: deploy-development-${{ github.head_ref || github.ref_name }}
-    environment:
-      name: development
-      # url: ${{ steps.deploy.outputs.stack-url }}
-    # do we need outputs if they're out puts of the deploy action below?
+    # environment: development
     outputs:
-      aws-region: ${{ steps.deploy.outputs.aws-region }}
-      stack-name: ${{ steps.deploy.outputs.stack-name }}
-      # no other stack outputs?
-      # stack-url
+      aws-region: ${{ steps.deploy-preview.outputs.aws-region }}
+      stack-name: ${{ steps.deploy-preview.outputs.stack-name }}
     steps:
       - name: Deploy stack
         uses: govuk-one-login/github-actions/sam/deploy-stack@a069a5f73bbfeea0e71901cee95c441f018e83cb
         id: deploy
         with:
-          aws-role-arn: ${{ vars.DEPLOYMENT_ROLE_ARN }}
+          aws-role-arn: ${{ secrets.role_arn }}
           s3-prefix: preview
-          sam-deployment-bucket: ${{ vars.DEPLOYMENT_ARTIFACTS_BUCKET }}
+          sam-deployment-bucket: ${{ secrets.DEPLOYMENT_ARTIFACTS_BUCKET }}
           stack-name: preview-${{ needs.build.outputs.sha_short}}
           cache-name: ipv-cri-ob-api-${{ needs.build.outputs.sha_short}}
           delete-failed-stack: true

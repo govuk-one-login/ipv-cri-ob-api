@@ -52,11 +52,9 @@ jobs:
     permissions:
       contents: read
     steps:
-      # - name: Collect coverage
-      #   if: ${{ github.event_name != 'pull_request' }}
-      #   uses: ./.github/workflows/run-unit-tests.yml
-      #   with:
-      #     coverage-report: true
+      - name: Checkout
+        uses: actions/checkout@v6
+
       - name: Run Sonar scan
         uses: govuk-one-login/github-actions/code-quality/sonarcloud@9d6ee027d0b9167dfc25e67124951956278bb585
         with:
@@ -64,6 +62,8 @@ jobs:
           sonar-token: ${{ secrets.SONAR_TOKEN }}
           coverage-artifact: coverage
           coverage-run-id: ${{ github.run_id }} # || null?
+          pull-repository: false
+
   codeql:
     name: Code QL
     runs-on: ubuntu-latest
@@ -74,46 +74,49 @@ jobs:
         uses: govuk-one-login/github-actions/code-quality/codeql@f5362528578198e7851e96e0594f593beff0162e
 
   # potential to move scans out to run on cron - and call in above job
+  # easier now we upload the artefact - can pass a switch to consume unit tests - should be built into the shared action...
 
   # pact test placeholder
 
   # infra test placholder
 
-  # include the cleanup action run periodically instead of cleaning straight away
-  deploy:
+  deploy-preview:
     name: Deploy preview stack
-    uses: ./.github/workflows/deploy-preview.yml
     permissions:
       id-token: write
       contents: read
+    uses: ./.github/workflows/deploy-preview.yml
     secrets:
       role_arn: ${{ secrets.DEV_GHA_ROLE_ARN }}
 
   api-tests:
-    name: Run api pre-merge tests
-    needs: deploy
+    name: Run pre-merg api tests
+    permissions:
+      id-token: write
+      contents: read
+    needs: deploy-preview
     timeout-minutes: 15
     runs-on: ubuntu-latest
-    environment: development
+    # environment: development
 
     steps:
       - name: Checkout
         uses: actions/checkout@v6
 
-      - name: Setup Node # and install dependencies
+      - name: Setup Node
         uses: ./.github/actions/node-setup
 
       - name: Assume AWS Role
         uses: aws-actions/configure-aws-credentials@8df5847569e6427dd6c4fb1cf565c83acfa8afa7 # v6.0.0
         with:
-          role-to-assume: ${{ vars.DEPLOYMENT_ROLE_ARN }}
-          aws-region: ${{ needs.deploy.outputs.aws-region }}
+          role-to-assume: ${{ secrets.DEPLOYMENT_ROLE_ARN }}
+          aws-region: ${{ needs.deploy-preview.outputs.aws-region }}
 
       - name: Run tests
         uses: govuk-one-login/github-actions/node/run-script@08b5999d95f151e0ce8b27f112741dce7f820a87
         env:
-          STACK_NAME: ${{ needs.deploy.outputs.stack-name }}
-          AWS_REGION: ${{ needs.deploy.outputs.aws-region }}
+          STACK_NAME: ${{ needs.deploy-preview.outputs.stack-name }}
+          AWS_REGION: ${{ needs.deploy-preview.outputs.aws-region }}
         with:
           # working-directory: placeholder
           # might move test script

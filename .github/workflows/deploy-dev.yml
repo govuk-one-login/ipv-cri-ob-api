@@ -10,11 +10,11 @@ jobs:
       id-token: write
       contents: read
     secrets:
-      role_arn:
-      role-to-assume: ${{ secrets.DEV_GH_ACTIONS_ROLE_ARN }}
+      role_arn: ${{ secrets.DEV_GHA_ROLE_ARN }}
       artifact_bucket: ${{ secrets.DEV_ARTIFACT_BUCKET }}
-      ecr_repository_test: $ {{ secrets.DEV_TEST_REPOSITORY }}
-      ecr_repository_traffic_test: ${{ secrets.DEV_TRAFFIC_TEST_REPOSITORY }}
-      container_sign_kms_key: $ {{ secrets.DEV_CONTAINER_SIGN_KMS_KEY }}
-      signing_profile: $ {{ secrets.DEV_SIGNING_PROFILE }}
+      ecr_repository_test: $ {{ secrets.DEV_TEST_ECR_REPOSITORY }}
+      ecr_repository_traffic_test: ${{ secrets.DEV_TRAFFIC_TEST_ECR_REPOSITORY }}
+      # container_sign_kms_key: $ {{ secrets.DEV_CONTAINER_SIGN_KMS_KEY }}
+      # signing_profile: $ {{ secrets.DEV_SIGNING_PROFILE }}
+      # environment: development
       # dynatrace_paas_token: ${{ secrets.DYNATRACE_PAAS_TOKEN }}

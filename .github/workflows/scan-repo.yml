@@ -8,31 +8,31 @@ on:
   schedule:
     - cron: '0 4 ** 1' # Every Monday at 4am
 
-  concurrency:
-    group: scan-repo-${{ github.head_ref || github.ref_name }} # decide on this
-    cancel-in-progress: true
+# concurrency:
+#   group: scan-repo-${{ github.head_ref || github.ref_name }} # decide on this
+#   cancel-in-progress: true
 
-    permissions: {}
+permissions: {}
 
-  jobs:
-    codeql:
-      name: CodeQL scan
-      runs-on: ubuntu-latest
-      permissions:
-        security-events: write
-      steps:
-        - name: Run CodeQL scan
-          uses: govuk-one-login/github-actions/code-quality/codeql@f5362528578198e7851e96e0594f593beff0162e
-          # should I put just ts? runs with ts and js by default.
+jobs:
+  codeql:
+    name: CodeQL scan
+    runs-on: ubuntu-latest
+    permissions:
+      security-events: write
+    steps:
+      - name: Run CodeQL scan
+        uses: govuk-one-login/github-actions/code-quality/codeql@f5362528578198e7851e96e0594f593beff0162e
+        # should I put just ts? runs with ts and js by default.
 
-    sonar:
-      name: Sonar scan
-      runs-on: ubuntu-latest
-      concurrency: # decide on this...
-        group:
-        cancel-in-progress: true
-      steps:
-        - name: Run Sonar scan
-          uses: SonarSource/sonarqube-scan-action@a31c9398be7ace6bbfaf30c0bd5d415f843d45e9 # v7.0.0
-          env:
-            SONAR_TOKEN: ${{ secrets.SONAR_TOKEN }}
+  sonar:
+    name: Sonar scan
+    runs-on: ubuntu-latest
+    # concurrency: # decide on this...
+    #   group:
+    #   cancel-in-progress: true
+    steps:
+      - name: Run Sonar scan
+        uses: SonarSource/sonarqube-scan-action@a31c9398be7ace6bbfaf30c0bd5d415f843d45e9 # v7.0.0
+        env:
+          SONAR_TOKEN: ${{ secrets.SONAR_TOKEN }}
