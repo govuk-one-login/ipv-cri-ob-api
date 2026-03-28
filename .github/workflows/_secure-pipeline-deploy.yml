@@ -31,44 +31,44 @@ jobs:
   #   env:
   #     AWS_REGION: eu-west-2
   #     ENVIRONMENT: ${{ secrets.environment }}
-  # is this needed?
-  # could these run in paralell?
-  # steps:
-  # why ?
-  # - name: Login to Dynatrace Container Registry
-  #   uses: docker/login-action@v4
-  #   with:
-  #     registry: khw46367.live.dynatrace.com
-  #     username: khw46367
-  #     password: ${{ secrets.dynatrace_paas_token }}
+      # is this needed?
+    # could these run in paralell?
+    # steps:
+    # why ?
+    # - name: Login to Dynatrace Container Registry
+    #   uses: docker/login-action@v4
+    #   with:
+    #     registry: khw46367.live.dynatrace.com
+    #     username: khw46367
+    #     password: ${{ secrets.dynatrace_paas_token }}
 
-  # # this checkouts, sets up AWS creds and logs into docker registry
-  # - name: Test image build and push
-  #   uses: uses: govuk-one-login/devplatform-upload-action-ecr@v1.5.0
-  #   with:
-  #     role-to-assume-arn: ${{ secrets.role_arn }}
-  #     build-and-push-image-only: true
-  #     working-directory: test
-  #     artifact-bucket-name: "" # ? shouldnt that be optional?
-  #     ecr-repo-name: ${{ secrets.ecr_repository_test }}
-  #     push-latest-tag: true
-  #     container-sign-kms-key-arn: ${{ secrets.container_sign_kms_key }} # ?
+    # # this checkouts, sets up AWS creds and logs into docker registry
+    # - name: Test image build and push
+    #   uses: uses: govuk-one-login/devplatform-upload-action-ecr@v1.5.0
+    #   with:
+    #     role-to-assume-arn: ${{ secrets.role_arn }}
+    #     build-and-push-image-only: true
+    #     working-directory: test
+    #     artifact-bucket-name: "" # ? shouldnt that be optional?
+    #     ecr-repo-name: ${{ secrets.ecr_repository_test }}
+    #     push-latest-tag: true
+    #     container-sign-kms-key-arn: ${{ secrets.container_sign_kms_key }} # ?
 
-  # # this checkouts, sets up AWS creds and logs into docker registry
-  # - name: Traffic test image build and push
-  #   uses: uses: govuk-one-login/devplatform-upload-action-ecr@v1.5.0
-  #   with:
-  #     role-to-assume-arn: ${{ secrets.role_arn }}
-  #     build-and-push-image-only: true
-  #     working-directory: test
-  #     artifact-bucket-name: "" # ? shouldnt that be optional?
-  #     ecr-repo-name: ${{ secrets.ecr_repository_traffic_test }}
-  #     dockerfile: Dockerfile-traffictest # think about name
-  #     push-latest-tag: true # ?
-  #     container-sign-kms-key-arn: ${{ secrets.container_sign_kms_key }} # ?
-  # UNCOMMENT LAST in case cosign blocks ^
-  # hopefully can run pipeline without test images - might have to change terraform for build?
-  # hasn't blocked front though - whats the difference?
+    # # this checkouts, sets up AWS creds and logs into docker registry
+    # - name: Traffic test image build and push
+    #   uses: uses: govuk-one-login/devplatform-upload-action-ecr@v1.5.0
+    #   with:
+    #     role-to-assume-arn: ${{ secrets.role_arn }}
+    #     build-and-push-image-only: true
+    #     working-directory: test
+    #     artifact-bucket-name: "" # ? shouldnt that be optional?
+    #     ecr-repo-name: ${{ secrets.ecr_repository_traffic_test }}
+    #     dockerfile: Dockerfile-traffictest # think about name
+    #     push-latest-tag: true # ?
+    #     container-sign-kms-key-arn: ${{ secrets.container_sign_kms_key }} # ?
+    # UNCOMMENT LAST in case cosign blocks ^
+    # hopefully can run pipeline without test images - might have to change terraform for build?
+    # hasn't blocked front though - whats the difference?
 
   deploy:
     name: Deploy stack
