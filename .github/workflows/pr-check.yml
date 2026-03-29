@@ -88,6 +88,7 @@ jobs:
     uses: ./.github/workflows/deploy-preview.yml
     secrets:
       role_arn: ${{ secrets.DEV_GHA_ROLE_ARN }}
+      bucket_arn: ${{ secrets.TEMP_PREVIEW_BUCKET_ARN }}
 
   api-tests:
     name: Run pre-merg api tests

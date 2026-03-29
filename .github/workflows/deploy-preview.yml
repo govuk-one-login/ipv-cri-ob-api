@@ -6,6 +6,8 @@ on:
     secrets:
       role_arn:
         required: true
+      bucket_arn:
+        required: true
     outputs:
       stack-name:
         value: ${{ jobs.deploy-preview.outputs.stack-name }}
@@ -33,8 +35,7 @@ jobs:
         run: echo "sha-short=${GITHUB_SHA::7}" >> "$GITHUB_OUTPUT"
 
       - name: Build app
-        # uses: govuk-one-login/github-actions/sam/build-application@b2f2c762e88ff7b5656d87c733c57871997e350f
-        uses: govuk-one-login/github-actions/sam/build-serverless-application@24304059124dff39f9c5c837e1c25b8d2500a903
+        uses: govuk-one-login/github-actions/sam/build-application@c35aa8daed14bd1b102f6c55afdf77eaeb958954
         with:
           template: deploy/template.yaml
           cache-name: ipv-cri-ob-api-${{ steps.get-sha.outputs.sha-short }}
@@ -57,12 +58,12 @@ jobs:
       stack-name: ${{ steps.deploy-preview.outputs.stack-name }}
     steps:
       - name: Deploy stack
-        uses: govuk-one-login/github-actions/sam/deploy-stack@a069a5f73bbfeea0e71901cee95c441f018e83cb
+        uses: govuk-one-login/github-actions/sam/deploy-stack@c35aa8daed14bd1b102f6c55afdf77eaeb958954
         id: deploy
         with:
           aws-role-arn: ${{ secrets.role_arn }}
           s3-prefix: preview
-          sam-deployment-bucket: ${{ secrets.TEMP_PREVIEW_BUCKET_ARN }}
+          sam-deployment-bucket: ${{ secrets.bucket_arn }}
           stack-name: preview-${{ needs.build-preview.outputs.sha-short}}
           cache-name: ipv-cri-ob-api-${{ needs.build-preview.outputs.sha-short}}
           delete-failed-stack: true
