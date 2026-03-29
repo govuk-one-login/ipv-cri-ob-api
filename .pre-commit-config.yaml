@@ -32,7 +32,7 @@ repos:
         language: system
       - id: prettier
         name: Prettier
-        entry: npm run format:pre-commit
+        entry: npm run format:fix
         language: system
       - id: type-check
         name: Type check

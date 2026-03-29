@@ -64,8 +64,8 @@ Conditions:
   IsDeployedFromPipeline: !Equals
     - !Ref DeploymentType
     - "pipeline"
-  # IsNotDeployedFromPipeline: !Not
-  #   - !Condition IsDeployedFromPipeline
+  IsNotDeployedFromPipeline: !Not
+    - !Condition IsDeployedFromPipeline
   # Alarms only enabled in pipelines by default
   AlarmsEnabled: !Equals
     - !Ref DeploymentType
@@ -170,14 +170,14 @@ Mappings:
       production: 1024
 
   # Local Dev
-  # IPVCoreStubLocalMapping:
-  #   dev:
-  #     redirectUri: "http://localhost:8085/callback"
-  #     issuer: "https://cri.core.build.stubs.account.gov.uk"
-  #     audience: "https://review-ob.dev.account.gov.uk"
-  #     publicSigningJwkBase64Mapping: "ewogICAgImt0eSI6ICJFQyIsCiAgICAidXNlIjogInNpZyIsCiAgICAiY3J2IjogIlAtMjU2IiwKICAgICJraWQiOiAiaXB2LWNvcmUtc3R1Yi0yLWZyb20tbWtqd2sub3JnIiwKICAgICJ4IjogImszOXVLYWNTdWtRQnJNWnJIRFRCVVpzbGl2cFhLRE5aVGc2aW5DSHdyTGMiLAogICAgInkiOiAiOEY4TG5RN3dHOWh4c1Q0YXgwQXR5N2lNR0l5aVlfWUdwM19xSVp6S28xQSIsCiAgICAiYWxnIjogIkVTMjU2Igp9"
-  #     authenticationAlg: "ES256"
-  #     jwksEndpoint: "https://cri.core.build.stubs.account.gov.uk/.well-known/jwks.json"
+  IPVCoreStubLocalMapping:
+    dev:
+      redirectUri: "http://localhost:8085/callback"
+      issuer: "https://cri.core.build.stubs.account.gov.uk"
+      audience: "https://review-ob.dev.account.gov.uk"
+      publicSigningJwkBase64Mapping: "ewogICAgImt0eSI6ICJFQyIsCiAgICAidXNlIjogInNpZyIsCiAgICAiY3J2IjogIlAtMjU2IiwKICAgICJraWQiOiAiaXB2LWNvcmUtc3R1Yi0yLWZyb20tbWtqd2sub3JnIiwKICAgICJ4IjogImszOXVLYWNTdWtRQnJNWnJIRFRCVVpzbGl2cFhLRE5aVGc2aW5DSHdyTGMiLAogICAgInkiOiAiOEY4TG5RN3dHOWh4c1Q0YXgwQXR5N2lNR0l5aVlfWUdwM19xSVp6S28xQSIsCiAgICAiYWxnIjogIkVTMjU2Igp9"
+      authenticationAlg: "ES256"
+      jwksEndpoint: "https://cri.core.build.stubs.account.gov.uk/.well-known/jwks.json"
 
 Resources:
 
@@ -186,55 +186,55 @@ Resources:
   # OAuth Common                                                     #
   #                                                                  #
   ####################################################################
-  # OAuth:
-  #   Type: AWS::Serverless::Application
-  #   Properties:
-  #     Location:
-  #       ApplicationId: arn:aws:serverlessrepo:eu-west-2:667736788427:applications/di-ipv-cri-oauth-common
-  #       SemanticVersion: 0.0.0
-  #     Parameters:
-  #       AuditEventNamePrefix: !Ref AuditEventNamePrefix
-  #       CriIdentifier: !Ref CriIdentifier
-  #       CriAudience: !Sub
-  #         - "https://${domain}"
-  #         - domain: !FindInMap [EnvironmentConfiguration, !Ref Environment, vcDomain]
-  #       CriVcIssuer: !Sub
-  #         - "https://${domain}"
-  #         - domain: !FindInMap [EnvironmentConfiguration, !Ref Environment, vcDomain]
-  #       CriPrivateApiGwName: !Sub ${AWS::StackName}-private
-  #       CriPublicApiGwName: !Sub ${AWS::StackName}-public
-  #       Environment: !Ref Environment
-  #       IPVCoreRedirectURI: https://cri.core.build.stubs.account.gov.uk/callback
-  #       IPVCoreStubJwksEndpoint: https://cri.core.stubs.account.gov.uk/.well-known/jwks.json
-  #       LambdaVpcConfiguration: di-devplatform-deploy
+  OAuth:
+    Type: AWS::Serverless::Application
+    Properties:
+      Location:
+        ApplicationId: arn:aws:serverlessrepo:eu-west-2:667736788427:applications/di-ipv-cri-oauth-common
+        SemanticVersion: 0.0.0
+      Parameters:
+        AuditEventNamePrefix: !Ref AuditEventNamePrefix
+        CriIdentifier: !Ref CriIdentifier
+        CriAudience: !Sub
+          - "https://${domain}"
+          - domain: !FindInMap [EnvironmentConfiguration, !Ref Environment, vcDomain]
+        CriVcIssuer: !Sub
+          - "https://${domain}"
+          - domain: !FindInMap [EnvironmentConfiguration, !Ref Environment, vcDomain]
+        CriPrivateApiGwName: !Sub ${AWS::StackName}-private
+        CriPublicApiGwName: !Sub ${AWS::StackName}-public
+        Environment: !Ref Environment
+        IPVCoreRedirectURI: https://cri.core.build.stubs.account.gov.uk/callback
+        IPVCoreStubJwksEndpoint: https://cri.core.stubs.account.gov.uk/.well-known/jwks.json
+        LambdaVpcConfiguration: di-devplatform-deploy
 
-  # JWKSBucketRole:
-  #   Type: "AWS::IAM::Role"
-  #   Properties:
-  #     AssumeRolePolicyDocument:
-  #       Statement:
-  #         - Action: "sts:AssumeRole"
-  #           Effect: Allow
-  #           Principal:
-  #             Service: apigateway.amazonaws.com
-  #       Version: 2012-10-17
-  #     Policies:
-  #       - PolicyName: AccessJWKSJson
-  #         PolicyDocument:
-  #           Version: "2012-10-17"
-  #           Statement:
-  #             - Effect: Allow
-  #               Action:
-  #                 - "s3:Get*"
-  #               Resource:
-  #                 - !Sub "arn:aws:s3:::govuk-one-login-ob-published-keys-${Environment}/jwks.json"
-  #     PermissionsBoundary: !If
-  #       - UsePermissionsBoundary
-  #       - !Ref PermissionsBoundary
-  #       - !Ref AWS::NoValue
-  #     Tags:
-  #       - Key: "key_consumer_type"
-  #         Value: "use"
+  JWKSBucketRole:
+    Type: "AWS::IAM::Role"
+    Properties:
+      AssumeRolePolicyDocument:
+        Statement:
+          - Action: "sts:AssumeRole"
+            Effect: Allow
+            Principal:
+              Service: apigateway.amazonaws.com
+        Version: 2012-10-17
+      Policies:
+        - PolicyName: AccessJWKSJson
+          PolicyDocument:
+            Version: "2012-10-17"
+            Statement:
+              - Effect: Allow
+                Action:
+                  - "s3:Get*"
+                Resource:
+                  - !Sub "arn:aws:s3:::govuk-one-login-ob-published-keys-${Environment}/jwks.json"
+      PermissionsBoundary: !If
+        - UsePermissionsBoundary
+        - !Ref PermissionsBoundary
+        - !Ref AWS::NoValue
+      Tags:
+        - Key: "key_consumer_type"
+          Value: "use"
 
   ####################################################################
   #                                                                  #
@@ -711,66 +711,66 @@ Resources:
   #                                                                  #
   ####################################################################
 
-  # IPVCoreStubLocalRedirectURIParameter:
-  #   Condition: IsNotDeployedFromPipeline
-  #   Type: AWS::SSM::Parameter
-  #   Properties:
-  #     Name: !Sub
-  #       - "/${OAuthStackName}/clients/ipv-core-stub-local/jwtAuthentication/redirectUri"
-  #       - OAuthStackName: !Select [1, !Split ['/', !Select [5, !Split [':', !Ref OAuth]]]]
-  #     Type: String
-  #     Value: !FindInMap [ IPVCoreStubLocalMapping, !Ref Environment, redirectUri ]
+  IPVCoreStubLocalRedirectURIParameter:
+    Condition: IsNotDeployedFromPipeline
+    Type: AWS::SSM::Parameter
+    Properties:
+      Name: !Sub
+        - "/${OAuthStackName}/clients/ipv-core-stub-local/jwtAuthentication/redirectUri"
+        - OAuthStackName: !Select [1, !Split ['/', !Select [5, !Split [':', !Ref OAuth]]]]
+      Type: String
+      Value: !FindInMap [ IPVCoreStubLocalMapping, !Ref Environment, redirectUri ]
 
-  # IPVCoreStubLocalIssuerParameter:
-  #   Condition: IsNotDeployedFromPipeline
-  #   Type: AWS::SSM::Parameter
-  #   Properties:
-  #     Name: !Sub
-  #       - "/${OAuthStackName}/clients/ipv-core-stub-local/jwtAuthentication/issuer"
-  #       - OAuthStackName: !Select [1, !Split ['/', !Select [5, !Split [':', !Ref OAuth]]]]
-  #     Type: String
-  #     Value: !FindInMap [ IPVCoreStubLocalMapping, !Ref Environment, issuer ]
+  IPVCoreStubLocalIssuerParameter:
+    Condition: IsNotDeployedFromPipeline
+    Type: AWS::SSM::Parameter
+    Properties:
+      Name: !Sub
+        - "/${OAuthStackName}/clients/ipv-core-stub-local/jwtAuthentication/issuer"
+        - OAuthStackName: !Select [1, !Split ['/', !Select [5, !Split [':', !Ref OAuth]]]]
+      Type: String
+      Value: !FindInMap [ IPVCoreStubLocalMapping, !Ref Environment, issuer ]
 
-  # IPVCoreStubLocalAudienceParameter:
-  #   Condition: IsNotDeployedFromPipeline
-  #   Type: AWS::SSM::Parameter
-  #   Properties:
-  #     Name: !Sub
-  #       - "/${OAuthStackName}/clients/ipv-core-stub-local/jwtAuthentication/audience"
-  #       - OAuthStackName: !Select [1, !Split ['/', !Select [5, !Split [':', !Ref OAuth]]]]
-  #     Type: String
-  #     Value:
-  #       !FindInMap [ IPVCoreStubLocalMapping, !Ref Environment, audience ]
+  IPVCoreStubLocalAudienceParameter:
+    Condition: IsNotDeployedFromPipeline
+    Type: AWS::SSM::Parameter
+    Properties:
+      Name: !Sub
+        - "/${OAuthStackName}/clients/ipv-core-stub-local/jwtAuthentication/audience"
+        - OAuthStackName: !Select [1, !Split ['/', !Select [5, !Split [':', !Ref OAuth]]]]
+      Type: String
+      Value:
+        !FindInMap [ IPVCoreStubLocalMapping, !Ref Environment, audience ]
 
-  # IPVCoreStubLocalPublicSigningJwkBase64Parameter:
-  #   Condition: IsNotDeployedFromPipeline
-  #   Type: AWS::SSM::Parameter
-  #   Properties:
-  #     Name: !Sub
-  #       - "/${OAuthStackName}/clients/ipv-core-stub-local/jwtAuthentication/publicSigningJwkBase64"
-  #       - OAuthStackName: !Select [1, !Split ['/', !Select [5, !Split [':', !Ref OAuth]]]]
-  #     Type: String
-  #     Value: !FindInMap [ IPVCoreStubLocalMapping, !Ref Environment, publicSigningJwkBase64Mapping ]
+  IPVCoreStubLocalPublicSigningJwkBase64Parameter:
+    Condition: IsNotDeployedFromPipeline
+    Type: AWS::SSM::Parameter
+    Properties:
+      Name: !Sub
+        - "/${OAuthStackName}/clients/ipv-core-stub-local/jwtAuthentication/publicSigningJwkBase64"
+        - OAuthStackName: !Select [1, !Split ['/', !Select [5, !Split [':', !Ref OAuth]]]]
+      Type: String
+      Value: !FindInMap [ IPVCoreStubLocalMapping, !Ref Environment, publicSigningJwkBase64Mapping ]
 
-  # IPVCoreStubLocalJwksEndpointParameter:
-  #   Condition: IsNotDeployedFromPipeline
-  #   Type: AWS::SSM::Parameter
-  #   Properties:
-  #     Name: !Sub
-  #       - "/${OAuthStackName}/clients/ipv-core-stub-local/jwtAuthentication/jwksEndpoint"
-  #       - OAuthStackName: !Select [1, !Split ['/', !Select [5, !Split [':', !Ref OAuth]]]]
-  #     Type: String
-  #     Value: !FindInMap [ IPVCoreStubLocalMapping, !Ref Environment, jwksEndpoint ]
+  IPVCoreStubLocalJwksEndpointParameter:
+    Condition: IsNotDeployedFromPipeline
+    Type: AWS::SSM::Parameter
+    Properties:
+      Name: !Sub
+        - "/${OAuthStackName}/clients/ipv-core-stub-local/jwtAuthentication/jwksEndpoint"
+        - OAuthStackName: !Select [1, !Split ['/', !Select [5, !Split [':', !Ref OAuth]]]]
+      Type: String
+      Value: !FindInMap [ IPVCoreStubLocalMapping, !Ref Environment, jwksEndpoint ]
 
-  # IPVCoreStubLocalAuthenticationAlgParameter:
-  #   Condition: IsNotDeployedFromPipeline
-  #   Type: AWS::SSM::Parameter
-  #   Properties:
-  #     Name: !Sub
-  #       - "/${OAuthStackName}/clients/ipv-core-stub-local/jwtAuthentication/authenticationAlg"
-  #       - OAuthStackName: !Select [1, !Split ['/', !Select [5, !Split [':', !Ref OAuth]]]]
-  #     Type: String
-  #     Value: !FindInMap [ IPVCoreStubLocalMapping, !Ref Environment, authenticationAlg ]
+  IPVCoreStubLocalAuthenticationAlgParameter:
+    Condition: IsNotDeployedFromPipeline
+    Type: AWS::SSM::Parameter
+    Properties:
+      Name: !Sub
+        - "/${OAuthStackName}/clients/ipv-core-stub-local/jwtAuthentication/authenticationAlg"
+        - OAuthStackName: !Select [1, !Split ['/', !Select [5, !Split [':', !Ref OAuth]]]]
+      Type: String
+      Value: !FindInMap [ IPVCoreStubLocalMapping, !Ref Environment, authenticationAlg ]
 
   ####################################################################
   #                                                                  #

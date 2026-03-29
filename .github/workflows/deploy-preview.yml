@@ -8,9 +8,9 @@ on:
         required: true
     outputs:
       stack-name:
-        value: ${{ jobs.deploy.outputs.stack-name }}
+        value: ${{ jobs.deploy-preview.outputs.stack-name }}
       aws-region:
-        value: ${{ jobs.deploy.outputs.aws-region}}
+        value: ${{ jobs.deploy-preview.outputs.aws-region}}
       # sha-short:
       #   value: ${{ jobs.build-preview.outputs.sha-short }}
 
@@ -35,7 +35,6 @@ jobs:
       - name: Build app
         # uses: govuk-one-login/github-actions/sam/build-application@b2f2c762e88ff7b5656d87c733c57871997e350f
         uses: govuk-one-login/github-actions/sam/build-serverless-application@24304059124dff39f9c5c837e1c25b8d2500a903
-        id: build
         with:
           template: deploy/template.yaml
           cache-name: ipv-cri-ob-api-${{ steps.get-sha.outputs.sha-short }}
@@ -64,8 +63,8 @@ jobs:
           aws-role-arn: ${{ secrets.role_arn }}
           s3-prefix: preview
           sam-deployment-bucket: ${{ secrets.DEPLOYMENT_ARTIFACTS_BUCKET }}
-          stack-name: preview-${{ needs.build.outputs.sha_short}}
-          cache-name: ipv-cri-ob-api-${{ needs.build.outputs.sha_short}}
+          stack-name: preview-${{ needs.build-preview.outputs.sha-short}}
+          cache-name: ipv-cri-ob-api-${{ needs.build-preview.outputs.sha-short}}
           delete-failed-stack: true
           # do we want disable rollback? I reckon so...
 
