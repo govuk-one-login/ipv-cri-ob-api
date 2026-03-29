@@ -62,7 +62,7 @@ jobs:
         with:
           aws-role-arn: ${{ secrets.role_arn }}
           s3-prefix: preview
-          sam-deployment-bucket: ${{ secrets.DEPLOYMENT_ARTIFACTS_BUCKET }}
+          sam-deployment-bucket: ${{ secrets.TEMP_PREVIEW_BUCKET_ARN }}
           stack-name: preview-${{ needs.build-preview.outputs.sha-short}}
           cache-name: ipv-cri-ob-api-${{ needs.build-preview.outputs.sha-short}}
           delete-failed-stack: true
