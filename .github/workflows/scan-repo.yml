@@ -7,6 +7,16 @@ on:
     branches: main
   schedule:
     - cron: '0 4 ** 1' # Every Monday at 4am
+  inputs:
+    coverage-artifact:
+      required: false
+    coverage-run-id:
+      required: false
+  secrets:
+    github_token:
+      required: true
+    sonar_token:
+      required: true
 
 # concurrency:
 #   group: scan-repo-${{ github.head_ref || github.ref_name }} # decide on this
@@ -34,5 +44,9 @@ jobs:
     steps:
       - name: Run Sonar scan
         uses: SonarSource/sonarqube-scan-action@a31c9398be7ace6bbfaf30c0bd5d415f843d45e9 # v7.0.0
-        env:
-          SONAR_TOKEN: ${{ secrets.SONAR_TOKEN }}
+        with:
+          github-token: ${{ secrets.GITHUB_TOKEN }}
+          sonar-token: ${{ secrets.SONAR_TOKEN }}
+          coverage-artifact: ${{ coverage || null }
+          coverage-run-id: ${{ github.run_id || null }}
+          pull-repository: true

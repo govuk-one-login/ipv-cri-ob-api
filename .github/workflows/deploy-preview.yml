@@ -6,7 +6,7 @@ on:
     secrets:
       role_arn:
         required: true
-      bucket_arn:
+      bucket_name:
         required: true
     outputs:
       stack-name:
@@ -63,7 +63,7 @@ jobs:
         with:
           aws-role-arn: ${{ secrets.role_arn }}
           s3-prefix: preview
-          sam-deployment-bucket: ${{ secrets.bucket_arn }}
+          sam-deployment-bucket: ${{ secrets.bucket_name }}
           stack-name: preview-${{ needs.build-preview.outputs.sha-short}}
           cache-name: ipv-cri-ob-api-${{ needs.build-preview.outputs.sha-short}}
           delete-failed-stack: true
@@ -74,13 +74,9 @@ jobs:
             cri:stack-type=preview
             cri:application=Lime
             cri:deployment-source=github-actions
-          # parameters: |
-          #   DeploymentType=pre-merge-integration
-          #   ParameterPrefix=${{ secrets.PREMERGE_PARAMETER_PREFIX_STACK_NAME }}
-          #   Environment=dev
-          #   CommonStackName=passport-common-cri-api-local
+          parameters: |
+            DeploymentType=not-pipeline
+            Environment=dev
+            ParameterPrefix="ipv-cri-ob-api"
 
-          #   ParameterPrefix=ob-cri-api
-          #   Environment=dev or local dev?
-          #   CommonStackName=ob-common-cri-api-local
-          #   DeploymentType=pre-merge-integration
+# becuase this has one step - I think I can get rid and just do uses?

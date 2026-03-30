@@ -38,8 +38,6 @@ sam deploy --stack-name "$stack_name" \
   cri:application=Lime \
   cri:deployment-source=manual \
   --parameter-overrides \
-  CodeSigningConfigArn=none \
   Environment=dev \
   ParameterPrefix="ipv-cri-ob-api" \
-  DeploymentType="not-pipeline" \
-  LambdaDeploymentPreference=AllAtOnce
+  DeploymentType="not-pipeline"

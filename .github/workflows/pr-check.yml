@@ -52,9 +52,6 @@ jobs:
     permissions:
       contents: read
     steps:
-      - name: Checkout
-        uses: actions/checkout@v6
-
       - name: Run Sonar scan
         uses: govuk-one-login/github-actions/code-quality/sonarcloud@9d6ee027d0b9167dfc25e67124951956278bb585
         with:
@@ -62,7 +59,7 @@ jobs:
           sonar-token: ${{ secrets.SONAR_TOKEN }}
           coverage-artifact: coverage
           coverage-run-id: ${{ github.run_id }} # || null?
-          pull-repository: false
+          pull-repository: true
 
   codeql:
     name: Code QL
@@ -88,7 +85,7 @@ jobs:
     uses: ./.github/workflows/deploy-preview.yml
     secrets:
       role_arn: ${{ secrets.DEV_GHA_ROLE_ARN }}
-      bucket_arn: ${{ secrets.TEMP_PREVIEW_BUCKET_ARN }}
+      bucket_name: ${{ secrets.TEMP_PREVIEW_BUCKET_ARN }}
 
   api-tests:
     name: Run pre-merg api tests
