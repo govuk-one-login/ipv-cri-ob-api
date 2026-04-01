@@ -50,8 +50,8 @@ jobs:
       id-token: write
     timeout-minutes: 15
     needs: build-preview
-    # concurrency:
-    #   group: deploy-development-${{ github.head_ref || github.ref_name }}
+    concurrency:
+      group: deploy-preview-${{ github.event.pull_request.number || github.ref_name || github.run_id }}
     # environment: development
     outputs:
       aws-region: ${{ steps.deploy.outputs.aws-region }}

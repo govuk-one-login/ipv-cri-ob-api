@@ -4,18 +4,21 @@ on:
   workflow_call:
   schedule:
     - cron: '0 4 * * 1' # Every Monday at 4am
-  # pull_request: # temp
-
-# concurrency:
-#   group: scan-repo-${{ github.head_ref || github.ref_name }} # decide on this
-#   cancel-in-progress: true
+  pull_request: # temp
 
 permissions: {}
+
+concurrency:
+  group: scan-repo-${{ github.ref }}
+  cancel-in-progress: true
 
 jobs:
   codeql:
     name: CodeQL scan
     runs-on: ubuntu-latest
+    concurrency:
+      group: codeql-${{ github.ref }}
+      cancel-in-progress: true
     permissions:
       security-events: write
     steps:
@@ -26,9 +29,9 @@ jobs:
   sonar:
     name: Sonar scan
     runs-on: ubuntu-latest
-    # concurrency: # decide on this...
-    #   group:
-    #   cancel-in-progress: true
+    concurrency:
+      group: sonar-${{ github.ref }}
+      cancel-in-progress: true
     # permissions:
     #   contents: read
     steps:

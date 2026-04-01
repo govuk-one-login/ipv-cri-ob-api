@@ -3,17 +3,13 @@ name: PR check
 on: pull_request
 permissions: {}
 
-concurrency:
-  group: pr-check-${{ github.event.pull_request.number }}
-  cancel-in-progress: true
-
 jobs:
   pre-commit:
     name: Run pre-commit
     runs-on: ubuntu-latest
-    # concurrency:
-    # group: pre-commit-${{ github.head_ref || github.ref_name }}
-    # cancel-in-progress: true
+    concurrency:
+      group: pre-commit-${{ github.event.pull_request.number }}
+      cancel-in-progress: true
     steps:
       - name: Run pre-commit
         uses: govuk-one-login/github-actions/code-quality/run-pre-commit@7915556fc28d7299972796de8b5888e04e05687a # my branch - change once merged
@@ -25,15 +21,14 @@ jobs:
   unit-tests:
     name: Run unit tests
     runs-on: ubuntu-latest
+    concurrency:
+      group: unit-tests-${{ github.event.pull_request.number }}
+      cancel-in-progress: true
     permissions:
       contents: read
     steps:
-      # this can be condensed with the shared action
-      - name: Checkout
-        uses: actions/checkout@v6
-
       - name: Setup Node
-        uses: ./.github/actions/node-setup
+        uses: govuk-one-login/github-actions/node/install-dependencies@e34012cc1464012a5c99dafcea2e611cdb886434
 
       - name: Unit tests
         run: npm run test:coverage
@@ -48,6 +43,9 @@ jobs:
   sonar:
     name: Sonar scan
     runs-on: ubuntu-latest
+    concurrency:
+      group: sonar-${{ github.event.pull_request.number }}
+      cancel-in-progress: true
     needs: unit-tests
     if: github.actor != 'dependabot[bot]'
     permissions:
@@ -59,10 +57,15 @@ jobs:
         with:
           github-token: ${{ secrets.GITHUB_TOKEN }}
           sonar-token: ${{ secrets.SONAR_TOKEN }}
+          coverage-artifact: ${{ needs.coverage.outputs.coverage-artifact || 'coverage' }}
+          coverage-run-id: ${{ github.event_name != 'pull_request' && github.run_id || null }}
 
   codeql:
     name: CodeQL scan
     runs-on: ubuntu-latest
+    concurrency:
+      group: codeql-${{ github.event.pull_request.number }}
+      cancel-in-progress: true
     permissions:
       security-events: write
     steps:
@@ -80,8 +83,8 @@ jobs:
       contents: read
     uses: ./.github/workflows/deploy-preview.yml
     secrets:
-      role_arn: ${{ secrets.DEV_GHA_ROLE_ARN }}
-      bucket_name: ${{ secrets.TEMP_PREVIEW_BUCKET_ARN }}
+      role_arn: ${{ secrets.DEV_GHA_PREVIEW_ROLE_ARN }}
+      bucket_name: ${{ secrets.DEV_PREVIEW_ARTIFACT_BUCKET }}
     # do I need the outputs here
 
   api-tests:
@@ -92,19 +95,15 @@ jobs:
     needs: deploy-preview
     timeout-minutes: 15
     runs-on: ubuntu-latest
-    # environment: development
 
     steps:
-      - name: Checkout
-        uses: actions/checkout@v6
-
       - name: Setup Node
-        uses: ./.github/actions/node-setup
+        uses: govuk-one-login/github-actions/node/install-dependencies@e34012cc1464012a5c99dafcea2e611cdb886434
 
       - name: Assume AWS Role
         uses: aws-actions/configure-aws-credentials@8df5847569e6427dd6c4fb1cf565c83acfa8afa7 # v6.0.0
         with:
-          role-to-assume: ${{ secrets.DEV_GHA_ROLE_ARN }}
+          role-to-assume: ${{ secrets.DEV_GHA_PREVIEW_ROLE_ARN }}
           aws-region: ${{ needs.deploy-preview.outputs.aws-region }}
 
       - name: Run tests
@@ -119,7 +118,8 @@ jobs:
           npm run test:api
 
   # will need to add pact, infra, and smoke tests
-  # sonar and codeql not in fe
+  # no sonar for dependabot atm
+  # any concurrency?
   merge-status:
     name: Merge status
     runs-on: ubuntu-latest
@@ -135,7 +135,6 @@ jobs:
           failed=()
           [[ "${{ needs.pre-commit.result }}" != "success" ]] && failed+=("pre-commit")
           [[ "${{ needs.unit-tests.result }}" != "success" ]] && failed+=("unit-tests")
-          [[ "${{ needs.sonar.result }}" != "success" ]] && failed+=("sonar")
           [[ "${{ needs.codeql.result }}" != "success" ]] && failed+=("codeql")
           [[ "${{ needs.api-tests.result }}" != "success" ]] && failed+=("api-tests")
           if [[ ${#failed[@]} -gt 0 ]]; then

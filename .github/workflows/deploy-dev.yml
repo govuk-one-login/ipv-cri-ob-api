@@ -17,5 +17,6 @@ jobs:
       # ecr_repository_traffic_test: ${{ secrets.DEV_TRAFFIC_TEST_ECR_REPOSITORY }}
       # container_sign_kms_key: $ {{ secrets.DEV_CONTAINER_SIGN_KMS_KEY }}
       signing_profile: ${{ secrets.DEV_SIGNING_PROFILE_NAME }}
-      # environment: development
       # dynatrace_paas_token: ${{ secrets.DYNATRACE_PAAS_TOKEN }}
+    with:
+      environment: development

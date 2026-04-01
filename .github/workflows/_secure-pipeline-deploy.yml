@@ -15,8 +15,6 @@ on:
       #   required: true
       signing_profile:
         required: true
-      # environment:
-      #   required: true
       # dynatrace_paas_token:
       #   required: true
     inputs:
@@ -24,10 +22,16 @@ on:
         required: false
         type: string
         default: eu-west-2
+      environment:
+        type: string
+        required: true
 
 permissions:
   id-token: write
   contents: read
+
+concurrency:
+  group: secure-deploy-${{ inputs.environment }}
 
 jobs:
   # test-images-build-and-push:
@@ -78,6 +82,7 @@ jobs:
   deploy:
     name: Deploy stack
     runs-on: ubuntu-latest
+    environment: ${{ inputs.environment }}
     # needs: test-images-build-and-push
     steps:
       - name: Checkout
@@ -98,7 +103,6 @@ jobs:
           sam build -t deploy/template.yaml --region ${{ inputs.region }} -b out/
 
       - name: SAM Deploy
-        # concurrency and cancel in progress false
         uses: govuk-one-login/devplatform-upload-action@v3.13.0
         with:
           aws-role-arn: ${{ secrets.role_arn}}

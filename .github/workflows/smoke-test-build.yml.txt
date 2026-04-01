@@ -1,4 +1,5 @@
 # tests against core stub build
 # we don't know if we are using new stub yet
 # also on every push seems excessive plus 4x a day
-# should also probs run smoke tests on frontends
+# should also probs run smoke tests on frontends - does this even make sense as an action here
+# maybe makes more sense as a shared action so both fe and be can run

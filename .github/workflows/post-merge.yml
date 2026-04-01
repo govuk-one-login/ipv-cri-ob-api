@@ -11,15 +11,14 @@ permissions: {}
 jobs:
   unit-tests:
     runs-on: ubuntu-latest
+    concurrency:
+      group: unit-tests-${{ github.ref }}
+      cancel-in-progress: true
     permissions:
       contents: read
     steps:
-      # this can be condensed with a shared action
-      - name: Checkout
-        uses: actions/checkout@v6
-
       - name: Setup Node
-        uses: ./.github/actions/node-setup
+        uses: govuk-one-login/github-actions/node/install-dependencies@e34012cc1464012a5c99dafcea2e611cdb886434
 
       - name: Unit tests
         run: npm run test:coverage
@@ -34,13 +33,13 @@ jobs:
   sonar-scan:
     name: Sonar scan
     runs-on: ubuntu-latest
+    concurrency:
+      group: sonar-${{ github.ref }}
+      cancel-in-progress: true
     needs: unit-tests
     permissions:
       contents: read
     steps:
-      - name: Checkout
-        uses: actions/checkout@v6
-
       - name: Run Sonar scan
         uses: govuk-one-login/github-actions/code-quality/sonarcloud@9d6ee027d0b9167dfc25e67124951956278bb585
         with:
@@ -48,6 +47,21 @@ jobs:
           sonar-token: ${{ secrets.SONAR_TOKEN }}
           coverage-artifact: coverage
           coverage-run-id: ${{ github.run_id }}
+
+  codeql:
+    name: CodeQL scan
+    runs-on: ubuntu-latest
+    concurrency:
+      group: codeql-${{ github.ref }}
+      cancel-in-progress: true
+    permissions:
+      security-events: write
+    steps:
+      - name: Run CodeQL scan
+        uses: govuk-one-login/github-actions/code-quality/codeql@f5362528578198e7851e96e0594f593beff0162e
+
+  # there is still room to think about doing scan-repo instead here and in pre-merge
+  # would mean running unit tests for no reason sometime tho on cron
 
   # deploy-dev:
   #   uses: ./.github/workflows/_secure-pipeline-deploy.yml
@@ -60,9 +74,10 @@ jobs:
   #     container_sign_kms_key: ${{ secrets.DEV_CONTAINER_SIGN_KMS_KEY }}
   #     ecr_repository: ${{ secrets.DEV_ECR_REPOSITORY }}
   #     dynatrace_paas_token: ${{ secrets.DYNATRACE_PAAS_TOKEN }}
+  # with environment
 
   #   deploy-build:
-  #   uses: ./.github/workflows/_deploy.yml
+  #   uses: ./.github/workflows/_secure-pipeline-deploy.yml
   #   permissions:
   #     id-token: write
   #     contents: read
@@ -72,3 +87,4 @@ jobs:
   #     container_sign_kms_key: ${{ secrets.BUILD_CONTAINER_SIGN_KMS_KEY }}
   #     ecr_repository: ${{ secrets.BUILD_ECR_REPOSITORY }}
   #     dynatrace_paas_token: ${{ secrets.DYNATRACE_PAAS_TOKEN }}
+  # with environment
