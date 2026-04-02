@@ -67,9 +67,9 @@ Conditions:
   IsNotDeployedFromPipeline: !Not
     - !Condition IsDeployedFromPipeline
   # Alarms only enabled in pipelines by default
-  AlarmsEnabled: !Equals
-    - !Ref DeploymentType
-    - "pipeline"
+  # AlarmsEnabled: !Equals
+  #   - !Ref DeploymentType
+  #   - "pipeline"
   # Don't send logs in dev to avoid overwhelming the destination with debug
   LogSendingEnabled: !And
     - !Not [ !Equals [ !Ref Environment, "dev" ] ]
@@ -79,8 +79,8 @@ Conditions:
     - !Equals [ !Ref PermissionsBoundary, "none" ]
   UseCodeSigning: !Not
     - !Equals [ !Ref CodeSigningConfigArn, "none" ]
-  UseCanaryDeploymentAlarms: !Not
-      - !Equals [ !Ref LambdaDeploymentPreference, AllAtOnce ]
+  # UseCanaryDeploymentAlarms: !Not
+  #     - !Equals [ !Ref LambdaDeploymentPreference, AllAtOnce ]
   AddProvisionedConcurrency: !Not
     - !Equals
       - !FindInMap [ ProvisionedConcurrency, Environment, !Ref 'Environment' ]
@@ -413,10 +413,10 @@ Resources:
         Enabled: true
         Type: !Ref LambdaDeploymentPreference
         Role: !GetAtt CodeDeployServiceRole.Arn
-        Alarms: !If
-          - UseCanaryDeploymentAlarms
-          - [ !Ref BasicFunctionCanaryErrors, !Ref BasicFunctionCanary5xxErrors ]
-          - [ !Ref AWS::NoValue ]
+        # Alarms: !If
+        #   - UseCanaryDeploymentAlarms
+        #   - [ !Ref BasicFunctionCanaryErrors, !Ref BasicFunctionCanary5xxErrors ]
+        #   - [ !Ref AWS::NoValue ]
       Environment:
         Variables:
           POWERTOOLS_SERVICE_NAME: !Sub "${CriIdentifier}-basicFunction"
@@ -575,136 +575,136 @@ Resources:
   #                                                                  #
   ####################################################################
 
-  LambdaErrors:
-    Type: AWS::CloudWatch::Alarm
-    Condition: AlarmsEnabled
-    Properties:
-      AlarmName: !Sub "${AWS::StackName}-${Environment} - Open Banking CRI"
-      AlarmDescription: !Sub Open Banking ${Environment} lambda errors
-      ActionsEnabled: true
-      AlarmActions:
-        - !If [IsProduction, !ImportValue build-notifications-PagerDutySNSTopicArn, !ImportValue build-notifications-CriticalAlertsTopicArn]
-      OKActions:
-        - !If [IsProduction, !ImportValue build-notifications-PagerDutySNSTopicArn, !ImportValue build-notifications-CriticalAlertsTopicArn]
-      InsufficientDataActions: []
-      MetricName: Errors
-      Namespace: AWS/Lambda
-      Statistic: Sum
-      Dimensions: []
-      Period: 300
-      DatapointsToAlarm: 3
-      EvaluationPeriods: 3
-      Threshold: 1
-      ComparisonOperator: GreaterThanThreshold
-      TreatMissingData: notBreaching
+  # LambdaErrors:
+  #   Type: AWS::CloudWatch::Alarm
+  #   Condition: AlarmsEnabled
+  #   Properties:
+  #     AlarmName: !Sub "${AWS::StackName}-${Environment} - Open Banking CRI"
+  #     AlarmDescription: !Sub Open Banking ${Environment} lambda errors
+  #     ActionsEnabled: true
+  #     AlarmActions:
+  #       - !If [IsProduction, !ImportValue build-notifications-PagerDutySNSTopicArn, !ImportValue build-notifications-CriticalAlertsTopicArn]
+  #     OKActions:
+  #       - !If [IsProduction, !ImportValue build-notifications-PagerDutySNSTopicArn, !ImportValue build-notifications-CriticalAlertsTopicArn]
+  #     InsufficientDataActions: []
+  #     MetricName: Errors
+  #     Namespace: AWS/Lambda
+  #     Statistic: Sum
+  #     Dimensions: []
+  #     Period: 300
+  #     DatapointsToAlarm: 3
+  #     EvaluationPeriods: 3
+  #     Threshold: 1
+  #     ComparisonOperator: GreaterThanThreshold
+  #     TreatMissingData: notBreaching
 
-  APIGW5XXErrors:
-    Type: AWS::CloudWatch::Alarm
-    Condition: AlarmsEnabled
-    Properties:
-      AlarmName: !Sub "${AWS::StackName}-${Environment}-APIGW-5XX-Errors"
-      AlarmDescription: !Sub Open Banking ${Environment} API Gateway 5XX errors
-      ActionsEnabled: true
-      AlarmActions:
-        - !If [IsProduction, !ImportValue build-notifications-PagerDutySNSTopicArn, !ImportValue build-notifications-CriticalAlertsTopicArn]
-      OKActions:
-        - !If [IsProduction, !ImportValue build-notifications-PagerDutySNSTopicArn, !ImportValue build-notifications-CriticalAlertsTopicArn]
-      InsufficientDataActions: [ ]
-      DatapointsToAlarm: 3
-      EvaluationPeriods: 3
-      Threshold: 1
-      ComparisonOperator: GreaterThanThreshold
-      TreatMissingData: notBreaching
-      Metrics:
-        - Id: e1
-          Label: Expression1
-          ReturnData: true
-          Expression: SUM(METRICS())
-        - Id: m1
-          ReturnData: false
-          MetricStat:
-            Metric:
-              Namespace: AWS/ApiGateway
-              MetricName: 5XXError
-              Dimensions:
-                - Name: ApiName
-                  Value: !Sub "${AWS::StackName}-PublicAPI"
-            Period: 300
-            Stat: Sum
-        - Id: m2
-          ReturnData: false
-          MetricStat:
-            Metric:
-              Namespace: AWS/ApiGateway
-              MetricName: 5XXError
-              Dimensions:
-                - Name: ApiName
-                  Value: !Sub "${AWS::StackName}-PrivateAPI"
-            Period: 300
-            Stat: Sum
-  ###################################################################
-  #                                                                 #
-  # Canary Alarms                                                   #
-  #                                                                 #
-  ###################################################################
+  # APIGW5XXErrors:
+  #   Type: AWS::CloudWatch::Alarm
+  #   Condition: AlarmsEnabled
+  #   Properties:
+  #     AlarmName: !Sub "${AWS::StackName}-${Environment}-APIGW-5XX-Errors"
+  #     AlarmDescription: !Sub Open Banking ${Environment} API Gateway 5XX errors
+  #     ActionsEnabled: true
+  #     AlarmActions:
+  #       - !If [IsProduction, !ImportValue build-notifications-PagerDutySNSTopicArn, !ImportValue build-notifications-CriticalAlertsTopicArn]
+  #     OKActions:
+  #       - !If [IsProduction, !ImportValue build-notifications-PagerDutySNSTopicArn, !ImportValue build-notifications-CriticalAlertsTopicArn]
+  #     InsufficientDataActions: [ ]
+  #     DatapointsToAlarm: 3
+  #     EvaluationPeriods: 3
+  #     Threshold: 1
+  #     ComparisonOperator: GreaterThanThreshold
+  #     TreatMissingData: notBreaching
+  #     Metrics:
+  #       - Id: e1
+  #         Label: Expression1
+  #         ReturnData: true
+  #         Expression: SUM(METRICS())
+  #       - Id: m1
+  #         ReturnData: false
+  #         MetricStat:
+  #           Metric:
+  #             Namespace: AWS/ApiGateway
+  #             MetricName: 5XXError
+  #             Dimensions:
+  #               - Name: ApiName
+  #                 Value: !Sub "${AWS::StackName}-PublicAPI"
+  #           Period: 300
+  #           Stat: Sum
+  #       - Id: m2
+  #         ReturnData: false
+  #         MetricStat:
+  #           Metric:
+  #             Namespace: AWS/ApiGateway
+  #             MetricName: 5XXError
+  #             Dimensions:
+  #               - Name: ApiName
+  #                 Value: !Sub "${AWS::StackName}-PrivateAPI"
+  #           Period: 300
+  #           Stat: Sum
+  # ###################################################################
+  # #                                                                 #
+  # # Canary Alarms                                                   #
+  # #                                                                 #
+  # ###################################################################
 
-  BasicFunctionCanaryErrors:
-    Type: AWS::CloudWatch::Alarm
-    Condition: UseCanaryDeploymentAlarms
-    Properties:
-      ActionsEnabled: true
-      AlarmActions:
-        - !ImportValue build-notifications-WarningAlertsTopicArn
-      OKActions:
-        - !ImportValue build-notifications-WarningAlertsTopicArn
-      AlarmName: !Sub "${AWS::StackName}-${Environment}-BasicFunction-Canary-Errors"
-      AlarmDescription: !Sub "Errors returned from the Basic Function Lambda."
-      MetricName: Errors
-      Dimensions:
-        - Name: FunctionName
-          Value: !Ref BasicFunction
-        - Name: ExecutedVersion
-          Value: !GetAtt BasicFunction.Version.Version
-      Namespace: AWS/Lambda
-      Statistic: Sum
-      Unit: Count
-      Period: 60
-      EvaluationPeriods: 3
-      DatapointsToAlarm: 2
-      Threshold: 1
-      ComparisonOperator: GreaterThanOrEqualToThreshold
-      TreatMissingData: notBreaching
+  # BasicFunctionCanaryErrors:
+  #   Type: AWS::CloudWatch::Alarm
+  #   Condition: UseCanaryDeploymentAlarms
+  #   Properties:
+  #     ActionsEnabled: true
+  #     AlarmActions:
+  #       - !ImportValue build-notifications-WarningAlertsTopicArn
+  #     OKActions:
+  #       - !ImportValue build-notifications-WarningAlertsTopicArn
+  #     AlarmName: !Sub "${AWS::StackName}-${Environment}-BasicFunction-Canary-Errors"
+  #     AlarmDescription: !Sub "Errors returned from the Basic Function Lambda."
+  #     MetricName: Errors
+  #     Dimensions:
+  #       - Name: FunctionName
+  #         Value: !Ref BasicFunction
+  #       - Name: ExecutedVersion
+  #         Value: !GetAtt BasicFunction.Version.Version
+  #     Namespace: AWS/Lambda
+  #     Statistic: Sum
+  #     Unit: Count
+  #     Period: 60
+  #     EvaluationPeriods: 3
+  #     DatapointsToAlarm: 2
+  #     Threshold: 1
+  #     ComparisonOperator: GreaterThanOrEqualToThreshold
+  #     TreatMissingData: notBreaching
 
-  BasicFunctionCanary5xxErrors:
-    Type: AWS::CloudWatch::Alarm
-    Condition: UseCanaryDeploymentAlarms
-    Properties:
-      ActionsEnabled: true
-      AlarmActions:
-        - !ImportValue build-notifications-WarningAlertsTopicArn
-      OKActions:
-        - !ImportValue build-notifications-WarningAlertsTopicArn
-      AlarmName: !Sub "${AWS::StackName}-${Environment}-BasicFunction-Canary-5XX"
-      AlarmDescription: !Sub "Basic Lambda returning 5xx response."
-      Namespace: AWS/ApiGateway
-      MetricName: 5XXError
-      Dimensions:
-        - Name: ApiName
-          Value: !Sub "${AWS::StackName}-PrivateAPI"
-        - Name: Method
-          Value: POST
-        - Name: Stage
-          Value: !Ref Environment
-        - Name: Resource
-          Value: /basic-function
-      Statistic: Sum
-      Unit: Count
-      Period: 60
-      EvaluationPeriods: 3
-      DatapointsToAlarm: 2
-      Threshold: 1
-      ComparisonOperator: GreaterThanOrEqualToThreshold
-      TreatMissingData: notBreaching
+  # BasicFunctionCanary5xxErrors:
+  #   Type: AWS::CloudWatch::Alarm
+  #   Condition: UseCanaryDeploymentAlarms
+  #   Properties:
+  #     ActionsEnabled: true
+  #     AlarmActions:
+  #       - !ImportValue build-notifications-WarningAlertsTopicArn
+  #     OKActions:
+  #       - !ImportValue build-notifications-WarningAlertsTopicArn
+  #     AlarmName: !Sub "${AWS::StackName}-${Environment}-BasicFunction-Canary-5XX"
+  #     AlarmDescription: !Sub "Basic Lambda returning 5xx response."
+  #     Namespace: AWS/ApiGateway
+  #     MetricName: 5XXError
+  #     Dimensions:
+  #       - Name: ApiName
+  #         Value: !Sub "${AWS::StackName}-PrivateAPI"
+  #       - Name: Method
+  #         Value: POST
+  #       - Name: Stage
+  #         Value: !Ref Environment
+  #       - Name: Resource
+  #         Value: /basic-function
+  #     Statistic: Sum
+  #     Unit: Count
+  #     Period: 60
+  #     EvaluationPeriods: 3
+  #     DatapointsToAlarm: 2
+  #     Threshold: 1
+  #     ComparisonOperator: GreaterThanOrEqualToThreshold
+  #     TreatMissingData: notBreaching
 
   ####################################################################
   #                                                                  #
