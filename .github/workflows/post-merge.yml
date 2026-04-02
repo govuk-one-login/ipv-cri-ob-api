@@ -20,6 +20,6 @@ jobs:
       - name: Unit tests
         run: npm run test:coverage
       - name: Sonar scan
-        uses: SonarSource/sonarqube-scan-action@v7.0.0
+        uses: SonarSource/sonarqube-scan-action@v7.1.0
         env:
           SONAR_TOKEN: ${{ secrets.SONAR_TOKEN }}

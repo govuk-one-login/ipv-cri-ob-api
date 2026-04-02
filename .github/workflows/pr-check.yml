@@ -47,7 +47,7 @@ jobs:
         run: npm run test:coverage
       - name: Sonar scan # runs after unit tests in order to consume coverage report
         if: ${{ github.actor != 'dependabot[bot]' }}
-        uses: SonarSource/sonarqube-scan-action@v7.0.0
+        uses: SonarSource/sonarqube-scan-action@v7.1.0
         env:
           SONAR_TOKEN: ${{ secrets.SONAR_TOKEN }}
 
