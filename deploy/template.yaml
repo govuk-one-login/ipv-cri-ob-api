@@ -296,13 +296,13 @@ Resources:
       RetentionInDays: !Ref LogGroupRetentionInDays
       KmsKeyId: !GetAtt LoggingKmsKey.Arn
 
-#  PublicAPILogGroupSubscriptionFilter: #to be confirmed
-#    Type: AWS::Logs::SubscriptionFilter
-#    Condition: LogSendingEnabled
-#    Properties:
-#      DestinationArn: "arn:aws:logs:eu-west-2:885513274347:destination:csls_cw_logs_destination_prodpython-2"
-#      FilterPattern: ""
-#      LogGroupName: !Ref PublicAPILogGroup
+  # PublicAPILogGroupSubscriptionFilter: #to be confirmed
+  #   Type: AWS::Logs::SubscriptionFilter
+  #   Condition: LogSendingEnabled
+  #   Properties:
+  #     DestinationArn: "arn:aws:logs:eu-west-2:885513274347:destination:csls_cw_logs_destination_prodpython-2"
+  #     FilterPattern: ""
+  #     LogGroupName: !Ref PublicAPILogGroup
 
   PrivateAPI:
     Type: AWS::Serverless::Api
@@ -379,19 +379,20 @@ Resources:
       RetentionInDays: !Ref LogGroupRetentionInDays
       KmsKeyId: !GetAtt LoggingKmsKey.Arn
 
-#  PrivateAPILogGroupSubscriptionFilter: #to be confirmed
-#    Type: AWS::Logs::SubscriptionFilter
-#    Condition: LogSendingEnabled
-#    Properties:
-#      DestinationArn: "arn:aws:logs:eu-west-2:885513274347:destination:csls_cw_logs_destination_prodpython"
-#      FilterPattern: ""
-#      LogGroupName: !Ref PrivateAPILogGroup
+  # PrivateAPILogGroupSubscriptionFilter: #to be confirmed
+  #   Type: AWS::Logs::SubscriptionFilter
+  #   Condition: LogSendingEnabled
+  #   Properties:
+  #     DestinationArn: "arn:aws:logs:eu-west-2:885513274347:destination:csls_cw_logs_destination_prodpython"
+  #     FilterPattern: ""
+  #     LogGroupName: !Ref PrivateAPILogGroup
 
   ####################################################################
   #                                                                  #
   # Basic Function                                                   #
   #                                                                  #
   ####################################################################
+
   BasicFunction:
     Type: AWS::Serverless::Function
     Properties:
@@ -422,10 +423,10 @@ Resources:
       AutoPublishAlias: live
       AutoPublishAliasAllProperties: true
       Policies:
-       - AWSLambdaBasicExecutionRole
-       - AWSXrayWriteOnlyAccess
-       - KMSDecryptPolicy:
-           KeyId: !ImportValue core-infrastructure-CriDecryptionKey1Id
+        - AWSLambdaBasicExecutionRole
+        - AWSXrayWriteOnlyAccess
+        - KMSDecryptPolicy:
+            KeyId: !ImportValue core-infrastructure-CriDecryptionKey1Id
       ProvisionedConcurrencyConfig:
         !If
         - AddProvisionedConcurrency

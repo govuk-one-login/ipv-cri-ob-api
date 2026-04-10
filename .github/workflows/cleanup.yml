@@ -1,0 +1,74 @@
+name: Clean up stacks and log groups
+
+on:
+  workflow_dispatch:
+  schedule:
+    # Every weekday at 9am
+    - cron: '0 9 * * 1-5'
+
+permissions:
+  id-token: write
+
+concurrency:
+  group: cleanup-dev
+
+jobs:
+  delete-stacks:
+    name: Delete stale stacks
+    runs-on: ubuntu-latest
+    steps:
+      - name: Assume AWS Role
+        uses: aws-actions/configure-aws-credentials@8df5847569e6427dd6c4fb1cf565c83acfa8afa7 # v6.0.0
+        with:
+          role-to-assume: ${{ secrets.DEV_GHA_PREVIEW_ROLE_ARN }}
+          aws-region: eu-west-2
+
+      - name: Get stale preview stacks
+        uses: govuk-one-login/github-actions/sam/get-stale-stacks@350c58b28e56f0fd67c4a8d8c8cd4fdc6355bdf3 # my branch - change once merged
+        with:
+          threshold-days: 14
+          stack-name-filter: preview
+          stack-tag-filters: |
+            cri:deployment-source=github-actions
+            cri:stack-type=preview
+          description: preview
+          env-var-name: PREVIEW_STACKS
+
+      - name: Get stale manually deployed stacks
+        uses: govuk-one-login/github-actions/sam/get-stale-stacks@350c58b28e56f0fd67c4a8d8c8cd4fdc6355bdf3 # my branch - change once merged
+        with:
+          threshold-days: 90
+          stack-tag-filters: |
+            cri:component=ipv-cri-ob-api
+            cri:stack-type=dev
+            cri:application=Lime
+            cri:deployment-source=manual
+          description: manually deployed
+          env-var-name: MANUALLY_DEPLOYED_STACKS
+
+      - name: Delete stale preview stacks
+        if: ${{ env.PREVIEW_STACKS != null }}
+        uses: govuk-one-login/github-actions/sam/delete-stacks@2518d831abb4ec03fa3125619507f932966f2833
+        with:
+          stack-names: ${{ env.PREVIEW_STACKS }}
+          verbose: true
+
+      - name: Delete stale manually deployed stacks
+        if: ${{ env.MANUALLY_DEPLOYED_STACKS != null }}
+        uses: govuk-one-login/github-actions/sam/delete-stacks@2518d831abb4ec03fa3125619507f932966f2833
+        with:
+          stack-names: ${{ env.MANUALLY_DEPLOYED_STACKS }}
+          verbose: true
+
+  delete-log-groups:
+    name: Delete stale log groups
+    runs-on: ubuntu-latest
+    steps:
+      - uses: govuk-one-login/github-actions/sam/delete-stale-log-groups@cdb78df3693be21f3a8975a3cbdcb659956bc761 # temp until merged
+        with:
+          aws-role-arn: ${{ secrets.DEV_GHA_PREVIEW_ROLE_ARN }}
+          cutoff-days: 30
+          limit: 300
+          safe-patterns: '/preview-|^API-Gateway-Execution-Logs_'
+          destructive: true
+          verbose: true

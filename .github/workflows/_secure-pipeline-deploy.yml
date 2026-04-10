@@ -1,0 +1,78 @@
+name: Build and deploy
+
+on:
+  workflow_call:
+    secrets:
+      role_arn:
+        required: true
+      artifact_bucket:
+        required: true
+      ecr_repository_test:
+        required: true
+      ecr_repository_traffic_test:
+        required: true
+      container_sign_kms_key:
+        required: true
+      signing_profile:
+        required: true
+    inputs:
+      environment:
+        type: string
+        required: true
+
+permissions:
+  id-token: write
+  contents: read
+
+concurrency:
+  group: secure-deploy-${{ inputs.environment }}
+
+jobs:
+  test-images-build-and-push:
+    name: Build and push test images
+    runs-on: ubuntu-latest
+    steps:
+      - name: Test image build and push
+        uses: govuk-one-login/devplatform-upload-action-ecr@v1.5.0
+        with:
+          role-to-assume-arn: ${{ secrets.role_arn }}
+          build-and-push-image-only: true
+          working-directory: test/acceptance-tests
+          artifact-bucket-name: ''
+          ecr-repo-name: ${{ secrets.ecr_repository_test }}
+          dockerfile: test.Dockerfile
+          push-latest-tag: true
+          container-sign-kms-key-arn: ${{ secrets.container_sign_kms_key }}
+
+      - name: Traffic test image build and push
+        uses: govuk-one-login/devplatform-upload-action-ecr@v1.5.0
+        with:
+          role-to-assume-arn: ${{ secrets.role_arn }}
+          build-and-push-image-only: true
+          working-directory: test/acceptance-tests
+          artifact-bucket-name: ''
+          ecr-repo-name: ${{ secrets.ecr_repository_traffic_test }}
+          dockerfile: traffic-test.Dockerfile
+          push-latest-tag: true
+          container-sign-kms-key-arn: ${{ secrets.container_sign_kms_key }}
+
+  deploy:
+    name: Deploy stack
+    runs-on: ubuntu-latest
+    environment: ${{ inputs.environment }}
+    needs: test-images-build-and-push
+    steps:
+      - name: SAM build
+        uses: govuk-one-login/github-actions/sam/build-application@350c58b28e56f0fd67c4a8d8c8cd4fdc6355bdf3 # my branch - change once merged
+        with:
+          template: deploy/template.yaml
+          aws-role-arn: ${{ secrets.role_arn }}
+          pull-repository: true
+
+      - name: SAM package and upload to S3
+        uses: govuk-one-login/devplatform-upload-action@v3.13.0
+        with:
+          aws-role-arn: ${{ secrets.role_arn}}
+          artifact-bucket-name: ${{ secrets.artifact_bucket }}
+          signing-profile-name: ${{ secrets.signing_profile }}
+          working-directory: .aws-sam/build
