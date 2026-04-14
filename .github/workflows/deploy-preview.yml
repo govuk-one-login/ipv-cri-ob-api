@@ -1,0 +1,73 @@
+name: Deploy preview
+
+on:
+  workflow_dispatch:
+  workflow_call:
+    secrets:
+      role_arn:
+        required: true
+      bucket_name:
+        required: true
+    outputs:
+      stack-name:
+        value: ${{ jobs.deploy-preview.outputs.stack-name }}
+      aws-region:
+        value: ${{ jobs.deploy-preview.outputs.aws-region}}
+
+permissions: {}
+concurrency:
+  group: deploy-preview-${{ github.event.pull_request.number || github.ref_name || github.run_id }}
+
+jobs:
+  build-preview:
+    name: Build app
+    permissions:
+      id-token: write
+      contents: read
+    runs-on: ubuntu-latest
+    outputs:
+      sha-short: ${{ steps.get-sha.outputs.sha-short }}
+    steps:
+      - name: Get short SHA
+        id: get-sha
+        run: echo "sha-short=${GITHUB_SHA::7}" >> "$GITHUB_OUTPUT"
+
+      - name: Build app
+        uses: govuk-one-login/github-actions/sam/build-application@4c76410195b5fcb1804fc7c183ed20704252830f
+        with:
+          template: deploy/template.yaml
+          cache-name: ipv-cri-ob-api-${{ steps.get-sha.outputs.sha-short }}
+          aws-role-arn: ${{ secrets.role_arn || secrets.DEV_GHA_PREVIEW_ROLE_ARN }}
+          pull-repository: true
+
+  deploy-preview:
+    name: Deploy stack
+    runs-on: ubuntu-latest
+    permissions:
+      id-token: write
+    timeout-minutes: 15
+    needs: build-preview
+    outputs:
+      aws-region: ${{ steps.deploy.outputs.aws-region }}
+      stack-name: ${{ steps.deploy.outputs.stack-name }}
+    steps:
+      - name: Deploy stack
+        uses: govuk-one-login/github-actions/sam/deploy-stack@4c76410195b5fcb1804fc7c183ed20704252830f
+        id: deploy
+        with:
+          aws-role-arn: ${{ secrets.role_arn || secrets.DEV_GHA_PREVIEW_ROLE_ARN }}
+          s3-prefix: preview
+          sam-deployment-bucket: ${{ secrets.bucket_name || secrets.DEV_PREVIEW_ARTIFACT_BUCKET }}
+          stack-name: preview-${{ needs.build-preview.outputs.sha-short}}
+          cache-name: ipv-cri-ob-api-${{ needs.build-preview.outputs.sha-short}}
+          delete-failed-stack: true
+
+          tags: |
+            cri:component=ipv-cri-ob-api
+            cri:stack-type=preview
+            cri:application=Lime
+            cri:deployment-source=github-actions
+          parameters: |
+            DeploymentType=not-pipeline
+            Environment=dev
+            ParameterPrefix="ipv-cri-ob-api"
