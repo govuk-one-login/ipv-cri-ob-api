@@ -1,4 +1,4 @@
-FROM amazonlinux:2023.10.20260330.0@sha256:c4543691c8ce4157cbfe7d10170106eccb9dedd61f022980f062788d00e8af51
+FROM amazonlinux:2023.11.20260406.2@sha256:cfa6c2d0270c6517c0e46cb87aed7edcae8d9eb96af5f51814b6ee8680faaa2c
 
 RUN dnf update -y && dnf install -y awscli
 
