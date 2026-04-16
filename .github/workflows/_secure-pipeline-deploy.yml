@@ -69,7 +69,7 @@ jobs:
           pull-repository: true
 
       - name: SAM package and upload to S3
-        uses: govuk-one-login/devplatform-upload-action@v3.13.0
+        uses: govuk-one-login/devplatform-upload-action@v3.14.0
         with:
           aws-role-arn: ${{ secrets.role_arn}}
           artifact-bucket-name: ${{ secrets.artifact_bucket }}
