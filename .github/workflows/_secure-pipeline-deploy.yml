@@ -59,7 +59,6 @@ jobs:
   deploy:
     name: Deploy stack
     runs-on: ubuntu-latest
-    environment: ${{ inputs.environment }}
     needs: test-images-build-and-push
     steps:
       - name: SAM build
