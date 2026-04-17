@@ -1,7 +1,15 @@
 name: Scan repository
 
 on:
+  workflow_dispatch:
   workflow_call:
+    secrets:
+      sonar_token:
+        required: true
+    inputs:
+      coverage-artifact:
+        required: false
+        type: string
   schedule:
     - cron: '0 4 * * 1' # Every Monday at 4am
 
@@ -24,10 +32,11 @@ jobs:
   sonar:
     name: Sonar scan
     runs-on: ubuntu-latest
+    if: ${{ github.event_name != 'pull_request' || github.actor != 'dependabot[bot]' }}
     steps:
       - name: Run Sonar scan
         uses: govuk-one-login/github-actions/code-quality/sonarcloud@9d6ee027d0b9167dfc25e67124951956278bb585
         with:
           github-token: ${{ secrets.GITHUB_TOKEN }}
-          sonar-token: ${{ secrets.SONAR_TOKEN }}
-          coverage-artifact: null
+          sonar-token: ${{ secrets.sonar_token || secrets.SONAR_TOKEN }}
+          coverage-artifact: ${{ inputs.coverage-artifact || null }}
