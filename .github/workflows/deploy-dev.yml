@@ -16,7 +16,7 @@ jobs:
       artifact_bucket: ${{ secrets.DEV_ARTIFACT_BUCKET }}
       ecr_repository_test: ${{ secrets.DEV_ECR_TEST }}
       ecr_repository_traffic_test: ${{ secrets.DEV_ECR_TRAFFIC_TEST }}
-      container_sign_kms_key: $ {{ secrets.DEV_CONTAINER_SIGN_KMS_KEY }}
+      container_sign_kms_key: ${{ secrets.DEV_CONTAINER_SIGN_KMS_KEY }}
       signing_profile: ${{ secrets.DEV_SIGNING_PROFILE_NAME }}
     with:
       environment: development

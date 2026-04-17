@@ -29,35 +29,16 @@ jobs:
           path: coverage/
           retention-days: 1
 
-  sonar-scan:
-    name: Sonar scan
-    runs-on: ubuntu-latest
-    concurrency:
-      group: sonar-${{ github.ref }}
-      cancel-in-progress: true
-    needs: unit-tests
-    permissions:
-      contents: read
-    steps:
-      - name: Run Sonar scan
-        uses: govuk-one-login/github-actions/code-quality/sonarcloud@9d6ee027d0b9167dfc25e67124951956278bb585
-        with:
-          github-token: ${{ secrets.GITHUB_TOKEN }}
-          sonar-token: ${{ secrets.SONAR_TOKEN }}
-          coverage-artifact: coverage
-          coverage-run-id: ${{ github.run_id }}
-
-  codeql:
-    name: CodeQL scan
-    runs-on: ubuntu-latest
-    concurrency:
-      group: codeql-${{ github.ref }}
-      cancel-in-progress: true
+  scan-repo:
+    name: CodeQL and Sonar scans
     permissions:
       security-events: write
-    steps:
-      - name: Run CodeQL scan
-        uses: govuk-one-login/github-actions/code-quality/codeql@f5362528578198e7851e96e0594f593beff0162e
+    needs: unit-tests
+    uses: ./.github/workflows/scan-repo.yml
+    secrets:
+      sonar_token: ${{ secrets.SONAR_TOKEN }}
+    with:
+      coverage-artifact: coverage
 
   deploy-dev:
     uses: ./.github/workflows/_secure-pipeline-deploy.yml
@@ -89,6 +70,6 @@ jobs:
       container_sign_kms_key: ${{ secrets.BUILD_CONTAINER_SIGN_KMS_KEY }}
       ecr_repository_test: ${{ secrets.BUILD_ECR_TEST }}
       ecr_repository_traffic_test: ${{ secrets.BUILD_ECR_TRAFFIC_TEST }}
-      signing_profile: $ {{ secrets.BUILD_SIGNING_PROFILE_NAME }}
+      signing_profile: ${{ secrets.BUILD_SIGNING_PROFILE_NAME }}
     with:
       environment: build
