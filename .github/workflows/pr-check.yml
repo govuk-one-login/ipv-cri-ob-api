@@ -40,35 +40,16 @@ jobs:
           path: coverage/
           retention-days: 1
 
-  sonar:
-    name: Sonar scan
-    runs-on: ubuntu-latest
-    concurrency:
-      group: sonar-${{ github.event.pull_request.number }}
-      cancel-in-progress: true
-    needs: unit-tests
-    if: github.actor != 'dependabot[bot]'
-    permissions:
-      contents: read
-    steps:
-      - name: Run Sonar scan
-        uses: govuk-one-login/github-actions/code-quality/sonarcloud@9d6ee027d0b9167dfc25e67124951956278bb585
-        with:
-          github-token: ${{ secrets.GITHUB_TOKEN }}
-          sonar-token: ${{ secrets.SONAR_TOKEN }}
-          coverage-run-id: ${{ github.event_name != 'pull_request' && github.run_id || null }}
-
-  codeql:
-    name: CodeQL scan
-    runs-on: ubuntu-latest
-    concurrency:
-      group: codeql-${{ github.event.pull_request.number }}
-      cancel-in-progress: true
+  scan-repo:
+    name: CodeQL and Sonar scans
     permissions:
       security-events: write
-    steps:
-      - name: Run CodeQL scan
-        uses: govuk-one-login/github-actions/code-quality/codeql@f5362528578198e7851e96e0594f593beff0162e
+    needs: unit-tests
+    uses: ./.github/workflows/scan-repo.yml
+    secrets:
+      sonar_token: ${{ secrets.SONAR_TOKEN }}
+    with:
+      coverage-artifact: coverage
 
   # pact test placeholder
 
