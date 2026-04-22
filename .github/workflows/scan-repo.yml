@@ -10,6 +10,9 @@ on:
       coverage-artifact:
         required: false
         type: string
+      coverage-run-id:
+        required: false
+        type: string
   schedule:
     - cron: '0 4 * * 1' # Every Monday at 4am
 
@@ -27,7 +30,9 @@ jobs:
       security-events: write
     steps:
       - name: Run CodeQL scan
-        uses: govuk-one-login/github-actions/code-quality/codeql@f5362528578198e7851e96e0594f593beff0162e
+        uses: govuk-one-login/github-actions/code-quality/codeql@46a0673dcb08419211a6c3ed0bbfa2eb6de812b3
+        with:
+          category: codeql
 
   sonar:
     name: Sonar scan
@@ -40,3 +45,4 @@ jobs:
           github-token: ${{ secrets.GITHUB_TOKEN }}
           sonar-token: ${{ secrets.sonar_token || secrets.SONAR_TOKEN }}
           coverage-artifact: ${{ inputs.coverage-artifact || null }}
+          coverage-run-id: ${{ inputs.coverage-run-id || null }}

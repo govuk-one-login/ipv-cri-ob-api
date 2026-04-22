@@ -39,6 +39,7 @@ jobs:
       sonar_token: ${{ secrets.SONAR_TOKEN }}
     with:
       coverage-artifact: coverage
+      coverage-run-id: ${{ github.run_id }}
 
   deploy-dev:
     uses: ./.github/workflows/_secure-pipeline-deploy.yml
