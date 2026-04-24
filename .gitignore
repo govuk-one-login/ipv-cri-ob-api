@@ -15,3 +15,6 @@ dist
 
 #vitest
 coverage/
+
+# Test reports
+test/acceptance-tests/reports/

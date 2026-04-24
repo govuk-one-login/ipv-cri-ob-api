@@ -1,0 +1,18 @@
+{
+  "default": {
+    "paths": ["test/acceptance-tests/features/**/*.feature"],
+    "require": ["test/acceptance-tests/world.ts", "test/acceptance-tests/steps/**/*.ts"],
+    "requireModule": ["tsx"],
+    "format": ["progress-bar", "html:test/acceptance-tests/reports/api-report/index.html"],
+    "publishQuiet": true
+  },
+  "smoke": {
+    "tags": "@QualityGateSmokeTest"
+  },
+  "regression": {
+    "tags": "@QualityGateRegressionTest"
+  },
+  "integration": {
+    "tags": "@QualityGateIntegrationTest"
+  }
+}
