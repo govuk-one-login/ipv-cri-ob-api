@@ -24,14 +24,6 @@ export default defineConfig({
           include: ['test/unit/**/*.test.ts'],
           name: 'unit'
         }
-      },
-      {
-        test: {
-          hookTimeout: 30_000,
-          include: ['test/acceptance-tests/tests/**/*.test.ts'],
-          name: 'acceptance',
-          testTimeout: 30_000
-        }
       }
     ],
     silent: 'passed-only'

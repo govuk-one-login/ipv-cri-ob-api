@@ -1,4 +1,4 @@
-import type { APIRequestContext, APIResponse } from 'playwright'
+import type { APIRequestContext, APIResponse } from '@playwright/test'
 
 export class SessionPage {
   private readonly endpoint = '/session'

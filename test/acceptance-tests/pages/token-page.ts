@@ -1,4 +1,4 @@
-import type { APIRequestContext, APIResponse } from 'playwright'
+import type { APIRequestContext, APIResponse } from '@playwright/test'
 
 export class TokenPage {
   private readonly endpoint = '/token'

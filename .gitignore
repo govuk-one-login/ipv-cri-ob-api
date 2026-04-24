@@ -15,3 +15,8 @@ dist
 
 #vitest
 coverage/
+
+# playwright
+.features-gen/
+
+reports/

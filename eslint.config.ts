@@ -6,7 +6,15 @@ import perfectionist from 'eslint-plugin-perfectionist'
 import tseslint from 'typescript-eslint'
 
 export default defineConfig(
-  { ignores: ['dist/**', 'node_modules/**', '.aws-sam/**', 'coverage'] },
+  {
+    ignores: [
+      'dist/**',
+      'node_modules/**',
+      '.aws-sam/**',
+      'coverage',
+      'test/acceptance-tests/.features-gen/**'
+    ]
+  },
   eslint.configs.recommended,
   tseslint.configs.recommendedTypeChecked,
   tseslint.configs.stylisticTypeChecked,
@@ -80,7 +88,9 @@ export default defineConfig(
   {
     files: ['test/**/*'],
     rules: {
-      'no-console': 'off'
+      '@typescript-eslint/require-await': 'off',
+      'no-console': 'off',
+      'no-empty-pattern': 'off'
     }
   }
 )

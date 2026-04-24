@@ -42,4 +42,4 @@ if [ "${STACK_NAME}" != "local" ]; then
 fi
 
 npm ci
-npm run test:api
+npx bddgen --config test/acceptance-tests/playwright.api.config.ts && npx playwright test --config test/acceptance-tests/playwright.api.config.ts

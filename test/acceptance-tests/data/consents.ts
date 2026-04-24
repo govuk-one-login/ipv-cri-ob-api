@@ -18,7 +18,11 @@ export const validConsentsRequest = {
   }
 }
 
-export const validConsentId = 'test-consent-id'
+export const malformedConsentsRequest = {
+  bank_id: 12345,
+  permissions: 'not-an-array',
+  redirect_url: 'not-a-url'
+}
 
 export interface ConsentResponse {
   bank_consent_url: string
@@ -44,7 +48,7 @@ export interface ConsentResponse {
   }
 }
 
-export const expectedConsentResponseFields = [
+export const expectedConsentResponseFields: (keyof ConsentResponse)[] = [
   'id',
   'bank_reference_id',
   'bank_consent_url',

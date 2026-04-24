@@ -1,4 +1,5 @@
-import type { APIRequestContext, APIResponse } from 'playwright'
+import type { ConsentResponse } from '../data/consents'
+import type { APIRequestContext, APIResponse } from '@playwright/test'
 
 export class ConsentsPage {
   private readonly endpoint = '/consents'
@@ -11,5 +12,10 @@ export class ConsentsPage {
 
   async getConsent(id: string): Promise<APIResponse> {
     return this.api.get(`${this.endpoint}/${id}`)
+  }
+
+  //TODO - To be updated if required, generic parseBody method in fixtures.ts
+  async parseResponse(response: APIResponse): Promise<ConsentResponse> {
+    return (await response.json()) as ConsentResponse
   }
 }

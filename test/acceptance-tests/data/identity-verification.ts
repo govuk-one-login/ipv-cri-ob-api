@@ -19,7 +19,12 @@ export const validIdentityVerificationRequest = {
   }
 }
 
-export const validConsentIdForVerification = 'test-consent-id'
+export const malformedIdentityVerificationRequest = {
+  verification_information: {
+    date_of_birth: 'not-a-date',
+    first_name: 12345
+  }
+}
 
 export interface IdentityVerificationResponse {
   address_score: number
@@ -29,7 +34,7 @@ export interface IdentityVerificationResponse {
   status: string
 }
 
-export const expectedIdentityVerificationResponseFields = [
+export const expectedIdentityVerificationResponseFields: (keyof IdentityVerificationResponse)[] = [
   'id',
   'consent_id',
   'status',
