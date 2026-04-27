@@ -87,6 +87,10 @@ Conditions:
       - 0
   UseParameterPrefix: !Not
     - !Equals [ !Ref ParameterPrefix, "none"]
+  IsNotProduction: !Not [ !Equals [ !Ref Environment, production ] ]
+  CreateTestResourcesParam: !And
+    - !Condition IsDeployedFromPipeline
+    - !Condition IsNotProduction
 
 Globals:
   Function:
@@ -191,7 +195,7 @@ Resources:
     Properties:
       Location:
         ApplicationId: arn:aws:serverlessrepo:eu-west-2:667736788427:applications/di-ipv-cri-oauth-common
-        SemanticVersion: 0.0.0
+        SemanticVersion: 0.3.0
       Parameters:
         AuditEventNamePrefix: !Ref AuditEventNamePrefix
         CriIdentifier: !Ref CriIdentifier
@@ -569,6 +573,16 @@ Resources:
               ArnLike:
                 "kms:EncryptionContext:aws:logs:arn": !Sub "arn:aws:logs:${AWS::Region}:${AWS::AccountId}:*"
 
+  OAuthCommonStackNameParam:
+    Type: AWS::SSM::Parameter
+    Condition: CreateTestResourcesParam
+    Properties:
+      Name: /common-cri/oauth-common/stack-name
+      Type: String
+      Value: !GetAtt OAuth.Outputs.StackName
+      Description: The stack currently used for OAuth (oauth-common). Only required for test-resources.
+
+
   ####################################################################
   #                                                                  #
   # Alarms                                                           #
@@ -718,7 +732,7 @@ Resources:
     Properties:
       Name: !Sub
         - "/${OAuthStackName}/clients/ipv-core-stub-local/jwtAuthentication/redirectUri"
-        - OAuthStackName: !Select [1, !Split ['/', !Select [5, !Split [':', !Ref OAuth]]]]
+        - OAuthStackName: !GetAtt OAuth.Outputs.StackName
       Type: String
       Value: !FindInMap [ IPVCoreStubLocalMapping, !Ref Environment, redirectUri ]
 
@@ -728,7 +742,7 @@ Resources:
     Properties:
       Name: !Sub
         - "/${OAuthStackName}/clients/ipv-core-stub-local/jwtAuthentication/issuer"
-        - OAuthStackName: !Select [1, !Split ['/', !Select [5, !Split [':', !Ref OAuth]]]]
+        - OAuthStackName: !GetAtt OAuth.Outputs.StackName
       Type: String
       Value: !FindInMap [ IPVCoreStubLocalMapping, !Ref Environment, issuer ]
 
@@ -738,7 +752,7 @@ Resources:
     Properties:
       Name: !Sub
         - "/${OAuthStackName}/clients/ipv-core-stub-local/jwtAuthentication/audience"
-        - OAuthStackName: !Select [1, !Split ['/', !Select [5, !Split [':', !Ref OAuth]]]]
+        - OAuthStackName: !GetAtt OAuth.Outputs.StackName
       Type: String
       Value:
         !FindInMap [ IPVCoreStubLocalMapping, !Ref Environment, audience ]
@@ -749,7 +763,7 @@ Resources:
     Properties:
       Name: !Sub
         - "/${OAuthStackName}/clients/ipv-core-stub-local/jwtAuthentication/publicSigningJwkBase64"
-        - OAuthStackName: !Select [1, !Split ['/', !Select [5, !Split [':', !Ref OAuth]]]]
+        - OAuthStackName: !GetAtt OAuth.Outputs.StackName
       Type: String
       Value: !FindInMap [ IPVCoreStubLocalMapping, !Ref Environment, publicSigningJwkBase64Mapping ]
 
@@ -759,7 +773,7 @@ Resources:
     Properties:
       Name: !Sub
         - "/${OAuthStackName}/clients/ipv-core-stub-local/jwtAuthentication/jwksEndpoint"
-        - OAuthStackName: !Select [1, !Split ['/', !Select [5, !Split [':', !Ref OAuth]]]]
+        - OAuthStackName: !GetAtt OAuth.Outputs.StackName
       Type: String
       Value: !FindInMap [ IPVCoreStubLocalMapping, !Ref Environment, jwksEndpoint ]
 
@@ -769,7 +783,7 @@ Resources:
     Properties:
       Name: !Sub
         - "/${OAuthStackName}/clients/ipv-core-stub-local/jwtAuthentication/authenticationAlg"
-        - OAuthStackName: !Select [1, !Split ['/', !Select [5, !Split [':', !Ref OAuth]]]]
+        - OAuthStackName: !GetAtt OAuth.Outputs.StackName
       Type: String
       Value: !FindInMap [ IPVCoreStubLocalMapping, !Ref Environment, authenticationAlg ]
 
