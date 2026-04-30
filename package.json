@@ -19,13 +19,15 @@
     "lint": "eslint .",
     "lint:fix": "eslint . --fix",
     "lint:pre-commit": "eslint",
-    "test": "vitest run",
+    "test": "vitest run --project unit",
     "test:watch": "vitest",
     "test:coverage": "vitest run --coverage",
-    "test:api": "echo dummy test",
+    "test:api": "cucumber-js",
     "type-check": "tsc --noEmit"
   },
   "devDependencies": {
+    "@cucumber/cucumber": "12.8.2",
+    "@cucumber/html-formatter": "23.1.0",
     "@eslint/js": "10.0.1",
     "@types/aws-lambda": "8.10.160",
     "@types/node": "25.3.0",
@@ -35,6 +37,7 @@
     "eslint-plugin-perfectionist": "5.7.0",
     "jiti": "2.6.1",
     "prettier": "3.8.1",
+    "tsx": "4.19.4",
     "typescript": "5.9.3",
     "typescript-eslint": "8.56.0",
     "vitest": "4.1.5"
