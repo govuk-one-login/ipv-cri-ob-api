@@ -111,3 +111,9 @@ Infrastructure and stack validation tests should be tagged with `@QualityGateSta
 Once a feature goes live, `@QualityGateNewFeatureTest` tags need to be updated to `@QualityGateRegressionTest`.
 To facilitate this update, API tests for in-development work should be placed in their own feature files, if possible, so the tests can be tagged at the Feature level rather than the Scenario level.
 Ideally, tests tagged with `@QualityGateNewFeatureTest` should be marked with a TODO and reference a post-go-live clean-up ticket so they can be easily identified and updated.
+
+## Acceptance Tests
+
+Acceptance tests are run in the pipeline against the deployed environment. They are tagged with `TBC` and should be added to the `acceptance-tests` directory.
+
+`npm run test:api`
