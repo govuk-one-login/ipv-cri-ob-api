@@ -37,10 +37,9 @@ jobs:
         with:
           role-to-assume-arn: ${{ secrets.role_arn }}
           build-and-push-image-only: true
-          working-directory: test/acceptance-tests
           artifact-bucket-name: ''
           ecr-repo-name: ${{ secrets.ecr_repository_test }}
-          dockerfile: test.Dockerfile
+          dockerfile: test/acceptance-tests/test.Dockerfile
           push-latest-tag: true
           container-sign-kms-key-arn: ${{ secrets.container_sign_kms_key }}
 
@@ -49,10 +48,9 @@ jobs:
         with:
           role-to-assume-arn: ${{ secrets.role_arn }}
           build-and-push-image-only: true
-          working-directory: test/acceptance-tests
           artifact-bucket-name: ''
           ecr-repo-name: ${{ secrets.ecr_repository_traffic_test }}
-          dockerfile: traffic-test.Dockerfile
+          dockerfile: test/acceptance-tests/traffic-test.Dockerfile
           push-latest-tag: true
           container-sign-kms-key-arn: ${{ secrets.container_sign_kms_key }}
 

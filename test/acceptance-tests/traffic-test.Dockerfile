@@ -3,5 +3,8 @@ FROM amazonlinux:2023.10.20260330.0@sha256:c4543691c8ce4157cbfe7d10170106eccb9de
 RUN dnf update -y && dnf install -y awscli
 
 COPY . .
+
+COPY test/acceptance-tests/run-traffic-tests.sh /run-traffic-tests.sh
 RUN chmod +x /run-traffic-tests.sh
+
 ENTRYPOINT ["/run-traffic-tests.sh"]
