@@ -26,7 +26,7 @@
     "type-check": "tsc --noEmit"
   },
   "devDependencies": {
-    "@cucumber/cucumber": "12.8.2",
+    "@cucumber/cucumber": "12.8.3",
     "@cucumber/html-formatter": "23.1.0",
     "@eslint/js": "10.0.1",
     "@types/aws-lambda": "8.10.160",
