@@ -71,9 +71,10 @@ Conditions:
     - !Ref DeploymentType
     - "pipeline"
   # Don't send logs in dev to avoid overwhelming the destination with debug
-  LogSendingEnabled: !And
-    - !Not [ !Equals [ !Ref Environment, "dev" ] ]
-    - !Condition IsDeployedFromPipeline
+  # TODO: Uncomment if log group subscription filters are uncommented
+  # LogSendingEnabled: !And
+  #   - !Not [ !Equals [ !Ref Environment, "dev" ] ]
+  #   - !Condition IsDeployedFromPipeline
   IsProduction: !Equals [ !Ref Environment, production ]
   UsePermissionsBoundary: !Not
     - !Equals [ !Ref PermissionsBoundary, "none" ]
@@ -456,13 +457,13 @@ Resources:
       LogGroupName: !Sub "/aws/lambda/${BasicFunction}"
       RetentionInDays: !Ref LogGroupRetentionInDays
 
-  BasicFunctionLogGroupSubscriptionFilterCsls:
-    Type: AWS::Logs::SubscriptionFilter
-    Condition: LogSendingEnabled
-    Properties:
-      DestinationArn: "arn:aws:logs:eu-west-2:885513274347:destination:csls_cw_logs_destination_prodpython-2"
-      FilterPattern: ""
-      LogGroupName: !Ref BasicFunctionLogGroup
+  # BasicFunctionLogGroupSubscriptionFilterCsls:
+  #   Type: AWS::Logs::SubscriptionFilter
+  #   Condition: LogSendingEnabled
+  #   Properties:
+  #     DestinationArn: "arn:aws:logs:eu-west-2:885513274347:destination:csls_cw_logs_destination_prodpython-2"
+  #     FilterPattern: ""
+  #     LogGroupName: !Ref BasicFunctionLogGroup
 
   BasicFunctionPermission:
     Type: AWS::Lambda::Permission
