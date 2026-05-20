@@ -212,6 +212,10 @@ Resources:
         IPVCoreRedirectURI: https://cri.core.build.stubs.account.gov.uk/callback
         IPVCoreStubJwksEndpoint: https://cri.core.stubs.account.gov.uk/.well-known/jwks.json
         LambdaVpcConfiguration: di-devplatform-deploy
+        PermissionsBoundaryArn: !If
+          - UsePermissionsBoundary
+          - !Ref PermissionsBoundary
+          - !Ref AWS::NoValue
 
   JWKSBucketRole:
     Type: "AWS::IAM::Role"
