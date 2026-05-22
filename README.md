@@ -35,6 +35,9 @@ See the Lime onboarding guide for detailed setup instructions.
 ### Run all tests
 `npm test`
 
+### Run Infra tests
+`npm run test:infra`
+
 ### Run with coverage
 `npm run test:coverage`
 
