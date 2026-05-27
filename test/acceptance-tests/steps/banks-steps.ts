@@ -1,4 +1,4 @@
-import type { BanksRequestParams, BanksResponse } from '../../../src/types/banks.js'
+import type { BanksResponse } from '../../../src/types/banks.js'
 import type { OBWorld } from '../world.js'
 
 import { defaultBanksParams } from '../data/banks.js'
@@ -20,7 +20,7 @@ When(
 When(
   'I only send the query param {string} with {string}',
   function (this: OBWorld, param: string, value: string) {
-    this.bankParams = { [param]: value } as BanksRequestParams
+    this.bankParams = { [param]: value }
   }
 )
 

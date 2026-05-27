@@ -13,11 +13,7 @@ export interface ConsentResponse {
   redirect_url: string
   status: string
   user_info: {
-    device_id: string
-    email: string
     name: string
-    national_id: string
-    phone: string
     surname: string
   }
 }

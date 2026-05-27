@@ -1,6 +1,7 @@
 import { apiFetch, type ApiResponse } from '../utils/api-client.js'
 
 export class ConsentsClient {
+  bearerToken!: string
   private readonly endpoint: string
 
   constructor(baseUrl: string) {
@@ -8,15 +9,26 @@ export class ConsentsClient {
   }
 
   async createConsent(body: Record<string, unknown>, options?: RequestInit): Promise<ApiResponse> {
+    const headers: Record<string, string> = {
+      Authorization: `Bearer ${this.bearerToken}`,
+      'Content-Type': 'application/json',
+      ...(options?.headers as Record<string, string>)
+    }
+    Object.keys(headers).forEach((k) => headers[k] === undefined && delete headers[k])
     return apiFetch(this.endpoint, {
       ...options,
       body: JSON.stringify(body),
-      headers: { 'Content-Type': 'application/json', ...options?.headers },
+      headers,
       method: 'POST'
     })
   }
 
   async getConsent(id: string, options?: RequestInit): Promise<ApiResponse> {
-    return apiFetch(`${this.endpoint}/${id}`, options)
+    const headers: Record<string, string> = {
+      Authorization: `Bearer ${this.bearerToken}`,
+      ...(options?.headers as Record<string, string>)
+    }
+    Object.keys(headers).forEach((k) => headers[k] === undefined && delete headers[k])
+    return apiFetch(`${this.endpoint}/${id}`, { ...options, headers })
   }
 }
