@@ -93,7 +93,7 @@ jobs:
         uses: govuk-one-login/github-actions/node/install-dependencies@4c76410195b5fcb1804fc7c183ed20704252830f
 
       - name: Assume AWS Role
-        uses: aws-actions/configure-aws-credentials@8df5847569e6427dd6c4fb1cf565c83acfa8afa7 # v6.0.0
+        uses: aws-actions/configure-aws-credentials@acca2b1b2070338fb9fd1ca27ecee81d687e58e5 # v6.1.2
         with:
           role-to-assume: ${{ secrets.DEV_GHA_PREVIEW_ROLE_ARN }}
           aws-region: ${{ needs.deploy-preview.outputs.aws-region }}
