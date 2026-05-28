@@ -22,7 +22,7 @@ export class BasicFunction {
         message: 'Hello from the basic function',
         path: event.path
       }),
-      statusCode: 200
+      statusCode: 201
     })
   }
 }
