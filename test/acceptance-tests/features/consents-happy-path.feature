@@ -36,16 +36,3 @@ Feature: Consents
       | consent_expiry_date |
       | permissions         |
       | user_info           |
-
-  Scenario Outline: Reject invalid consent requests
-    When I create a consent with "<fixture>"
-    Then the response status should be 400
-
-    Examples:
-      | fixture        |
-      | missing fields |
-      | invalid body   |
-
-  Scenario: Return 404 for a non-existent consent
-    When I retrieve a consent with id "non-existent-consent-id"
-    Then the response status should be 404

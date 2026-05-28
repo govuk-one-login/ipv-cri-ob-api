@@ -41,3 +41,47 @@ When('I create a consent with {string}', async function (this: OBWorld, fixture:
   if (!body) throw new Error(`Unknown consent fixture: "${fixture}"`)
   this.lastResponse = await this.consents.createConsent(body)
 })
+
+When('I create a consent without a token', async function (this: OBWorld) {
+  this.lastResponse = await this.consents.createConsent(validConsentsRequest, {
+    headers: { Authorization: undefined as unknown as string }
+  })
+})
+
+When('I create a consent with an invalid token', async function (this: OBWorld) {
+  this.lastResponse = await this.consents.createConsent(validConsentsRequest, {
+    headers: { Authorization: 'Bearer invalid_token' }
+  })
+})
+
+When('I create a consent with an expired token', async function (this: OBWorld) {
+  this.lastResponse = await this.consents.createConsent(validConsentsRequest, {
+    headers: { Authorization: 'Bearer expired_token' }
+  })
+})
+
+When('I create a consent with an invalid scope token', async function (this: OBWorld) {
+  this.lastResponse = await this.consents.createConsent(validConsentsRequest, {
+    headers: { Authorization: 'Bearer invalid_scope_token' }
+  })
+})
+
+When('I create a consent with an empty body', async function (this: OBWorld) {
+  this.lastResponse = await this.consents.createConsent({})
+})
+
+When(
+  'I create a consent without the {string} field',
+  async function (this: OBWorld, field: string) {
+    const { [field]: _omitted, ...body } = validConsentsRequest as Record<string, unknown>
+    this.lastResponse = await this.consents.createConsent(body)
+  }
+)
+
+When('I create a consent with surname {string}', async function (this: OBWorld, surname: string) {
+  const body = {
+    ...validConsentsRequest,
+    user_info: { ...validConsentsRequest.user_info, surname }
+  }
+  this.lastResponse = await this.consents.createConsent(body)
+})

@@ -20,3 +20,12 @@ Then('the response body should have field {string}', function (this: OBWorld, fi
   const body = this.lastResponse.json<Record<string, unknown>>()
   assert.ok(Object.hasOwn(body, field), `Response should have field: ${field}`)
 })
+
+Then(
+  'the response body field {string} should have key {string}',
+  function (this: OBWorld, field: string, key: string) {
+    const body = this.lastResponse.json<Record<string, Record<string, unknown>>>()
+    assert.ok(body[field], `Response should have field: ${field}`)
+    assert.ok(Object.hasOwn(body[field], key), `Field "${field}" should have key: ${key}`)
+  }
+)

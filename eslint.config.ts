@@ -24,7 +24,10 @@ export default defineConfig(
         { fixStyle: 'separate-type-imports' }
       ],
       '@typescript-eslint/no-explicit-any': 'error',
-      '@typescript-eslint/no-unused-vars': ['error', { argsIgnorePattern: '^_' }],
+      '@typescript-eslint/no-unused-vars': [
+        'error',
+        { argsIgnorePattern: '^_', varsIgnorePattern: '^_' }
+      ],
       '@typescript-eslint/prefer-nullish-coalescing': 'off',
       'no-console': 'error',
       'padding-line-between-statements': [

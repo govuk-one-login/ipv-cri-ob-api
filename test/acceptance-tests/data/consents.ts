@@ -1,29 +1,19 @@
 export const validConsentsRequest = {
-  additional_params: '<additional-params>',
-  allowed_account_type: 'Any',
-  bank_id: 'obie-barclays-production',
-  consent_end_date: '2026-04-24T17:27:59.114Z',
-  creation_reason: 'Regular',
-  merchant_id: '<merchant-id>',
-  merchant_user_id: '<merchant-user-id>',
+  additional_params: 'foo=bar,baz=qux',
+  bank_id: 'iron-bank',
   permissions: ['Account'],
-  redirect_url: 'https://<redirect-uri>',
+  redirect_url: 'https://review-ob.dev.account.gov.uk/return',
   user_info: {
-    device_id: '3fa85f64-5717-4562-b3fc-2c963f66afa6',
-    email: '<email>',
-    name: '<name>',
-    national_id: '<national-id>',
-    phone: '<phone>',
-    surname: '<surname>'
+    name: 'Kenneth',
+    surname: 'Decerqueira'
   }
 }
 
 export const missingFieldsConsentsRequest = {
-  bank_id: 'obie-barclays-production'
+  bank_id: 'iron-bank'
 }
 
 export const invalidConsentsRequest = {
   ...validConsentsRequest,
-  bank_id: 'invalid-bank-id',
-  consent_end_date: 'not-a-date'
+  bank_id: 'invalid-bank-id'
 }
