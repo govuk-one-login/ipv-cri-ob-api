@@ -1,5 +1,5 @@
 @QualityGateIntegrationTest
-Feature: Banks Unhappy Path Tests
+Feature: Banks Endpoint - Unhappy Path Scenarios
 
   Scenario Outline: Reject invalid bank query params
     Given I have the default bank query params

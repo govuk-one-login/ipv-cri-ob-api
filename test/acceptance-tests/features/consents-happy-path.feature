@@ -1,5 +1,5 @@
 @QualityGateIntegrationTest
-Feature: Consents
+Feature: Consents Endpoint - Happy Path Scenarios
 
   Scenario Outline: Create a consent successfully
     When I create a consent with valid details
