@@ -1,5 +1,5 @@
 @QualityGateIntegrationTest
-Feature: Consents
+Feature: Consents Endpoint - Unhappy Path Scenarios
 
   Scenario: Reject request with no token
     When I create a consent without a token

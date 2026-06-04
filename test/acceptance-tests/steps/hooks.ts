@@ -8,4 +8,5 @@ Before(async function (this: OBWorld) {
   const response = await this.token.createToken(validTokenRequest)
   const { access_token } = response.json<TokenResponse>()
   this.consents.bearerToken = access_token
+  this.identityVerification.bearerToken = access_token
 })

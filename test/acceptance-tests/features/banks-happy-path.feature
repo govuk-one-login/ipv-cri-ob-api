@@ -1,5 +1,5 @@
 @QualityGateIntegrationTest
-Feature: Banks Happy Path Tests
+Feature: Banks Endpoint - Happy Path Scenarios
 
   Scenario: Banks - Happy Path - Retrieve a list of banks with valid params
     Given I have the default bank query params
