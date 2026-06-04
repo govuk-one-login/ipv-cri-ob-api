@@ -33,22 +33,20 @@ jobs:
     runs-on: ubuntu-latest
     steps:
       - name: Test image build and push
-        uses: govuk-one-login/devplatform-upload-action-ecr@v1.5.0
+        uses: govuk-one-login/devplatform-upload-action-ecr@156ca69f253c67f2f71488d0d81f7a3d97657e43 # v1.6.1
         with:
           role-to-assume-arn: ${{ secrets.role_arn }}
           build-and-push-image-only: true
-          artifact-bucket-name: ''
           ecr-repo-name: ${{ secrets.ecr_repository_test }}
           dockerfile: test/acceptance-tests/test.Dockerfile
           push-latest-tag: true
           container-sign-kms-key-arn: ${{ secrets.container_sign_kms_key }}
 
       - name: Traffic test image build and push
-        uses: govuk-one-login/devplatform-upload-action-ecr@v1.5.0
+        uses: govuk-one-login/devplatform-upload-action-ecr@156ca69f253c67f2f71488d0d81f7a3d97657e43 # v1.6.1
         with:
           role-to-assume-arn: ${{ secrets.role_arn }}
           build-and-push-image-only: true
-          artifact-bucket-name: ''
           ecr-repo-name: ${{ secrets.ecr_repository_traffic_test }}
           dockerfile: test/acceptance-tests/traffic-test.Dockerfile
           push-latest-tag: true
@@ -67,7 +65,7 @@ jobs:
           pull-repository: true
 
       - name: SAM package and upload to S3
-        uses: govuk-one-login/devplatform-upload-action@v3.13.0
+        uses: govuk-one-login/devplatform-upload-action@245bad4dc21702a5e665f1ca615108f6e70546d2 # v4.0.0
         with:
           aws-role-arn: ${{ secrets.role_arn}}
           artifact-bucket-name: ${{ secrets.artifact_bucket }}
