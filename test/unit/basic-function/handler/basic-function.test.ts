@@ -1,6 +1,6 @@
 import type { APIGatewayProxyEvent, Context } from 'aws-lambda'
 
-import { BasicFunction } from '@src/handler/basic-function'
+import { BasicFunction } from '@src/basic-function/handler/basic-function'
 import { describe, expect, it } from 'vitest'
 
 describe('BasicFunction', () => {

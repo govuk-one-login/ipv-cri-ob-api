@@ -398,6 +398,102 @@ Resources:
 
   ####################################################################
   #                                                                  #
+  # Issue Credential Function                                        #
+  #                                                                  #
+  ####################################################################
+
+  IssueCredentialFunction:
+    Type: AWS::Serverless::Function
+    Properties:
+      FunctionName: !Sub "${AWS::StackName}-issue-credential"
+      VpcConfig:
+        SecurityGroupIds:
+          - Fn::ImportValue:
+              !Sub "${VpcStackName}-AWSServicesEndpointSecurityGroupId"
+        SubnetIds:
+          - Fn::ImportValue:
+              !Sub "${VpcStackName}-PrivateSubnetIdA"
+          - Fn::ImportValue:
+              !Sub "${VpcStackName}-PrivateSubnetIdB"
+          - Fn::ImportValue:
+              !Sub "${VpcStackName}-PrivateSubnetIdC"
+      Handler: issue-credential.handler
+      CodeUri: ../
+      LoggingConfig:
+        LogGroup: !Ref IssueCredentialFunctionLogGroup
+      Environment:
+        Variables:
+          POWERTOOLS_SERVICE_NAME: !Sub "${CriIdentifier}-issue-credential"
+          VC_DOMAIN: !FindInMap [EnvironmentConfiguration, !Ref Environment, vcDomain]
+          JWT_TTL_SECONDS: "7200"
+          KMS_SIGNING_KEY_ID: !ImportValue core-infrastructure-CriVcSigningKey1Id
+          AUDIT_COMPONENT_ID: !FindInMap [EnvironmentConfiguration, !Ref Environment, vcDomain]
+          AUDIT_EVENT_NAME_PREFIX: !Ref AuditEventNamePrefix
+          AUDIT_QUEUE_URL: !ImportValue txma-infrastructure-AuditEventQueueUrl
+      AutoPublishAlias: live
+      AutoPublishAliasAllProperties: true
+      Policies:
+        - AWSLambdaBasicExecutionRole
+        - AWSXrayWriteOnlyAccess
+        - DynamoDBReadPolicy:
+            TableName: !GetAtt OAuth.Outputs.DbSessionTableName
+        - DynamoDBReadPolicy:
+            TableName: !GetAtt OAuth.Outputs.DbPersonIdentityTableName
+        - Statement:
+            Effect: Allow
+            Action: kms:Sign
+            Resource: !ImportValue core-infrastructure-CriVcSigningKey1Arn
+        - SQSSendMessagePolicy:
+            QueueName: !ImportValue txma-infrastructure-AuditEventQueueName
+        - Statement:
+            Effect: Allow
+            Action:
+              - kms:Decrypt
+              - kms:GenerateDataKey
+            Resource: !ImportValue txma-infrastructure-AuditEventQueueEncryptionKeyArn
+      ProvisionedConcurrencyConfig:
+        !If
+        - AddProvisionedConcurrency
+        - ProvisionedConcurrentExecutions: !FindInMap [ProvisionedConcurrency, Environment, !Ref Environment]
+        - !Ref AWS::NoValue
+    Metadata:
+      BuildMethod: esbuild
+      BuildProperties:
+        Minify: false
+        Sourcemap: true
+        Target: node24
+        Format: esm
+        OutExtension:
+          - .js=.mjs
+        EntryPoints:
+          - src/issue-credential/handler/issue-credential.ts
+        External:
+          - "@aws-sdk/*"
+        Banner:
+          - js=import { createRequire } from 'module'; const require = createRequire(import.meta.url);
+
+  IssueCredentialFunctionLogGroup:
+    Type: AWS::Logs::LogGroup
+    Properties:
+      LogGroupName: !Sub "/aws/lambda/${AWS::StackName}-issue-credential"
+      RetentionInDays: !Ref LogGroupRetentionInDays
+
+  IssueCredentialFunctionPermission:
+    Type: AWS::Lambda::Permission
+    Properties:
+      Action: lambda:InvokeFunction
+      FunctionName: !GetAtt IssueCredentialFunction.Arn
+      Principal: apigateway.amazonaws.com
+
+  IssueCredentialFunctionAliasPermission:
+    Type: AWS::Lambda::Permission
+    Properties:
+      Action: lambda:InvokeFunction
+      FunctionName: !Ref IssueCredentialFunction.Alias
+      Principal: apigateway.amazonaws.com
+
+  ####################################################################
+  #                                                                  #
   # Basic Function                                                   #
   #                                                                  #
   ####################################################################
@@ -451,7 +547,7 @@ Resources:
         OutExtension:
           - .js=.mjs
         EntryPoints:
-          - src/handler/basic-function.ts
+          - src/basic-function/handler/basic-function.ts
         External:
           - '@aws-sdk/*'
 
