@@ -77,10 +77,6 @@ Then('the response should not be valid JSON', function (this: OBWorld) {
   assert.throws(() => this.lastResponse.json())
 })
 
-Then('the response body should be empty', function (this: OBWorld) {
-  assert.equal(this.lastResponse.text(), '')
-})
-
 Then('the response error details should be non-empty', function (this: OBWorld) {
   const body = this.lastResponse.json<{ details: Record<string, string[]> }>()
   assert.ok(Object.values(body.details).every((arr) => arr.length > 0))

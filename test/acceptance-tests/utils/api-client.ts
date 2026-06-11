@@ -6,6 +6,12 @@ export interface ApiResponse {
 
 const DEFAULT_TIMEOUT_MS = 10_000
 
+export interface AuthenticatedClients {
+  consents: ConsentsClient
+  identityVerification: IdentityVerificationClient
+  issueCredential: IssueCredentialClient
+}
+
 export async function apiFetch(url: string, init?: RequestInit): Promise<ApiResponse> {
   let res: Response
   const signal = init?.signal ?? AbortSignal.timeout(DEFAULT_TIMEOUT_MS)
@@ -35,6 +41,32 @@ export async function apiFetch(url: string, init?: RequestInit): Promise<ApiResp
   }
 }
 
+import type { TokenResponse } from '../../../src/types/token.js'
+
+import { ConsentsClient } from '../clients/consents-client.js'
+import { IdentityVerificationClient } from '../clients/identity-verification-client.js'
+import { IssueCredentialClient } from '../clients/issue-credential-client.js'
+
+export function createAuthenticatedClients(
+  baseUrl: string,
+  tokenResponse: TokenResponse
+): AuthenticatedClients {
+  const { access_token } = tokenResponse
+  return {
+    consents: new ConsentsClient(baseUrl, access_token),
+    identityVerification: new IdentityVerificationClient(baseUrl, access_token),
+    issueCredential: new IssueCredentialClient(baseUrl, access_token)
+  }
+}
+
 export function getBaseUrl(): string {
   return process.env['API_BASE_URL'] ?? 'http://localhost:3000'
+}
+
+export function mergeHeaders(
+  base: Record<string, string>,
+  overrides?: RequestInit['headers']
+): Record<string, string> {
+  const merged = { ...base, ...(overrides as Record<string, string>) }
+  return Object.fromEntries(Object.entries(merged).filter(([, v]) => v !== undefined))
 }

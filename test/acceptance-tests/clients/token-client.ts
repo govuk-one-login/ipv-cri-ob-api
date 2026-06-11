@@ -1,4 +1,4 @@
-import { apiFetch, type ApiResponse } from '../utils/api-client.js'
+import { apiFetch, type ApiResponse, mergeHeaders } from '../utils/api-client.js'
 
 export class TokenClient {
   private readonly endpoint: string
@@ -7,11 +7,14 @@ export class TokenClient {
     this.endpoint = `${baseUrl}/token`
   }
 
-  async createToken(body: URLSearchParams, options?: RequestInit): Promise<ApiResponse> {
+  async createToken(body: Record<string, string>, options?: RequestInit): Promise<ApiResponse> {
     return apiFetch(this.endpoint, {
       ...options,
-      body: body.toString(),
-      headers: { 'Content-Type': 'application/x-www-form-urlencoded', ...options?.headers },
+      body: new URLSearchParams(body).toString(),
+      headers: mergeHeaders(
+        { 'Content-Type': 'application/x-www-form-urlencoded' },
+        options?.headers
+      ),
       method: 'POST'
     })
   }

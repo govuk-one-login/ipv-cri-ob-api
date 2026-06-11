@@ -26,7 +26,7 @@ When(
 When('I post identity verification using an invalid token', async function (this: OBWorld) {
   this.lastResponse = await this.identityVerification.postIdentityVerification(
     this.consentId,
-    {},
+    validIdentityVerificationRequest,
     { headers: { Authorization: 'Bearer invalid_token' } }
   )
 })
@@ -34,7 +34,7 @@ When('I post identity verification using an invalid token', async function (this
 When('I post identity verification using an invalid scope token', async function (this: OBWorld) {
   this.lastResponse = await this.identityVerification.postIdentityVerification(
     this.consentId,
-    {},
+    validIdentityVerificationRequest,
     { headers: { Authorization: 'Bearer invalid_scope_token' } }
   )
 })
@@ -42,7 +42,7 @@ When('I post identity verification using an invalid scope token', async function
 When('I post identity verification using an expired token', async function (this: OBWorld) {
   this.lastResponse = await this.identityVerification.postIdentityVerification(
     this.consentId,
-    {},
+    validIdentityVerificationRequest,
     { headers: { Authorization: 'Bearer expired_token' } }
   )
 })

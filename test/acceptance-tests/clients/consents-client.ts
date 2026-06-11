@@ -1,34 +1,30 @@
-import { apiFetch, type ApiResponse } from '../utils/api-client.js'
+import { apiFetch, type ApiResponse, mergeHeaders } from '../utils/api-client.js'
 
 export class ConsentsClient {
-  bearerToken!: string
+  private readonly bearerToken: string
   private readonly endpoint: string
 
-  constructor(baseUrl: string) {
+  constructor(baseUrl: string, bearerToken: string) {
     this.endpoint = `${baseUrl}/consents`
+    this.bearerToken = bearerToken
   }
 
   async createConsent(body: Record<string, unknown>, options?: RequestInit): Promise<ApiResponse> {
-    const headers: Record<string, string> = {
-      Authorization: `Bearer ${this.bearerToken}`,
-      'Content-Type': 'application/json',
-      ...(options?.headers as Record<string, string>)
-    }
-    Object.keys(headers).forEach((k) => headers[k] === undefined && delete headers[k])
     return apiFetch(this.endpoint, {
       ...options,
       body: JSON.stringify(body),
-      headers,
+      headers: mergeHeaders(
+        { Authorization: `Bearer ${this.bearerToken}`, 'Content-Type': 'application/json' },
+        options?.headers
+      ),
       method: 'POST'
     })
   }
 
   async getConsent(id: string, options?: RequestInit): Promise<ApiResponse> {
-    const headers: Record<string, string> = {
-      Authorization: `Bearer ${this.bearerToken}`,
-      ...(options?.headers as Record<string, string>)
-    }
-    Object.keys(headers).forEach((k) => headers[k] === undefined && delete headers[k])
-    return apiFetch(`${this.endpoint}/${id}`, { ...options, headers })
+    return apiFetch(`${this.endpoint}/${id}`, {
+      ...options,
+      headers: mergeHeaders({ Authorization: `Bearer ${this.bearerToken}` }, options?.headers)
+    })
   }
 }
