@@ -1,12 +1,12 @@
 import type { AuditEventPublisher } from '@common/service/audit-event-publisher'
 import type { IdentityScoreRepository } from '@src/issue-credential/client/identity-score-repository'
-import type { KmsSigner } from '@src/issue-credential/client/kms-signer'
 import type { PersonDetailsRepository } from '@src/issue-credential/client/person-details-repository'
 import type { SessionRepository } from '@src/issue-credential/client/session-repository'
 import type { IssueCredentialRequest } from '@src/issue-credential/model/issue-credential-request'
 import type { IssueCredentialResponse } from '@src/issue-credential/model/issue-credential-response'
 import type { JwtEnvelopeGenerator } from '@src/issue-credential/service/jwt-envelope-generator'
 import type { VerifiableCredentialBuilder } from '@src/issue-credential/service/verifiable-credential-builder'
+import type { VerifiableCredentialSigner } from '@src/issue-credential/service/verifiable-credential-signer'
 
 import { logger } from '@govuk-one-login/cri-logger'
 import {
@@ -19,10 +19,10 @@ interface IssueCredentialCollaborators {
   auditEventPublisher: AuditEventPublisher
   identityScoreRepository: IdentityScoreRepository
   jwtEnvelopeGenerator: JwtEnvelopeGenerator
-  kmsSigner: KmsSigner
   personDetailsRepository: PersonDetailsRepository
   sessionRepository: SessionRepository
   verifiableCredentialBuilder: VerifiableCredentialBuilder
+  verifiableCredentialSigner: VerifiableCredentialSigner
 }
 
 type IssueCredentialService = (request: IssueCredentialRequest) => Promise<IssueCredentialResponse>
@@ -66,7 +66,7 @@ export const createIssueCredentialService = (
     })
     logger.info('Claim set created')
 
-    const signedCredential = await collaborators.kmsSigner.sign(claimSet)
+    const signedCredential = await collaborators.verifiableCredentialSigner.sign(claimSet)
     logger.info('Credential signed')
 
     await collaborators.auditEventPublisher.publishVCIssued({ session })

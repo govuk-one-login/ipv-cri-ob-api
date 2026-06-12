@@ -55,6 +55,7 @@ jobs:
   # pact test placeholder
 
   infra-tests:
+    name: Run infra tests
     runs-on: ubuntu-latest
     permissions:
       contents: read

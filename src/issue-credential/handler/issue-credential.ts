@@ -14,12 +14,12 @@ import { parseBearerToken } from '@common/util/bearer-token'
 import { logger } from '@govuk-one-login/cri-logger'
 import { metrics } from '@govuk-one-login/cri-metrics'
 import { identityScoreRepository } from '@src/issue-credential/client/identity-score-repository'
-import { kmsSigner } from '@src/issue-credential/client/kms-signer'
 import { personDetailsRepository } from '@src/issue-credential/client/person-details-repository'
 import { sessionRepository } from '@src/issue-credential/client/session-repository'
 import { createIssueCredentialService } from '@src/issue-credential/service/issue-credential-service'
 import { jwtEnvelopeGenerator } from '@src/issue-credential/service/jwt-envelope-generator'
 import { verifiableCredentialBuilder } from '@src/issue-credential/service/verifiable-credential-builder'
+import { verifiableCredentialSigner } from '@src/issue-credential/service/verifiable-credential-signer'
 
 import middy from '@middy/core'
 
@@ -27,10 +27,10 @@ const issueCredentialService = createIssueCredentialService({
   auditEventPublisher,
   identityScoreRepository,
   jwtEnvelopeGenerator,
-  kmsSigner,
   personDetailsRepository,
   sessionRepository,
-  verifiableCredentialBuilder
+  verifiableCredentialBuilder,
+  verifiableCredentialSigner
 })
 
 const lambdaHandler = async (event: APIGatewayProxyEvent): Promise<APIGatewayProxyResult> => {

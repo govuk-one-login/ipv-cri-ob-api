@@ -11,11 +11,11 @@ import { afterEach, describe, expect, it, vi } from 'vitest'
 import * as auditEventPublisher from '@common/service/audit-event-publisher'
 import * as criMetrics from '@govuk-one-login/cri-metrics'
 import * as identityScoreRepository from '@src/issue-credential/client/identity-score-repository'
-import * as kmsSigner from '@src/issue-credential/client/kms-signer'
 import * as personDetailsRepository from '@src/issue-credential/client/person-details-repository'
 import * as sessionRepository from '@src/issue-credential/client/session-repository'
 import * as jwtEnvelopeGenerator from '@src/issue-credential/service/jwt-envelope-generator'
 import * as verifiableCredentialBuilder from '@src/issue-credential/service/verifiable-credential-builder'
+import * as verifiableCredentialSigner from '@src/issue-credential/service/verifiable-credential-signer'
 
 vi.mock('@govuk-one-login/cri-metrics', async (importOriginal) => ({
   ...(await importOriginal<typeof CriMetricsModule>()),
@@ -104,7 +104,9 @@ const stubHappyPath = (): void => {
   vi.spyOn(verifiableCredentialBuilder.verifiableCredentialBuilder, 'build').mockReturnValue(
     buildClaimSet()
   )
-  vi.spyOn(kmsSigner.kmsSigner, 'sign').mockResolvedValue('signed.jwt.value')
+  vi.spyOn(verifiableCredentialSigner.verifiableCredentialSigner, 'sign').mockResolvedValue(
+    'signed.jwt.value'
+  )
   vi.spyOn(auditEventPublisher.auditEventPublisher, 'publishVCIssued').mockResolvedValue()
   vi.spyOn(auditEventPublisher.auditEventPublisher, 'publishJourneyEnd').mockResolvedValue()
 }
