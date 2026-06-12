@@ -1,31 +1,28 @@
 #!/usr/bin/env bash
 set -e
 
-CURRENT_PATH="${PWD}"
-
 RED="\033[1;31m"
 GREEN="\033[1;32m"
-NOCOLOR="\033[0m"
+BLUE="\033[1;34m"
+NOCOLOUR="\033[0m"
 
 stack_name="$1"
-audit_event_name_prefix="$2"
-cri_identifier="$3"
 
 if [ -z "$stack_name" ]; then
-  echo -e "😱 ${RED}stack name expected as first argument, e.g. ${GREEN}./deploy.sh my-openBanking-api${NOCOLOR}"
+  echo -e "${RED}[ERROR]${NOCOLOUR} ❯ stack name required as first argument, e.g. ${GREEN}./deploy.sh my-openBanking-api${NOCOLOUR}"
   exit 1
 fi
 
-echo -e "👉 deploying ipv-cri-ob-api with:"
-echo -e "\tstack name: ${GREEN}$stack_name${NOCOLOR}"
+echo -e "${GREEN}[INFO]${NOCOLOUR} ❯ Deploying ipv-cri-ob-api"
+echo -e "${GREEN}[INFO]${NOCOLOUR} ❯ stack=${stack_name} region=eu-west-2"
 
-echo -e "🔎 Checking with cfn-lint"
+echo -e "${BLUE}[1/4]${NOCOLOUR}  ❯ Running cfn-lint"
 cfn-lint deploy/template.yaml -f pretty
-echo -e "🔎 Checking with sam validate --lint"
+echo -e "${BLUE}[2/4]${NOCOLOUR}  ❯ Running sam validate"
 sam validate -t deploy/template.yaml --lint
-echo -e "🧱 Building with SAM"
+echo -e "${BLUE}[3/4]${NOCOLOUR}  ❯ Building"
 sam build -t deploy/template.yaml --region eu-west-2
-echo -e "🚀 Deploying..."
+echo -e "${BLUE}[4/4]${NOCOLOUR}  ❯ Deploying to ${stack_name}"
 sam deploy --stack-name "$stack_name" \
   --no-fail-on-empty-changeset \
   --no-confirm-changeset \

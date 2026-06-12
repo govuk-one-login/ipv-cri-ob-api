@@ -23,7 +23,8 @@
     "skipLibCheck": true,
     "baseUrl": ".",
     "paths": {
-      "@src/*": ["./src/*"]
+      "@src/*": ["./src/*"],
+      "@common/*": ["./src/common/*"]
     }
   },
   "exclude": ["node_modules", "dist"]
