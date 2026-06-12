@@ -40,7 +40,7 @@ jobs:
     if: ${{ github.event_name != 'pull_request' || github.actor != 'dependabot[bot]' }}
     steps:
       - name: Run Sonar scan
-        uses: govuk-one-login/github-actions/code-quality/sonarcloud@9d6ee027d0b9167dfc25e67124951956278bb585
+        uses: govuk-one-login/github-actions/code-quality/sonarcloud@9a6a12e591fecbc651ae646166c644748f442bb9
         with:
           github-token: ${{ secrets.GITHUB_TOKEN }}
           sonar-token: ${{ secrets.sonar_token || secrets.SONAR_TOKEN }}
