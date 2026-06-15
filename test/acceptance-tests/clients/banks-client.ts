@@ -10,12 +10,10 @@ export class BanksClient {
   }
 
   async getBanks(params?: BanksRequestParams, options?: RequestInit): Promise<ApiResponse> {
-    if (!params) return apiFetch(this.endpoint, options)
-    const query = new URLSearchParams(
-      Object.entries(params)
-        .filter(([, v]) => v !== undefined)
-        .map(([k, v]) => [k, String(v)])
-    )
-    return apiFetch(`${this.endpoint}?${query.toString()}`, options)
+    const entries = Object.entries(params ?? {})
+      .filter(([, v]) => v !== undefined)
+      .map(([k, v]) => [k, String(v)])
+    const query = entries.length ? `?${new URLSearchParams(entries).toString()}` : ''
+    return apiFetch(`${this.endpoint}${query}`, options)
   }
 }

@@ -28,6 +28,11 @@ Then('the response body should be empty', function (this: OBWorld) {
   assert.equal(this.lastResponse.text(), '')
 })
 
+Then('the response body should be a valid JWT', function (this: OBWorld) {
+  const parts = this.lastResponse.text().split('.')
+  assert.equal(parts.length, 3, 'Expected a JWT with 3 dot-separated parts')
+})
+
 Then('the response body should have field {string}', function (this: OBWorld, field: string) {
   const body = this.lastResponse.json<Record<string, unknown>>()
   assert.ok(Object.hasOwn(body, field), `Response should have field: ${field}`)

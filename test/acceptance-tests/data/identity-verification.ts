@@ -5,7 +5,6 @@ export const validIdentityVerificationRequest = {
 }
 
 export const identityVerificationRequestWithSurname = (surname: string) => ({
-  date_of_birth: '1965-07-08',
-  first_name: 'Kenneth',
+  ...validIdentityVerificationRequest,
   surname
 })

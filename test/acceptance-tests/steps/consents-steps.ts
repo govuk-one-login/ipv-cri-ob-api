@@ -25,7 +25,7 @@ Given('I have created a consent', async function (this: OBWorld) {
 When('I create a consent with valid details', async function (this: OBWorld) {
   this.lastResponse = await this.consents.createConsent(validConsentsRequest)
   const body = this.lastResponse.json<ConsentResponse>()
-  if (body.id) this.consentId = body.id
+  this.consentId = body.id
 })
 
 When('I retrieve the consent by its id', async function (this: OBWorld) {
@@ -43,9 +43,7 @@ When('I create a consent with {string}', async function (this: OBWorld, fixture:
 })
 
 When('I create a consent without a token', async function (this: OBWorld) {
-  this.lastResponse = await this.consents.createConsent(validConsentsRequest, {
-    headers: { Authorization: undefined as unknown as string }
-  })
+  this.lastResponse = await this.consents.createConsent(validConsentsRequest, { headers: {} })
 })
 
 When('I create a consent with an invalid token', async function (this: OBWorld) {
@@ -73,7 +71,9 @@ When('I create a consent with an empty body', async function (this: OBWorld) {
 When(
   'I create a consent without the {string} field',
   async function (this: OBWorld, field: string) {
-    const { [field]: _omitted, ...body } = validConsentsRequest as Record<string, unknown>
+    const body = Object.fromEntries(
+      Object.entries(validConsentsRequest as Record<string, unknown>).filter(([k]) => k !== field)
+    )
     this.lastResponse = await this.consents.createConsent(body)
   }
 )

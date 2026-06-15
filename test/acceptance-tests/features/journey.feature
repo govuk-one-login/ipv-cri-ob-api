@@ -23,3 +23,7 @@ Feature: Open Banking Verification Journey
     Then the response status should be 200
     And the response body should have field "status"
     And the response body field "status" should be "Match"
+
+    When I issue a credential
+    Then the response status should be 200
+    And the response body should be a valid JWT

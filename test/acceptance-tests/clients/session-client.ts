@@ -1,4 +1,4 @@
-import { apiFetch, type ApiResponse } from '../utils/api-client.js'
+import { apiFetch, type ApiResponse, mergeHeaders } from '../utils/api-client.js'
 
 export class SessionClient {
   private readonly endpoint: string
@@ -11,7 +11,7 @@ export class SessionClient {
     return apiFetch(this.endpoint, {
       ...options,
       body: JSON.stringify(body),
-      headers: { 'Content-Type': 'application/json', ...options?.headers },
+      headers: mergeHeaders({ 'Content-Type': 'application/json' }, options?.headers),
       method: 'POST'
     })
   }
