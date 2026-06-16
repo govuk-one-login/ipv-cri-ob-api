@@ -39,8 +39,8 @@
     "jiti": "2.6.1",
     "prettier": "3.8.1",
     "tsx": "4.19.4",
-    "typescript": "5.9.3",
-    "typescript-eslint": "8.56.0",
+    "typescript": "6.0.3",
+    "typescript-eslint": "8.61.1",
     "vitest": "4.1.5",
     "yaml": "2.9.0",
     "zod": "4.4.3"
