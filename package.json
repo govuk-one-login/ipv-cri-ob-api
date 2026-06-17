@@ -28,7 +28,7 @@
   },
   "devDependencies": {
     "@cucumber/cucumber": "12.9.0",
-    "@cucumber/html-formatter": "23.1.0",
+    "@cucumber/html-formatter": "24.0.0",
     "@eslint/js": "10.0.1",
     "@types/aws-lambda": "8.10.162",
     "@types/node": "25.9.3",
