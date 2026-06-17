@@ -3,7 +3,8 @@ updates:
   - package-ecosystem: 'npm'
     directory: '/'
     schedule:
-      interval: daily
+      interval: weekly
+      day: monday
       time: '03:00'
     pull-request-branch-name:
       separator: '-'
@@ -15,6 +16,15 @@ updates:
       - dependency-name: 'node'
         versions: ['24.x']
     groups:
+      aws-sdk:
+        patterns:
+          - '@aws-sdk/*'
+      middy:
+        patterns:
+          - '@middy/*'
+      aws-lambda-powertools:
+        patterns:
+          - '@aws-lambda-powertools/*'
       vitest:
         patterns:
           - '@vitest/*'
@@ -37,7 +47,8 @@ updates:
   - package-ecosystem: 'docker'
     directory: '/test/acceptance-tests'
     schedule:
-      interval: daily
+      interval: weekly
+      day: monday
       time: '03:00'
     target-branch: main
     labels:
@@ -47,7 +58,9 @@ updates:
   - package-ecosystem: 'github-actions'
     directory: '/'
     schedule:
-      interval: 'weekly'
+      interval: weekly
+      day: monday
+      time: '03:00'
     target-branch: main
     labels:
       - dependabot
