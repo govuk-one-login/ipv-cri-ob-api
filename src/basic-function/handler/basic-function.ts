@@ -2,6 +2,8 @@ import type { APIGatewayProxyEvent, APIGatewayProxyResult, Context } from 'aws-l
 
 import { logger } from '@govuk-one-login/cri-logger'
 import { captureMetric, metrics, MetricUnit } from '@govuk-one-login/cri-metrics'
+import { getTokenProfileForClientID } from '@src/token-rotator/model/token-profile'
+import { tokenRetrievalService } from '@src/token-rotator/service/token-retrieval-service'
 
 export class BasicFunction {
   @metrics.logMetrics({
@@ -16,14 +18,31 @@ export class BasicFunction {
     return this.process(event)
   }
 
-  private process(event: APIGatewayProxyEvent): Promise<APIGatewayProxyResult> {
-    return Promise.resolve({
+  private async process(event: APIGatewayProxyEvent): Promise<APIGatewayProxyResult> {
+    const profile = getTokenProfileForClientID('ipv-core-stub') // from session normally
+    const tokenValue = await tokenRetrievalService.retrieveToken(profile)
+
+    if (!tokenValue) {
+      logger.error('Unable to retrieve third-party token', { profile })
+      return {
+        body: JSON.stringify({
+          oauth_error: {
+            error: 'server_error',
+            error_description: 'Unexpected server error'
+          }
+        }),
+        statusCode: 500
+      }
+    }
+
+    logger.info('Third-party token retrieved', { profile })
+    return {
       body: JSON.stringify({
         message: 'Hello from the basic function',
         path: event.path
       }),
       statusCode: 200
-    })
+    }
   }
 }
 
