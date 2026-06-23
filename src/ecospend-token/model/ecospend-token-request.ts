@@ -1,6 +1,6 @@
 import { z } from 'zod'
 
-export const ecospendConfigSchema = z
+export const ecospendTokenRequestSchema = z
   .object({
     'client-id': z.string().min(1),
     'client-secret': z.string().min(1),
@@ -18,4 +18,4 @@ export const ecospendConfigSchema = z
     }
   }))
 
-export type EcospendTokenConfig = z.infer<typeof ecospendConfigSchema>
+export type EcospendTokenRequest = z.infer<typeof ecospendTokenRequestSchema>

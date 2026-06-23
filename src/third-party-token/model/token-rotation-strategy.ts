@@ -5,7 +5,7 @@ export interface TokenRotationOutput {
   tokenValue: string
 }
 
-export interface TokenRotationStrategy<TConfig> {
-  configSchema: ZodType<TConfig>
-  rotate: (input: { config: TConfig }) => Promise<TokenRotationOutput>
+export interface TokenRotationStrategy<TRequest> {
+  requestSchema: ZodType<TRequest>
+  rotate: (input: { request: TRequest }) => Promise<TokenRotationOutput>
 }

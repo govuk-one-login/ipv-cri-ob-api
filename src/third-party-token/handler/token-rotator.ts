@@ -14,15 +14,25 @@ import {
 
 import middy from '@middy/core'
 
-interface TokenRotatorCollaborators<TConfig> {
-  tokenRotationStrategy: TokenRotationStrategy<TConfig>
+interface TokenRotatorCollaborators<TRequest> {
+  tokenRotationStrategy: TokenRotationStrategy<TRequest>
 }
 
-export const createTokenRotator = <TConfig>(
+/**
+ * any `ScheduledEvent` triggers `rotateAll`, which iterates the configured profiles, fetches each
+ * profile's config from SSM, skips any token still inside the refresh window, and writes a fresh
+ * token via the plugin's `TokenRotationStrategy`.
+ *
+ * a `ManualRotateEvent` (`{ override: { profile, overrideRequest } }`) bypasses SSM and the
+ * freshness check, rotating the single named profile using the supplied override config
+ *
+ * see {@link ManualRotateEvent} for the payload shape
+ */
+export const createTokenRotator = <TRequest>(
   config: TokenRotationServiceConfig,
-  collaborators: TokenRotatorCollaborators<TConfig>
+  collaborators: TokenRotatorCollaborators<TRequest>
 ): Handler<RotateEvent, void> => {
-  const tokenRotationService = createTokenRotationService<TConfig>(config, {
+  const tokenRotationService = createTokenRotationService<TRequest>(config, {
     configProvider: ssmConfigProvider,
     tokenRepository,
     tokenRotationStrategy: collaborators.tokenRotationStrategy
@@ -33,9 +43,6 @@ export const createTokenRotator = <TConfig>(
     .use(logMetrics(metrics, { captureColdStartMetric: true }))
     .handler(async (event) => {
       if ('override' in event) {
-        if (!config.allowInvocationOverrides) {
-          throw new Error('Invocation overrides are disabled in this environment')
-        }
         await tokenRotationService.rotateOne(event.override)
         return
       }

@@ -3,7 +3,7 @@ import type { ScheduledEvent } from 'aws-lambda'
 
 export interface ManualRotateEvent {
   override: {
-    overrideConfig: Record<string, string>
+    overrideRequest: Record<string, string>
     profile: ConfigProfileName
   }
 }

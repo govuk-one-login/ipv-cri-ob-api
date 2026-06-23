@@ -27,7 +27,6 @@ vi.mock('@src/third-party-token/service/token-rotation-service', () => ({
 }))
 
 const BASE_CONFIG: TokenRotationServiceConfig = {
-  allowInvocationOverrides: false,
   profiles: [ConfigProfileName.STUB],
   refreshWindowSeconds: 300,
   ssmPathPrefix: '/test/third-party-tokens'
@@ -38,7 +37,7 @@ const buildContext = (): Context => ({ functionName: 'token-rotator-test' }) as 
 const buildScheduledEvent = (): ScheduledEvent => ({}) as ScheduledEvent
 
 const buildStrategy = (): TokenRotationStrategy<Record<string, string>> => ({
-  configSchema: z.record(z.string(), z.string()),
+  requestSchema: z.record(z.string(), z.string()),
   rotate: vi.fn()
 })
 
@@ -56,14 +55,11 @@ describe('token-rotator handler', () => {
     expect(rotateOneMock).not.toHaveBeenCalled()
   })
 
-  it('routes manual override events to rotateOne when overrides are allowed', async () => {
-    const handler = createTokenRotator(
-      { ...BASE_CONFIG, allowInvocationOverrides: true },
-      { tokenRotationStrategy: buildStrategy() }
-    )
+  it('routes manual override events to rotateOne', async () => {
+    const handler = createTokenRotator(BASE_CONFIG, { tokenRotationStrategy: buildStrategy() })
     const event: ManualRotateEvent = {
       override: {
-        overrideConfig: {
+        overrideRequest: {
           'client-id': 'qe-override-client',
           'client-secret': 'qe-override-secret' // pragma: allowlist secret
         },
@@ -75,16 +71,5 @@ describe('token-rotator handler', () => {
 
     expect(rotateOneMock).toHaveBeenCalledWith(event.override)
     expect(rotateAllMock).not.toHaveBeenCalled()
-  })
-
-  it('rejects override events when invocation overrides are disabled', async () => {
-    const handler = createTokenRotator(BASE_CONFIG, { tokenRotationStrategy: buildStrategy() })
-    const event: ManualRotateEvent = {
-      override: { overrideConfig: {}, profile: ConfigProfileName.STUB }
-    }
-
-    await expect(handler(event, buildContext(), () => undefined)).rejects.toThrow(/disabled/i)
-    expect(rotateAllMock).not.toHaveBeenCalled()
-    expect(rotateOneMock).not.toHaveBeenCalled()
   })
 })

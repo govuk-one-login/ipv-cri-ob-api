@@ -1,18 +1,18 @@
-import type { EcospendTokenConfig } from '@src/ecospend-token/model/ecospend-token-config'
+import type { EcospendTokenRequest } from '@src/ecospend-token/model/ecospend-token-request'
 import type { TokenRotationStrategy } from '@src/third-party-token/model/token-rotation-strategy'
 
-import { ecospendConfigSchema } from '@src/ecospend-token/model/ecospend-token-config'
+import { ecospendTokenRequestSchema } from '@src/ecospend-token/model/ecospend-token-request'
 import { ecospendTokenResponseSchema } from '@src/ecospend-token/model/ecospend-token-response'
 import { TokenRotationError } from '@src/third-party-token/error/token-rotation-errors'
 
 const FETCH_TIMEOUT_MS = 10_000
 
-export const ecospendTokenRotation: TokenRotationStrategy<EcospendTokenConfig> = {
-  configSchema: ecospendConfigSchema,
-  rotate: async ({ config }) => {
-    const body = new URLSearchParams(config.formParams).toString()
+export const ecospendTokenRotation: TokenRotationStrategy<EcospendTokenRequest> = {
+  requestSchema: ecospendTokenRequestSchema,
+  rotate: async ({ request }) => {
+    const body = new URLSearchParams(request.formParams).toString()
 
-    const response = await fetch(config.endpointUrl, {
+    const response = await fetch(request.endpointUrl, {
       body,
       headers: {
         accept: 'application/json',

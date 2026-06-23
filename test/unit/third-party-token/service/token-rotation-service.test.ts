@@ -19,7 +19,7 @@ const NOW_SECONDS = 690_768_000 // 1991-11-22T00:00:00Z
 const FRESH_TOKEN_TTL = NOW_SECONDS + 1000
 const EXPIRED_TOKEN_TTL = NOW_SECONDS - 60
 
-const PROVIDER_SSM_CONFIG: Record<string, string> = {
+const PROVIDER_SSM_REQUEST: Record<string, string> = {
   'client-id': 'test-client-id',
   'client-secret': 'top-secret', // pragma: allowlist secret
   'endpoint-url': 'https://provider.test/token',
@@ -45,7 +45,7 @@ const buildStrategy = (
     tokenValue: ROTATED_TOKEN
   })
 ): TokenRotationStrategy<Record<string, string>> => ({
-  configSchema: z.record(z.string(), z.string()),
+  requestSchema: z.record(z.string(), z.string()),
   rotate
 })
 
@@ -57,7 +57,7 @@ const buildTokenEntity = (overrides: Partial<TokenEntity> = {}): TokenEntity => 
 })
 
 const mockConfigProvider = (): ConfigProvider => ({
-  getConfig: vi.fn().mockResolvedValue(PROVIDER_SSM_CONFIG)
+  getConfig: vi.fn().mockResolvedValue(PROVIDER_SSM_REQUEST)
 })
 
 const mockTokenRepository = (): TokenRepository => ({
@@ -91,7 +91,7 @@ describe('token-rotation-service', () => {
       await service.rotateAll()
 
       expect(configProvider.getConfig).toHaveBeenCalledWith('/test/third-party-tokens/STUB')
-      expect(tokenRotationStrategy.rotate).toHaveBeenCalledWith({ config: PROVIDER_SSM_CONFIG })
+      expect(tokenRotationStrategy.rotate).toHaveBeenCalledWith({ request: PROVIDER_SSM_REQUEST })
       expect(tokenRepository.putToken).toHaveBeenCalledWith({
         id: 'STUB',
         tokenValue: ROTATED_TOKEN,
@@ -171,7 +171,7 @@ describe('token-rotation-service', () => {
       const configProvider = mockConfigProvider()
       const tokenRepository = mockTokenRepository()
       const tokenRotationStrategy = buildStrategy()
-      const overrideConfig: Record<string, string> = {
+      const overrideRequest: Record<string, string> = {
         'client-id': 'override-client',
         'client-secret': 'override-secret', // pragma: allowlist secret
         'endpoint-url': 'https://imposter.test/token',
@@ -185,10 +185,10 @@ describe('token-rotation-service', () => {
         tokenRotationStrategy
       })
 
-      await service.rotateOne({ overrideConfig, profile: ConfigProfileName.STUB })
+      await service.rotateOne({ overrideRequest, profile: ConfigProfileName.STUB })
 
       expect(configProvider.getConfig).not.toHaveBeenCalled()
-      expect(tokenRotationStrategy.rotate).toHaveBeenCalledWith({ config: overrideConfig })
+      expect(tokenRotationStrategy.rotate).toHaveBeenCalledWith({ request: overrideRequest })
       expect(tokenRepository.putToken).toHaveBeenCalledWith({
         id: ConfigProfileName.STUB,
         tokenValue: ROTATED_TOKEN,
@@ -208,7 +208,7 @@ describe('token-rotation-service', () => {
 
       await expect(
         service.rotateOne({
-          overrideConfig: PROVIDER_SSM_CONFIG,
+          overrideRequest: PROVIDER_SSM_REQUEST,
           profile: ConfigProfileName.LIVE
         })
       ).rejects.toBeInstanceOf(TokenRotationError)
