@@ -1,8 +1,12 @@
-import type { ConfigProvider } from '@src/third-party-token/client/config-provider'
+import type { ProviderCredentials } from '@src/token-rotator/model/provider-credentials'
 
 import { getParameters } from '@aws-lambda-powertools/parameters/ssm'
 
 const CACHE_MAX_AGE_SECONDS = 300
+
+export interface ConfigProvider {
+  getConfig: (parameterPath: string) => Promise<ProviderCredentials>
+}
 
 export const createSsmConfigProvider = (): ConfigProvider => ({
   getConfig: async (parameterPath) => {

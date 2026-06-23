@@ -1,12 +1,12 @@
-import type { TokenRepository } from '@src/third-party-token/client/token-repository'
-import type { ConfigProfileName } from '@src/third-party-token/model/config-profile'
+import type { TokenRepository } from '@src/token-rotator/client/token-repository'
+import type { TokenProfile } from '@src/token-rotator/model/token-profile'
 
 import { logger } from '@govuk-one-login/cri-logger'
-import { tokenRepository } from '@src/third-party-token/client/token-repository'
-import { formatTokenExpiry, isTokenExpiredForRead } from '@src/third-party-token/util/token-expiry'
+import { tokenRepository } from '@src/token-rotator/client/token-repository'
+import { formatTokenExpiry, isTokenExpiredForRead } from '@src/token-rotator/util/token-expiry'
 
 export interface TokenRetrievalService {
-  retrieveToken: (profile: ConfigProfileName) => Promise<string | undefined>
+  retrieveToken: (profile: TokenProfile) => Promise<string | undefined>
 }
 
 interface TokenRetrievalServiceCollaborators {

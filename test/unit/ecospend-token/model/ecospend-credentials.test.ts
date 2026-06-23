@@ -1,7 +1,7 @@
-import { ecospendTokenRequestSchema } from '@src/ecospend-token/model/ecospend-token-request'
+import { ecospendCredentialsSchema } from '@src/ecospend-token/model/ecospend-credentials'
 import { describe, expect, it } from 'vitest'
 
-const validRawRequest = {
+const validRawCredentials = {
   'client-id': 'test-client-id',
   'client-secret': 'top-secret', // pragma: allowlist secret
   'endpoint-url': 'https://provider.test/token',
@@ -9,9 +9,9 @@ const validRawRequest = {
   scope: 'accounts'
 }
 
-describe('ecospendTokenRequestSchema', () => {
+describe('ecospendCredentialsSchema', () => {
   it('maps kebab-case input to endpointUrl + nested formParams', () => {
-    const parsed = ecospendTokenRequestSchema.parse(validRawRequest)
+    const parsed = ecospendCredentialsSchema.parse(validRawCredentials)
 
     expect(parsed).toEqual({
       endpointUrl: 'https://provider.test/token',
@@ -24,20 +24,20 @@ describe('ecospendTokenRequestSchema', () => {
     })
   })
 
-  it.each<keyof typeof validRawRequest>([
+  it.each<keyof typeof validRawCredentials>([
     'client-id',
     'client-secret',
     'endpoint-url',
     'grant-type',
     'scope'
   ])('rejects when %s is missing', (field) => {
-    const { [field]: _omitted, ...rest } = validRawRequest
+    const { [field]: _omitted, ...rest } = validRawCredentials
 
-    expect(ecospendTokenRequestSchema.safeParse(rest).success).toBe(false)
+    expect(ecospendCredentialsSchema.safeParse(rest).success).toBe(false)
   })
 
   it('rejects when a required field is empty', () => {
-    const result = ecospendTokenRequestSchema.safeParse({ ...validRawRequest, 'client-id': '' })
+    const result = ecospendCredentialsSchema.safeParse({ ...validRawCredentials, 'client-id': '' })
 
     expect(result.success).toBe(false)
   })

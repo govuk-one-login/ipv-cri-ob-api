@@ -1,18 +1,17 @@
-import type { TokenEntity } from '@src/third-party-token/model/token-entity'
+import type { TokenEntity } from '@src/token-rotator/model/token-entity'
 
-import { ConfigProfileName } from '@src/third-party-token/model/config-profile'
-import { tokenRetrievalService } from '@src/third-party-token/service/token-retrieval-service'
+import { TokenProfile } from '@src/token-rotator/model/token-profile'
+import { tokenRetrievalService } from '@src/token-rotator/service/token-retrieval-service'
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest'
 
 const { tokenRepositoryMock } = vi.hoisted(() => ({
   tokenRepositoryMock: {
-    clearToken: vi.fn(),
     getToken: vi.fn(),
     putToken: vi.fn()
   }
 }))
 
-vi.mock('@src/third-party-token/client/token-repository', () => ({
+vi.mock('@src/token-rotator/client/token-repository', () => ({
   tokenRepository: tokenRepositoryMock
 }))
 
@@ -21,7 +20,7 @@ const FRESH_TOKEN_TTL = NOW_SECONDS + 1000
 const EXPIRED_TOKEN_TTL = NOW_SECONDS - 60
 
 const buildTokenEntity = (overrides: Partial<TokenEntity> = {}): TokenEntity => ({
-  id: ConfigProfileName.STUB,
+  id: TokenProfile.STUB,
   tokenValue: 'cached-token',
   ttl: FRESH_TOKEN_TTL,
   ...overrides
@@ -42,16 +41,16 @@ describe('token-retrieval-service', () => {
     it('returns the cached token value when the entity is fresh', async () => {
       tokenRepositoryMock.getToken.mockResolvedValueOnce(buildTokenEntity())
 
-      const token = await tokenRetrievalService.retrieveToken(ConfigProfileName.STUB)
+      const token = await tokenRetrievalService.retrieveToken(TokenProfile.STUB)
 
       expect(token).toBe('cached-token')
-      expect(tokenRepositoryMock.getToken).toHaveBeenCalledWith(ConfigProfileName.STUB)
+      expect(tokenRepositoryMock.getToken).toHaveBeenCalledWith(TokenProfile.STUB)
     })
 
     it('returns undefined when no token is cached for the profile', async () => {
       tokenRepositoryMock.getToken.mockResolvedValueOnce(undefined)
 
-      const token = await tokenRetrievalService.retrieveToken(ConfigProfileName.STUB)
+      const token = await tokenRetrievalService.retrieveToken(TokenProfile.STUB)
 
       expect(token).toBeUndefined()
     })
@@ -61,7 +60,7 @@ describe('token-retrieval-service', () => {
         buildTokenEntity({ ttl: EXPIRED_TOKEN_TTL })
       )
 
-      const token = await tokenRetrievalService.retrieveToken(ConfigProfileName.STUB)
+      const token = await tokenRetrievalService.retrieveToken(TokenProfile.STUB)
 
       expect(token).toBeUndefined()
     })

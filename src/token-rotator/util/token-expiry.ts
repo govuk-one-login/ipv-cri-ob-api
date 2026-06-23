@@ -1,4 +1,4 @@
-import type { TokenEntity } from '@src/third-party-token/model/token-entity'
+import type { TokenEntity } from '@src/token-rotator/model/token-entity'
 
 const READ_EXPIRY_PAD_SECONDS = 30
 

@@ -1,18 +1,24 @@
-import type { EcospendTokenRequest } from '@src/ecospend-token/model/ecospend-token-request'
-import type { TokenRotationStrategy } from '@src/third-party-token/model/token-rotation-strategy'
+import type { TokenRotationStrategy } from '@src/token-rotator/model/token-rotation-strategy'
 
-import { ecospendTokenRequestSchema } from '@src/ecospend-token/model/ecospend-token-request'
+import { ecospendCredentialsSchema } from '@src/ecospend-token/model/ecospend-credentials'
 import { ecospendTokenResponseSchema } from '@src/ecospend-token/model/ecospend-token-response'
-import { TokenRotationError } from '@src/third-party-token/error/token-rotation-errors'
+import { TokenRotationError } from '@src/token-rotator/error/token-rotation-errors'
 
 const FETCH_TIMEOUT_MS = 10_000
 
-export const ecospendTokenRotation: TokenRotationStrategy<EcospendTokenRequest> = {
-  requestSchema: ecospendTokenRequestSchema,
-  rotate: async ({ request }) => {
-    const body = new URLSearchParams(request.formParams).toString()
+export const ecospendTokenRotation: TokenRotationStrategy = {
+  rotate: async (credentials) => {
+    const parsedCredentials = ecospendCredentialsSchema.safeParse(credentials)
 
-    const response = await fetch(request.endpointUrl, {
+    if (!parsedCredentials.success) {
+      throw new TokenRotationError(
+        `Invalid Ecospend credentials: ${parsedCredentials.error.message}`
+      )
+    }
+
+    const { endpointUrl, formParams } = parsedCredentials.data
+    const body = new URLSearchParams(formParams).toString()
+    const response = await fetch(endpointUrl, {
       body,
       headers: {
         accept: 'application/json',
@@ -33,10 +39,13 @@ export const ecospendTokenRotation: TokenRotationStrategy<EcospendTokenRequest> 
       const message = error instanceof Error ? error.message : 'Unknown error'
       throw new TokenRotationError(`Ecospend response was not valid JSON: ${message}`)
     })
+
     const parsedResponse = ecospendTokenResponseSchema.safeParse(responseBody)
+
     if (!parsedResponse.success) {
       throw new TokenRotationError(`Invalid Ecospend response: ${parsedResponse.error.message}`)
     }
+
     const { expiresInSeconds, tokenValue } = parsedResponse.data
 
     return {

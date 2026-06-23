@@ -141,22 +141,27 @@ Mappings:
       dynatraceSecretArn: arn:aws:secretsmanager:eu-west-2:216552277552:secret:DynatraceNonProductionVariables
       dynatraceLayer: arn:aws:lambda:eu-west-2:216552277552:layer:Dynatrace_OneAgent_1_329_73_20260123-140641_with_collector_nodejs_arm:1
       vcDomain: review-ob.dev.account.gov.uk
+      tokenRotatorProfiles: STUB
     build:
       dynatraceSecretArn: arn:aws:secretsmanager:eu-west-2:216552277552:secret:DynatraceNonProductionVariables
       dynatraceLayer: arn:aws:lambda:eu-west-2:216552277552:layer:Dynatrace_OneAgent_1_329_73_20260123-140641_with_collector_nodejs_arm:1
       vcDomain: review-ob.build.account.gov.uk
+      tokenRotatorProfiles: STUB|UAT
     staging:
       dynatraceSecretArn: arn:aws:secretsmanager:eu-west-2:216552277552:secret:DynatraceNonProductionVariables
       dynatraceLayer: arn:aws:lambda:eu-west-2:216552277552:layer:Dynatrace_OneAgent_1_329_73_20260123-140641_with_collector_nodejs_arm:1
       vcDomain: review-ob.staging.account.gov.uk
+      tokenRotatorProfiles: STUB|UAT
     integration:
       dynatraceSecretArn: arn:aws:secretsmanager:eu-west-2:216552277552:secret:DynatraceNonProductionVariables
       dynatraceLayer: arn:aws:lambda:eu-west-2:216552277552:layer:Dynatrace_OneAgent_1_329_73_20260123-140641_with_collector_nodejs_arm:1
       vcDomain: review-ob.integration.account.gov.uk
+      tokenRotatorProfiles: STUB|UAT|LIVE
     production:
       dynatraceSecretArn: arn:aws:secretsmanager:eu-west-2:216552277552:secret:DynatraceProductionVariables
       dynatraceLayer: arn:aws:lambda:eu-west-2:216552277552:layer:Dynatrace_OneAgent_1_329_73_20260123-140641_with_collector_nodejs_arm:1
       vcDomain: review-ob.account.gov.uk
+      tokenRotatorProfiles: LIVE
 
   ProvisionedConcurrency:
     Environment:
@@ -525,6 +530,7 @@ Resources:
       Environment:
         Variables:
           POWERTOOLS_SERVICE_NAME: !Sub "${CriIdentifier}-basicFunction"
+          TOKEN_ROTATOR_DYNAMO_TABLE_NAME: !Ref TokenRotatorTable
       AutoPublishAlias: live
       AutoPublishAliasAllProperties: true
       Policies:
@@ -532,6 +538,8 @@ Resources:
         - AWSXrayWriteOnlyAccess
         - KMSDecryptPolicy:
             KeyId: !ImportValue core-infrastructure-CriDecryptionKey1Id
+        - DynamoDBReadPolicy:
+            TableName: !Ref TokenRotatorTable
       ProvisionedConcurrencyConfig:
         !If
         - AddProvisionedConcurrency
@@ -578,6 +586,155 @@ Resources:
       Action: lambda:InvokeFunction
       FunctionName: !Ref BasicFunction.Alias
       Principal: apigateway.amazonaws.com
+
+  ####################################################################
+  #                                                                  #
+  # Token Rotator                                                    #
+  #                                                                  #
+  ####################################################################
+
+  TokenRotatorTable:
+    Type: AWS::DynamoDB::Table
+    Properties:
+      TableName: !Sub "${AWS::StackName}-token-rotator"
+      BillingMode: PAY_PER_REQUEST
+      AttributeDefinitions:
+        - AttributeName: id
+          AttributeType: S
+      KeySchema:
+        - AttributeName: id
+          KeyType: HASH
+      TimeToLiveSpecification:
+        AttributeName: ttl
+        Enabled: true
+      SSESpecification:
+        SSEEnabled: true
+      PointInTimeRecoverySpecification:
+        PointInTimeRecoveryEnabled: !If [IsProduction, true, false]
+
+  EcospendTokenRotatorFunction:
+    Type: AWS::Serverless::Function
+    Properties:
+      FunctionName: !Sub "${AWS::StackName}-ecospend-token-rotator"
+      VpcConfig:
+        SecurityGroupIds:
+          - Fn::ImportValue:
+              !Sub "${VpcStackName}-AWSServicesEndpointSecurityGroupId"
+        SubnetIds:
+          - Fn::ImportValue:
+              !Sub "${VpcStackName}-PrivateSubnetIdA"
+          - Fn::ImportValue:
+              !Sub "${VpcStackName}-PrivateSubnetIdB"
+          - Fn::ImportValue:
+              !Sub "${VpcStackName}-PrivateSubnetIdC"
+      Handler: ecospend-token-rotator.handler
+      CodeUri: ../
+      LoggingConfig:
+        LogGroup: !Ref EcospendTokenRotatorFunctionLogGroup
+      Environment:
+        Variables:
+          POWERTOOLS_SERVICE_NAME: !Sub "${CriIdentifier}-ecospend-token-rotator"
+          TOKEN_ROTATOR_DYNAMO_TABLE_NAME: !Ref TokenRotatorTable
+          TOKEN_ROTATOR_PROFILES: !FindInMap [ EnvironmentConfiguration, !Ref Environment, tokenRotatorProfiles ]
+          TOKEN_ROTATOR_REFRESH_WINDOW_SECONDS: "300"
+          TOKEN_ROTATOR_CONFIG_PATH: !If
+            - UseParameterPrefix
+            - !Sub "/${ParameterPrefix}/ecospend-token-rotator"
+            - !Sub "/${AWS::StackName}/ecospend-token-rotator"
+      Policies:
+        - AWSLambdaBasicExecutionRole
+        - AWSXrayWriteOnlyAccess
+        - DynamoDBCrudPolicy:
+            TableName: !Ref TokenRotatorTable
+        - SSMParameterReadPolicy:
+            ParameterName: !If
+              - UseParameterPrefix
+              - !Sub "${ParameterPrefix}/ecospend-token-rotator/*"
+              - !Sub "${AWS::StackName}/ecospend-token-rotator/*"
+      Events:
+        ScheduledRotation:
+          Type: Schedule
+          Properties:
+            Schedule: rate(5 minutes)
+    Metadata:
+      BuildMethod: esbuild
+      BuildProperties:
+        Minify: false
+        Sourcemap: true
+        Target: node24
+        Format: esm
+        OutExtension:
+          - .js=.mjs
+        EntryPoints:
+          - src/ecospend-token/handler/ecospend-token-rotator.ts
+        External:
+          - "@aws-sdk/*"
+        Banner:
+          - js=import { createRequire } from 'module'; const require = createRequire(import.meta.url);
+
+  EcospendTokenRotatorFunctionLogGroup:
+    Type: AWS::Logs::LogGroup
+    Properties:
+      LogGroupName: !Sub "/aws/lambda/${AWS::StackName}-ecospend-token-rotator"
+      RetentionInDays: !Ref LogGroupRetentionInDays
+
+#  # STUB profile credentials
+#  EcospendTokenRotatorStubClientIdParameter:
+#    Type: AWS::SSM::Parameter
+#    Condition: IsNotProduction
+#    Properties:
+#      Name: !If
+#        - UseParameterPrefix
+#        - !Sub "/${ParameterPrefix}/ecospend-token-rotator/STUB/client-id"
+#        - !Sub "/${AWS::StackName}/ecospend-token-rotator/STUB/client-id"
+#      Type: String
+#      Value: external-api-ob
+#
+#  EcospendTokenRotatorStubEndpointUrlParameter:
+#    Type: AWS::SSM::Parameter
+#    Condition: IsNotProduction
+#    Properties:
+#      Name: !If
+#        - UseParameterPrefix
+#        - !Sub "/${ParameterPrefix}/ecospend-token-rotator/STUB/endpoint-url"
+#        - !Sub "/${AWS::StackName}/ecospend-token-rotator/STUB/endpoint-url"
+#      Type: String
+#      Value: !Sub
+#        - "${ImposterBase}/connect/token"
+#        - ImposterBase: !ImportValue ob-third-party-stubs-ImposterStubApiUrl
+#
+#  EcospendTokenRotatorStubGrantTypeParameter:
+#    Type: AWS::SSM::Parameter
+#    Condition: IsNotProduction
+#    Properties:
+#      Name: !If
+#        - UseParameterPrefix
+#        - !Sub "/${ParameterPrefix}/ecospend-token-rotator/STUB/grant-type"
+#        - !Sub "/${AWS::StackName}/ecospend-token-rotator/STUB/grant-type"
+#      Type: String
+#      Value: client_credentials
+#
+#  EcospendTokenRotatorStubScopeParameter:
+#    Type: AWS::SSM::Parameter
+#    Condition: IsNotProduction
+#    Properties:
+#      Name: !If
+#        - UseParameterPrefix
+#        - !Sub "/${ParameterPrefix}/ecospend-token-rotator/STUB/scope"
+#        - !Sub "/${AWS::StackName}/ecospend-token-rotator/STUB/scope"
+#      Type: String
+#      Value: accounts
+#
+#  EcospendTokenRotatorStubClientSecretParameter:
+#    Type: AWS::SSM::Parameter
+#    Condition: IsNotProduction
+#    Properties:
+#      Name: !If
+#        - UseParameterPrefix
+#        - !Sub "/${ParameterPrefix}/ecospend-token-rotator/STUB/client-secret"
+#        - !Sub "/${AWS::StackName}/ecospend-token-rotator/STUB/client-secret"
+#      Type: SecureString
+#      Value:
 
   ####################################################################
   #                                                                  #
