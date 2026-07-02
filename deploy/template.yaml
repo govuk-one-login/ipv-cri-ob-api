@@ -59,6 +59,14 @@ Parameters:
     Description: "Specifies the configuration to enable gradual Lambda deployments"
     Type: String
     Default: AllAtOnce
+  ThirdPartyTokenPluginName:
+    Description: "Specifies the name of the plugin used by the thirdparty token stack and support libraries"
+    Type: String
+    Default: "ob_token_plugin"
+  ThirdPartyTokenResourcePrefix:
+    Type: String
+    Default: "none"
+    Description: "If set this value will be used for ThirdPartyTokenResourcePrefix prefix instead of AWS::StackName"
 
 Conditions:
   IsDeployedFromPipeline: !Equals
@@ -92,6 +100,8 @@ Conditions:
   CreateTestResourcesParam: !And
     - !Condition IsDeployedFromPipeline
     - !Condition IsNotProduction
+  UsingThirdPartyTokenResourcePrefix: !Not
+    - !Equals [ !Ref ThirdPartyTokenResourcePrefix, "none" ] # none = current stack by default unless provided
 
 Globals:
   Function:
@@ -519,6 +529,14 @@ Resources:
       Environment:
         Variables:
           POWERTOOLS_SERVICE_NAME: !Sub "${CriIdentifier}-basicFunction"
+          THIRDPARTY_TOKEN_PLUGIN_NAME: !Ref ThirdPartyTokenPluginName
+          THIRDPARTY_TOKEN_DYNAMO_TABLE_NAME:
+            !Sub
+            - "${THIRDPARTY_TOKEN_RESOURCE_PREFIX}-thirdparty-token-table"
+            - THIRDPARTY_TOKEN_RESOURCE_PREFIX: !If [ UsingThirdPartyTokenResourcePrefix, !Ref ThirdPartyTokenResourcePrefix, !Ref AWS::StackName ]
+          THIRDPARTY_TOKEN_PLUGIN_SSM_CONFIG_ROOT: !Sub
+            - "/${THIRDPARTY_TOKEN_RESOURCE_PREFIX}"
+            - THIRDPARTY_TOKEN_RESOURCE_PREFIX: !If [ UsingThirdPartyTokenResourcePrefix, !Ref ThirdPartyTokenResourcePrefix, !Ref AWS::StackName ]
       AutoPublishAlias: live
       AutoPublishAliasAllProperties: true
       Policies:
@@ -526,6 +544,21 @@ Resources:
         - AWSXrayWriteOnlyAccess
         - KMSDecryptPolicy:
             KeyId: !ImportValue core-infrastructure-CriDecryptionKey1Id
+        - Statement:
+            - Effect: Allow
+              Action:
+                - "dynamodb:GetItem"
+              Resource:
+                !Sub
+                - "arn:aws:dynamodb:${AWS::Region}:${AWS::AccountId}:table/${THIRDPARTY_TOKEN_RESOURCE_PREFIX}-thirdparty-token-table"
+                - THIRDPARTY_TOKEN_RESOURCE_PREFIX: !If [ UsingThirdPartyTokenResourcePrefix, !Ref ThirdPartyTokenResourcePrefix, !Ref AWS::StackName ]
+            - Effect: Allow
+              Action:
+                - ssm:GetParametersByPath
+              Resource:
+                - !Sub
+                  - "arn:aws:ssm:${AWS::Region}:${AWS::AccountId}:parameter/${THIRDPARTY_TOKEN_RESOURCE_PREFIX}/${ThirdPartyTokenPluginName}/*"
+                  - THIRDPARTY_TOKEN_RESOURCE_PREFIX: !If [ UsingThirdPartyTokenResourcePrefix, !Ref ThirdPartyTokenResourcePrefix, !Ref AWS::StackName ]
       ProvisionedConcurrencyConfig:
         !If
         - AddProvisionedConcurrency
