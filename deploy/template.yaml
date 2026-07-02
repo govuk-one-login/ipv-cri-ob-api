@@ -46,7 +46,7 @@ Parameters:
   ParameterPrefix:
     Type: String
     Default: "none"
-    Description: If set the this value will be used for ParameterStore prefix instead of AWS::StackName
+    Description: If set this value will be used as the prefix for standard stack SSM reads instead of AWS::StackName
   DeploymentType:
     Type: String
     Default: "pipeline"
@@ -67,6 +67,13 @@ Parameters:
     Type: String
     Default: "none"
     Description: "If set this value will be used for ThirdPartyTokenResourcePrefix prefix instead of AWS::StackName"
+  ThirdPartyTokenSchedulerEnabled:
+    Type: String
+    Default: "true"
+    Description: "Enable/disable the third party token scheduler on this stack, note when enabled ThirdPartyTokenResourcePrefix should also point to this stack"
+    AllowedValues:
+      - "true"
+      - "false"
 
 Conditions:
   IsDeployedFromPipeline: !Equals
@@ -102,6 +109,9 @@ Conditions:
     - !Condition IsNotProduction
   UsingThirdPartyTokenResourcePrefix: !Not
     - !Equals [ !Ref ThirdPartyTokenResourcePrefix, "none" ] # none = current stack by default unless provided
+  ThirdPartyTokenSchedulerEnabled: !Or
+    - !Equals [ !Ref DeploymentType, "pipeline" ] # always on in pipelines
+    - !Equals [ !Ref ThirdPartyTokenSchedulerEnabled, "true" ] # Allows dev stack override
 
 Globals:
   Function:
@@ -192,7 +202,7 @@ Resources:
 
   ####################################################################
   #                                                                  #
-  # OAuth Common                                                     #
+  # OAuth Common (Nested Stack)                                      #
   #                                                                  #
   ####################################################################
   OAuth:
@@ -216,10 +226,67 @@ Resources:
         IPVCoreRedirectURI: https://cri.core.build.stubs.account.gov.uk/callback
         IPVCoreStubJwksEndpoint: https://cri.core.stubs.account.gov.uk/.well-known/jwks.json
         LambdaVpcConfiguration: di-devplatform-deploy
+        LambdaDeploymentPreference: !Ref LambdaDeploymentPreference
+        LambdaProvisionedConcurrentExecutions: !FindInMap [ EnvironmentConfiguration, !Ref Environment, provisionedConcurrentExecutions ]
         PermissionsBoundaryArn: !If
           - UsePermissionsBoundary
           - !Ref PermissionsBoundary
           - !Ref AWS::NoValue
+
+  ####################################################################
+  #                                                                  #
+  # Third-Party Token (Nested Stack)                                 #
+  #                                                                  #
+  ####################################################################
+
+  ThirdPartyToken:
+    Type: AWS::Serverless::Application
+    Properties:
+      Location: ./thirdparty-token.yaml
+      Parameters:
+        ParentStackName: !Ref AWS::StackName
+        ThirdPartyTokenPluginName: !Ref ThirdPartyTokenPluginName
+        ThirdPartyTokenPluginLayerArn: !Ref ObTokenPluginLayer
+        ThirdPartyTokenResourcePrefix: !Ref ThirdPartyTokenResourcePrefix
+        ThirdPartyTokenSchedulerEnabled: !If [ ThirdPartyTokenSchedulerEnabled, "true", "false" ]
+        Environment: !Ref Environment
+        VpcStackName: !Ref VpcStackName
+        CriIdentifier: !Ref CriIdentifier
+        ProvisionedConcurrentExecutions: !FindInMap [ EnvironmentConfiguration, !Ref Environment, provisionedConcurrentExecutions ]
+        MemorySize: !FindInMap [ EnvironmentConfiguration, !Ref Environment, memorySize ]
+        LogGroupRetentionInDays: !Ref LogGroupRetentionInDays
+        PermissionsBoundary: !Ref PermissionsBoundary
+        CodeSigningConfigArn: !Ref CodeSigningConfigArn
+        DynatraceSecretArn: !FindInMap [ EnvironmentConfiguration, !Ref Environment, dynatraceSecretArn ]
+        DynatraceSecretLayer: !FindInMap [ EnvironmentConfiguration, !Ref Environment, dynatraceLayer ]
+        LambdaDeploymentPreference: !Ref LambdaDeploymentPreference
+        CodeDeployServiceRoleArn: !GetAtt CodeDeployServiceRole.Arn
+
+  ####################################################################
+  #                                                                  #
+  # ThirdPartyTokenPlugin Layer (ob-token-plugin)                    #
+  #                                                                  #
+  ####################################################################
+
+  ObTokenPluginLayer:
+    Type: AWS::Serverless::LayerVersion
+    Properties:
+      LayerName: !Sub "${AWS::StackName}-ob-token-plugin"
+      Description: "Open Banking token plugin - provides createPlugin() for the ThirdPartyAsyncToken lambda"
+      ContentUri: ../
+      CompatibleRuntimes:
+        - nodejs24.x
+      CompatibleArchitectures:
+        - arm64
+    Metadata:
+      BuildMethod: makefile
+      BuildArchitecture: arm64
+
+  ####################################################################
+  #                                                                  #
+  # OAuth JWKS                                                       #
+  #                                                                  #
+  ####################################################################
 
   JWKSBucketRole:
     Type: "AWS::IAM::Role"
@@ -436,6 +503,14 @@ Resources:
           AUDIT_QUEUE_URL: !ImportValue txma-infrastructure-AuditEventQueueUrl
       AutoPublishAlias: live
       AutoPublishAliasAllProperties: true
+      DeploymentPreference:
+        Enabled: true
+        Type: !Ref LambdaDeploymentPreference
+        Role: !GetAtt CodeDeployServiceRole.Arn
+        Alarms: !If
+          - UseCanaryDeploymentAlarms
+          - [ !Ref IssueCredentialFunctionCanaryErrors, !Ref IssueCredentialFunctionCanary5xxErrors ]
+          - [ !Ref AWS::NoValue ]
       Policies:
         - AWSLambdaBasicExecutionRole
         - AWSXrayWriteOnlyAccess
@@ -455,11 +530,11 @@ Resources:
               - kms:Decrypt
               - kms:GenerateDataKey
             Resource: !ImportValue txma-infrastructure-AuditEventQueueEncryptionKeyArn
-      ProvisionedConcurrencyConfig:
-        !If
-        - AddProvisionedConcurrency
-        - ProvisionedConcurrentExecutions: !FindInMap [ EnvironmentConfiguration, !Ref Environment, provisionedConcurrentExecutions ]
-        - !Ref AWS::NoValue
+    ProvisionedConcurrencyConfig:
+      !If
+      - AddProvisionedConcurrency
+      - ProvisionedConcurrentExecutions: !FindInMap [ EnvironmentConfiguration, !Ref Environment, provisionedConcurrentExecutions ]
+      - !Ref AWS::NoValue
     Metadata:
       BuildMethod: esbuild
       BuildProperties:
@@ -548,6 +623,8 @@ Resources:
             - Effect: Allow
               Action:
                 - "dynamodb:GetItem"
+                - "dynamodb:PutItem"
+                - "dynamodb:DeleteItem"
               Resource:
                 !Sub
                 - "arn:aws:dynamodb:${AWS::Region}:${AWS::AccountId}:table/${THIRDPARTY_TOKEN_RESOURCE_PREFIX}-thirdparty-token-table"
@@ -559,11 +636,12 @@ Resources:
                 - !Sub
                   - "arn:aws:ssm:${AWS::Region}:${AWS::AccountId}:parameter/${THIRDPARTY_TOKEN_RESOURCE_PREFIX}/${ThirdPartyTokenPluginName}/*"
                   - THIRDPARTY_TOKEN_RESOURCE_PREFIX: !If [ UsingThirdPartyTokenResourcePrefix, !Ref ThirdPartyTokenResourcePrefix, !Ref AWS::StackName ]
-      ProvisionedConcurrencyConfig:
-        !If
-        - AddProvisionedConcurrency
-        - ProvisionedConcurrentExecutions: !FindInMap [ EnvironmentConfiguration, !Ref Environment, provisionedConcurrentExecutions ]
-        - !Ref AWS::NoValue
+                    ThirdPartyTokenPluginName: !Ref ThirdPartyTokenPluginName
+    ProvisionedConcurrencyConfig:
+      !If
+      - AddProvisionedConcurrency
+      - ProvisionedConcurrentExecutions: !FindInMap [ EnvironmentConfiguration, !Ref Environment, provisionedConcurrentExecutions ]
+      - !Ref AWS::NoValue
     Metadata:
       BuildMethod: esbuild
       BuildProperties:
@@ -839,6 +917,64 @@ Resources:
           Value: !Ref Environment
         - Name: Resource
           Value: /basic-function
+      Statistic: Sum
+      Unit: Count
+      Period: 60
+      EvaluationPeriods: 3
+      DatapointsToAlarm: 2
+      Threshold: 1
+      ComparisonOperator: GreaterThanOrEqualToThreshold
+      TreatMissingData: notBreaching
+
+  IssueCredentialFunctionCanaryErrors:
+    Type: AWS::CloudWatch::Alarm
+    Condition: UseCanaryDeploymentAlarms
+    Properties:
+      ActionsEnabled: true
+      AlarmActions:
+        - !ImportValue build-notifications-WarningAlertsTopicArn
+      OKActions:
+        - !ImportValue build-notifications-WarningAlertsTopicArn
+      AlarmName: !Sub "${AWS::StackName}-${Environment}-IssueCredentialFunction-Canary-Errors"
+      AlarmDescription: "Errors returned from the IssueCredential Function Lambda."
+      MetricName: Errors
+      Dimensions:
+        - Name: FunctionName
+          Value: !Ref IssueCredentialFunction
+        - Name: ExecutedVersion
+          Value: !GetAtt IssueCredentialFunction.Version.Version
+      Namespace: AWS/Lambda
+      Statistic: Sum
+      Unit: Count
+      Period: 60
+      EvaluationPeriods: 3
+      DatapointsToAlarm: 2
+      Threshold: 1
+      ComparisonOperator: GreaterThanOrEqualToThreshold
+      TreatMissingData: notBreaching
+
+  IssueCredentialFunctionCanary5xxErrors:
+    Type: AWS::CloudWatch::Alarm
+    Condition: UseCanaryDeploymentAlarms
+    Properties:
+      ActionsEnabled: true
+      AlarmActions:
+        - !ImportValue build-notifications-WarningAlertsTopicArn
+      OKActions:
+        - !ImportValue build-notifications-WarningAlertsTopicArn
+      AlarmName: !Sub "${AWS::StackName}-${Environment}-IssueCredentialFunction-Canary-5XX"
+      AlarmDescription: "IssueCredential Lambda returning 5xx response."
+      Namespace: AWS/ApiGateway
+      MetricName: 5XXError
+      Dimensions:
+        - Name: ApiName
+          Value: !Sub "${AWS::StackName}-PublicAPI"
+        - Name: Method
+          Value: POST
+        - Name: Stage
+          Value: !Ref Environment
+        - Name: Resource
+          Value: /credential/issue
       Statistic: Sum
       Unit: Count
       Period: 60
