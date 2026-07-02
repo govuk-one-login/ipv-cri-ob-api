@@ -1,31 +1,35 @@
-import type { APIGatewayProxyEvent, APIGatewayProxyResult, Context } from 'aws-lambda'
+import type { APIGatewayProxyEvent, APIGatewayProxyResult } from 'aws-lambda'
 
+import {
+  errorHandler,
+  httpHeaderNormalizer,
+  injectLambdaContext,
+  latencyRecorder,
+  logMetrics,
+  resultRecorder
+} from '@common/handler/middleware'
 import { logger } from '@govuk-one-login/cri-logger'
-import { captureMetric, metrics, MetricUnit } from '@govuk-one-login/cri-metrics'
+import { metrics } from '@govuk-one-login/cri-metrics'
 
-export class BasicFunction {
-  @metrics.logMetrics({
-    captureColdStartMetric: true
-  })
-  public async handler(
-    event: APIGatewayProxyEvent,
-    _context: Context
-  ): Promise<APIGatewayProxyResult> {
-    logger.info('Lambda invoked')
-    captureMetric('INVOKE_COUNT', 1, MetricUnit.Count)
-    return this.process(event)
-  }
+import middy from '@middy/core'
 
-  private process(event: APIGatewayProxyEvent): Promise<APIGatewayProxyResult> {
-    return Promise.resolve({
-      body: JSON.stringify({
-        message: 'Hello from the basic function',
-        path: event.path
-      }),
-      statusCode: 200
-    })
+const lambdaHandler = (event: APIGatewayProxyEvent): APIGatewayProxyResult => {
+  logger.info('Lambda invoked')
+
+  return {
+    body: JSON.stringify({
+      message: 'Hello from the basic function',
+      path: event.path
+    }),
+    statusCode: 200
   }
 }
 
-const handlerClass = new BasicFunction()
-export const lambdaHandler = handlerClass.handler.bind(handlerClass)
+export const handler = middy<APIGatewayProxyEvent, APIGatewayProxyResult>()
+  .use(latencyRecorder())
+  .use(resultRecorder())
+  .use(injectLambdaContext(logger, { resetKeys: true }))
+  .use(logMetrics(metrics, { captureColdStartMetric: true }))
+  .use(httpHeaderNormalizer())
+  .use(errorHandler())
+  .handler(lambdaHandler)

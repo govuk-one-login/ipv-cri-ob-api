@@ -506,7 +506,7 @@ Resources:
               !Sub "${VpcStackName}-ProtectedSubnetIdB"
           - Fn::ImportValue:
               !Sub "${VpcStackName}-ProtectedSubnetIdC"
-      Handler: basic-function.lambdaHandler
+      Handler: basic-function.handler
       CodeUri: ../
       DeploymentPreference:
         Enabled: true
