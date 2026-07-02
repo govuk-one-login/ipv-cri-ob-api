@@ -84,7 +84,7 @@ Conditions:
       - !Equals [ !Ref LambdaDeploymentPreference, AllAtOnce ]
   AddProvisionedConcurrency: !Not
     - !Equals
-      - !FindInMap [ ProvisionedConcurrency, Environment, !Ref 'Environment' ]
+      - !FindInMap [ EnvironmentConfiguration, !Ref Environment, provisionedConcurrentExecutions ]
       - 0
   UseParameterPrefix: !Not
     - !Equals [ !Ref ParameterPrefix, "none"]
@@ -106,7 +106,7 @@ Globals:
     Runtime: nodejs24.x
     Tracing: Active
     Timeout: 40
-    MemorySize: !FindInMap [ MemorySizeMapping, Environment, !Ref 'Environment' ]
+    MemorySize: !FindInMap [ EnvironmentConfiguration, !Ref Environment, memorySize ]
     Architectures:
       - arm64
     Environment:
@@ -140,39 +140,33 @@ Mappings:
     dev:
       dynatraceSecretArn: arn:aws:secretsmanager:eu-west-2:216552277552:secret:DynatraceNonProductionVariables
       dynatraceLayer: arn:aws:lambda:eu-west-2:216552277552:layer:Dynatrace_OneAgent_1_329_73_20260123-140641_with_collector_nodejs_arm:1
+      provisionedConcurrentExecutions: 0
+      memorySize: 1024
       vcDomain: review-ob.dev.account.gov.uk
     build:
       dynatraceSecretArn: arn:aws:secretsmanager:eu-west-2:216552277552:secret:DynatraceNonProductionVariables
       dynatraceLayer: arn:aws:lambda:eu-west-2:216552277552:layer:Dynatrace_OneAgent_1_329_73_20260123-140641_with_collector_nodejs_arm:1
+      provisionedConcurrentExecutions: 1
+      memorySize: 1024
       vcDomain: review-ob.build.account.gov.uk
     staging:
       dynatraceSecretArn: arn:aws:secretsmanager:eu-west-2:216552277552:secret:DynatraceNonProductionVariables
       dynatraceLayer: arn:aws:lambda:eu-west-2:216552277552:layer:Dynatrace_OneAgent_1_329_73_20260123-140641_with_collector_nodejs_arm:1
+      provisionedConcurrentExecutions: 1
+      memorySize: 1024
       vcDomain: review-ob.staging.account.gov.uk
     integration:
       dynatraceSecretArn: arn:aws:secretsmanager:eu-west-2:216552277552:secret:DynatraceNonProductionVariables
       dynatraceLayer: arn:aws:lambda:eu-west-2:216552277552:layer:Dynatrace_OneAgent_1_329_73_20260123-140641_with_collector_nodejs_arm:1
+      provisionedConcurrentExecutions: 1
+      memorySize: 1024
       vcDomain: review-ob.integration.account.gov.uk
     production:
       dynatraceSecretArn: arn:aws:secretsmanager:eu-west-2:216552277552:secret:DynatraceProductionVariables
       dynatraceLayer: arn:aws:lambda:eu-west-2:216552277552:layer:Dynatrace_OneAgent_1_329_73_20260123-140641_with_collector_nodejs_arm:1
+      provisionedConcurrentExecutions: 1
+      memorySize: 1024
       vcDomain: review-ob.account.gov.uk
-
-  ProvisionedConcurrency:
-    Environment:
-      dev: 0
-      build: 1
-      staging: 1
-      integration: 1
-      production: 1
-
-  MemorySizeMapping: #starting out at 1GB
-    Environment:
-      dev: 1024
-      build: 1024
-      staging: 1024
-      integration: 1024
-      production: 1024
 
   # Local Dev
   IPVCoreStubLocalMapping:
@@ -454,7 +448,7 @@ Resources:
       ProvisionedConcurrencyConfig:
         !If
         - AddProvisionedConcurrency
-        - ProvisionedConcurrentExecutions: !FindInMap [ProvisionedConcurrency, Environment, !Ref Environment]
+        - ProvisionedConcurrentExecutions: !FindInMap [ EnvironmentConfiguration, !Ref Environment, provisionedConcurrentExecutions ]
         - !Ref AWS::NoValue
     Metadata:
       BuildMethod: esbuild
@@ -535,7 +529,7 @@ Resources:
       ProvisionedConcurrencyConfig:
         !If
         - AddProvisionedConcurrency
-        - ProvisionedConcurrentExecutions: !FindInMap [ ProvisionedConcurrency, Environment, !Ref 'Environment' ]
+        - ProvisionedConcurrentExecutions: !FindInMap [ EnvironmentConfiguration, !Ref Environment, provisionedConcurrentExecutions ]
         - !Ref AWS::NoValue
     Metadata:
       BuildMethod: esbuild
