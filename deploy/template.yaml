@@ -216,6 +216,8 @@ Resources:
           - UsePermissionsBoundary
           - !Ref PermissionsBoundary
           - !Ref AWS::NoValue
+      Tags:
+        HookTest: "test"
 
   JWKSBucketRole:
     Type: "AWS::IAM::Role"
