@@ -19,6 +19,8 @@ Feature: Identity Verification Endpoint - Happy Path Scenarios
     And the response body field "status" should be "<status>"
     And the response body field "personal_details_score" should be <personal_details_score>
 
+    # consent_id is always 'test-consent-id' for trigger surnames — this is a fixed value
+    # returned by the sandbox stub, not a real consent ID created during the test
     Examples:
       | surname                               | consent_id      | status          | personal_details_score |
       | IDENTITY_VERIFICATION_PARTIAL_MATCH   | test-consent-id | Partial Match   | 6                      |

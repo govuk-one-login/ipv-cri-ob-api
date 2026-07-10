@@ -7,15 +7,19 @@
     "publishQuiet": true
   },
   "api": {
+    "extends": "default",
     "tags": "@api-test"
   },
   "smoke": {
+    "extends": "default",
     "tags": "@QualityGateSmokeTest"
   },
   "regression": {
+    "extends": "default",
     "tags": "@QualityGateRegressionTest"
   },
   "integration": {
+    "extends": "default",
     "tags": "@QualityGateIntegrationTest"
   }
 }

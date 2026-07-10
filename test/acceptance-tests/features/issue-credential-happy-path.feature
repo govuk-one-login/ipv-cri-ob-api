@@ -1,4 +1,4 @@
-@QualityGateNewFeatureTest
+@QualityGateIntegrationTest
 Feature: Issue Credential Endpoint - Happy Path Scenarios
 
   Scenario: Issue a credential with a valid token returns a signed JWT

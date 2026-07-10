@@ -1,16 +1,22 @@
+import type { TokenResponse } from '../../../src/types/token.js'
+
+import { ConsentsClient } from '../clients/consents-client.js'
+import { IdentityVerificationClient } from '../clients/identity-verification-client.js'
+import { IssueCredentialClient } from '../clients/issue-credential-client.js'
+
 export interface ApiResponse {
   json: <T = unknown>() => T
   status: () => number
   text: () => string
 }
 
-const DEFAULT_TIMEOUT_MS = 10_000
-
 export interface AuthenticatedClients {
   consents: ConsentsClient
   identityVerification: IdentityVerificationClient
   issueCredential: IssueCredentialClient
 }
+
+const DEFAULT_TIMEOUT_MS = 10_000
 
 export async function apiFetch(url: string, init?: RequestInit): Promise<ApiResponse> {
   let res: Response
@@ -41,12 +47,6 @@ export async function apiFetch(url: string, init?: RequestInit): Promise<ApiResp
   }
 }
 
-import type { TokenResponse } from '../../../src/types/token.js'
-
-import { ConsentsClient } from '../clients/consents-client.js'
-import { IdentityVerificationClient } from '../clients/identity-verification-client.js'
-import { IssueCredentialClient } from '../clients/issue-credential-client.js'
-
 export function createAuthenticatedClients(
   baseUrl: string,
   tokenResponse: TokenResponse
@@ -61,6 +61,12 @@ export function createAuthenticatedClients(
 
 export function getBaseUrl(): string {
   return process.env['API_BASE_URL'] ?? 'http://localhost:3000'
+}
+
+export function getOAuthBaseUrl(): string {
+  const isLocal = !process.env['API_BASE_URL']
+  if (!isLocal && !process.env['OAUTH_BASE_URL']) throw new Error('OAUTH_BASE_URL is not set')
+  return process.env['OAUTH_BASE_URL'] ?? getBaseUrl()
 }
 
 export function mergeHeaders(

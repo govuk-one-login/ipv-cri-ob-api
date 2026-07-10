@@ -16,6 +16,11 @@ Feature: Identity Verification Endpoint - Unhappy Path Scenarios
     When I post identity verification using an invalid token
     Then the response status should be 401
 
+  Scenario: Post identity verification without a token returns 401
+    Given I have created a consent
+    When I post identity verification without a token
+    Then the response status should be 401
+
   Scenario: Post identity verification with an invalid scope token returns 403
     Given I have created a consent
     When I post identity verification using an invalid scope token
