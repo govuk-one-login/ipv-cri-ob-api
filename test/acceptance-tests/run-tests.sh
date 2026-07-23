@@ -43,4 +43,5 @@ elif [[ "${STACK_NAME}" != "local" ]]; then
   export OAUTH_BASE_URL
 fi
 
+[[ -d /app ]] && cd /app
 npm run test:api
