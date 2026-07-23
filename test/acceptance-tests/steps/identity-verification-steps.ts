@@ -23,6 +23,14 @@ When(
   }
 )
 
+When('I post identity verification without a token', async function (this: OBWorld) {
+  this.lastResponse = await this.identityVerification.postIdentityVerification(
+    this.consentId,
+    validIdentityVerificationRequest,
+    { headers: {} }
+  )
+})
+
 When('I post identity verification using an invalid token', async function (this: OBWorld) {
   this.lastResponse = await this.identityVerification.postIdentityVerification(
     this.consentId,

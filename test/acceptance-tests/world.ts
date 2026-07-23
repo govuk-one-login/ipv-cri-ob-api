@@ -7,14 +7,37 @@ import type { IWorldOptions } from '@cucumber/cucumber'
 import { BanksClient } from './clients/banks-client.js'
 import { SessionClient } from './clients/session-client.js'
 import { TokenClient } from './clients/token-client.js'
-import { type ApiResponse, getBaseUrl } from './utils/api-client.js'
+import { type ApiResponse, getBaseUrl, getOAuthBaseUrl } from './utils/api-client.js'
 import { setWorldConstructor, World } from '@cucumber/cucumber'
 
 export class OBWorld extends World {
-  bankParams: BanksRequestParams | undefined
   readonly banks: BanksClient
   readonly session: SessionClient
   readonly token: TokenClient
+
+  get accessToken(): string {
+    if (!this._accessToken) throw new Error('accessToken not set — did the Before hook run?')
+    return this._accessToken
+  }
+  set accessToken(value: string) {
+    this._accessToken = value
+  }
+
+  get authCode(): string {
+    if (!this._authCode) throw new Error('authCode not set — did the authorization step run?')
+    return this._authCode
+  }
+  set authCode(value: string) {
+    this._authCode = value
+  }
+
+  get bankParams(): BanksRequestParams {
+    if (!this._bankParams) throw new Error('bankParams not set — did a Given step run first?')
+    return this._bankParams
+  }
+  set bankParams(value: BanksRequestParams) {
+    this._bankParams = value
+  }
 
   get consentId(): string {
     if (!this._consentId) throw new Error('consentId not set — did a Given step run first?')
@@ -58,18 +81,50 @@ export class OBWorld extends World {
     this._lastResponse = value
   }
 
+  get sessionId(): string {
+    if (!this._sessionId) throw new Error('sessionId not set — did the Before hook run?')
+    return this._sessionId
+  }
+  set sessionId(value: string) {
+    this._sessionId = value
+  }
+
+  get sessionRedirectUri(): string {
+    if (!this._sessionRedirectUri)
+      throw new Error('sessionRedirectUri not set — did the Before hook run?')
+    return this._sessionRedirectUri
+  }
+  set sessionRedirectUri(value: string) {
+    this._sessionRedirectUri = value
+  }
+
+  get sessionState(): string {
+    if (!this._sessionState) throw new Error('sessionState not set — did the Before hook run?')
+    return this._sessionState
+  }
+  set sessionState(value: string) {
+    this._sessionState = value
+  }
+
+  private _accessToken: string | undefined
+  private _authCode: string | undefined
+  private _bankParams: BanksRequestParams | undefined
   private _consentId: string | undefined
   private _consents: ConsentsClient | undefined
   private _identityVerification: IdentityVerificationClient | undefined
   private _issueCredential: IssueCredentialClient | undefined
   private _lastResponse: ApiResponse | undefined
+  private _sessionId: string | undefined
+  private _sessionRedirectUri: string | undefined
+  private _sessionState: string | undefined
 
   constructor(options: IWorldOptions) {
     super(options)
     const baseUrl = getBaseUrl()
+    const oauthBaseUrl = getOAuthBaseUrl()
     this.banks = new BanksClient(baseUrl)
-    this.session = new SessionClient(baseUrl)
-    this.token = new TokenClient(baseUrl)
+    this.session = new SessionClient(oauthBaseUrl)
+    this.token = new TokenClient(oauthBaseUrl)
   }
 }
 

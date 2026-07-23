@@ -15,7 +15,7 @@ Feature: Consents Endpoint - Unhappy Path Scenarios
 
   Scenario: Reject request with invalid scope token
     When I create a consent with an invalid scope token
-    Then the response status should be 401
+    Then the response status should be 403
 
   Scenario: Reject request with empty body
     When I create a consent with an empty body

@@ -6,6 +6,7 @@
     "lib": ["esnext"],
     "types": ["node"],
     "noEmit": true,
+    "resolveJsonModule": true,
     "noUncheckedIndexedAccess": true,
     "exactOptionalPropertyTypes": true,
     "noImplicitReturns": true,

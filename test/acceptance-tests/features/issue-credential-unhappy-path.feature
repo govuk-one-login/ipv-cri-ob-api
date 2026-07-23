@@ -1,4 +1,4 @@
-@QualityGateNewFeatureTest
+@QualityGateIntegrationTest
 Feature: Issue Credential Endpoint - Unhappy Path Scenarios
 
   Scenario: Issue a credential without a token returns 401
