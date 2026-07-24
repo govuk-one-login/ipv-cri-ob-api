@@ -11,4 +11,4 @@ COPY --chmod=+x test/acceptance-tests/run-tests.sh /run-tests.sh
 COPY cucumber.json tsconfig.json ./
 COPY test/acceptance-tests ./test/acceptance-tests
 
-ENTRYPOINT ["/run-tests.sh"]
+ENTRYPOINT ["bash", "-c", "cd /app && /run-tests.sh"]
