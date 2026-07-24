@@ -7,9 +7,8 @@ WORKDIR /app
 COPY package.json package-lock.json ./
 RUN npm ci
 
-COPY . .
-
-COPY test/acceptance-tests/run-tests.sh /run-tests.sh
-RUN chmod +x /run-tests.sh
+COPY --chmod=+x test/acceptance-tests/run-tests.sh /run-tests.sh
+COPY cucumber.json tsconfig.json ./
+COPY test/acceptance-tests ./test/acceptance-tests
 
 ENTRYPOINT ["/run-tests.sh"]
