@@ -5,8 +5,8 @@ import { SignatureV4 } from '@smithy/signature-v4'
 const REGION = process.env['AWS_REGION'] ?? 'eu-west-2'
 
 const getCoreStubUrl = (): string => {
-  const url = process.env['HEADLESS_CORE_STUB_URL']
-  if (!url) throw new Error('HEADLESS_CORE_STUB_URL is not set')
+  const url = process.env['CORE_STUB_URL']
+  if (!url) throw new Error('CORE_STUB_URL is not set')
   return url
 }
 

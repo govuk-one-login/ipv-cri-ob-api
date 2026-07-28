@@ -923,7 +923,7 @@ Outputs:
     Description: CloudFormation stack name
     Value: !Sub "${AWS::StackName}"
 
-  PublicAPIGatewayID:
+  PublicApiGatewayId:
     Description: CRI Open Banking Public API Gateway ID
     Value: !Sub "${PublicAPI}"
     Export:
@@ -935,13 +935,13 @@ Outputs:
     Export:
       Name: !Sub ${AWS::StackName}-PublicApiBaseUrl
 
-  PrivateAPIGatewayID:
+  PrivateApiGatewayId:
     Description: CRI Open Banking Private API Gateway ID
     Value: !Sub "${PrivateAPI}"
     Export:
       Name: !Sub ${AWS::StackName}-PrivateAPIGatewayID
 
-  PrivateAPIBaseUrl:
+  PrivateApiBaseUrl:
     Description: Base url of the Private Open Banking API Gateway
     Value: !Sub "https://${PrivateAPI}.execute-api.${AWS::Region}.amazonaws.com/${Environment}/"
     Export:

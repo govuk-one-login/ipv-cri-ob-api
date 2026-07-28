@@ -6,8 +6,8 @@ import { type CoreStubOverrides, getJwt } from '../helpers/core-stub.js'
 import {
   apiFetch,
   createAuthenticatedClients,
-  getBaseUrl,
-  getOAuthBaseUrl
+  getPrivateBaseUrl,
+  getPublicBaseUrl
 } from '../utils/api-client.js'
 import { Given, Then, When } from '@cucumber/cucumber'
 
@@ -48,14 +48,14 @@ Given(
 )
 
 When('I request an authorization code', async function (this: OBWorld) {
-  const oauthBaseUrl = getOAuthBaseUrl()
+  const privateBaseUrl = getPrivateBaseUrl()
   const authParams = new URLSearchParams({
     client_id: 'ipv-core-stub-aws-headless',
     redirect_uri: this.sessionRedirectUri,
     response_type: 'code',
     state: this.sessionState
   })
-  const authResponse = await apiFetch(`${oauthBaseUrl}/authorization?${authParams.toString()}`, {
+  const authResponse = await apiFetch(`${privateBaseUrl}/authorization?${authParams.toString()}`, {
     headers: { 'session-id': this.sessionId }
   })
   if (authResponse.status() !== 200)
@@ -64,7 +64,7 @@ When('I request an authorization code', async function (this: OBWorld) {
 })
 
 When('I exchange the authorisation code for a token', async function (this: OBWorld) {
-  const baseUrl = getBaseUrl()
+  const publicBaseUrl = getPublicBaseUrl()
   const tokenResponse = await this.token.createToken({
     code: this.authCode,
     grant_type: 'authorization_code',
@@ -75,7 +75,7 @@ When('I exchange the authorisation code for a token', async function (this: OBWo
   const token = tokenResponse.json<TokenResponse>()
   this.accessToken = token.access_token
   const { consents, identityVerification, issueCredential } = createAuthenticatedClients(
-    baseUrl,
+    publicBaseUrl,
     token
   )
   this.consents = consents
