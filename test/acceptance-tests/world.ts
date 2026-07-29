@@ -7,7 +7,7 @@ import type { IWorldOptions } from '@cucumber/cucumber'
 import { BanksClient } from './clients/banks-client.js'
 import { SessionClient } from './clients/session-client.js'
 import { TokenClient } from './clients/token-client.js'
-import { type ApiResponse, getBaseUrl, getOAuthBaseUrl } from './utils/api-client.js'
+import { type ApiResponse, getPrivateBaseUrl, getPublicBaseUrl } from './utils/api-client.js'
 import { setWorldConstructor, World } from '@cucumber/cucumber'
 
 export class OBWorld extends World {
@@ -120,11 +120,11 @@ export class OBWorld extends World {
 
   constructor(options: IWorldOptions) {
     super(options)
-    const baseUrl = getBaseUrl()
-    const oauthBaseUrl = getOAuthBaseUrl()
-    this.banks = new BanksClient(baseUrl)
-    this.session = new SessionClient(oauthBaseUrl)
-    this.token = new TokenClient(oauthBaseUrl)
+    const publicBaseUrl = getPublicBaseUrl()
+    const privateBaseUrl = getPrivateBaseUrl()
+    this.session = new SessionClient(privateBaseUrl)
+    this.banks = new BanksClient(publicBaseUrl)
+    this.token = new TokenClient(publicBaseUrl)
   }
 }
 

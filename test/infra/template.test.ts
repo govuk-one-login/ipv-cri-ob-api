@@ -145,10 +145,10 @@ describe('template.yaml resources', () => {
 describe('template.yaml outputs', () => {
   const expectedOutputs = [
     'StackName',
-    'PublicAPIGatewayID',
+    'PublicApiGatewayId',
     'PublicApiBaseUrl',
-    'PrivateAPIGatewayID',
-    'PrivateAPIBaseUrl',
+    'PrivateApiGatewayId',
+    'PrivateApiBaseUrl',
     'IpvCoreBackApiKeyId'
   ]
 

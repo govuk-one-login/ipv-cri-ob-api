@@ -59,15 +59,20 @@ export function createAuthenticatedClients(
   }
 }
 
-export function getBaseUrl(): string {
-  return process.env['API_BASE_URL'] ?? 'http://localhost:3000'
+const LOCAL_BASE_URL = 'http://localhost:3000'
+
+function isLocalRun(): boolean {
+  return !process.env['PUBLIC_API_BASE_URL'] && !process.env['PRIVATE_API_BASE_URL']
 }
 
-export function getOAuthBaseUrl(): string {
-  const isLocal = !process.env['API_BASE_URL']
-  if (!isLocal && !process.env['OAUTH_BASE_URL']) throw new Error('OAUTH_BASE_URL is not set')
-  return process.env['OAUTH_BASE_URL'] ?? getBaseUrl()
+function resolveBaseUrl(name: 'PRIVATE_API_BASE_URL' | 'PUBLIC_API_BASE_URL'): string {
+  const value = process.env[name]
+  if (!value && !isLocalRun()) throw new Error(`${name} is not set`)
+  return value || LOCAL_BASE_URL
 }
+
+export const getPrivateBaseUrl = (): string => resolveBaseUrl('PRIVATE_API_BASE_URL')
+export const getPublicBaseUrl = (): string => resolveBaseUrl('PUBLIC_API_BASE_URL')
 
 export function mergeHeaders(
   base: Record<string, string>,

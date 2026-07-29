@@ -22,25 +22,25 @@ Tests are configured via environment variables. There are three ways to provide 
 Create a `.env` file in the `acceptance-tests/` directory:
 
 ```bash
-API_BASE_URL=https://<your-stack>.execute-api.eu-west-2.amazonaws.com
-OAUTH_BASE_URL=https://<your-stack>.execute-api.eu-west-2.amazonaws.com
-HEADLESS_CORE_STUB_URL=https://<core-stub-url>
+PUBLIC_API_BASE_URL=https://<public-api-id>.execute-api.eu-west-2.amazonaws.com/<env>/
+PRIVATE_API_BASE_URL=https://<private-api-id>.execute-api.eu-west-2.amazonaws.com/<env>/
+CORE_STUB_URL=https://test-resources.review-ob.<env>.account.gov.uk
 AWS_REGION=eu-west-2
 ```
 
 `run-tests.sh` will automatically source this file if it exists.
 
-### 2. SSM Parameter Store (pipeline / deployed environments)
+### 2. CloudFormation stack outputs (for pipeline runs / deployed environments)
 
-When no `.env` file is present and `STACK_NAME` is not `local`, `run-tests.sh` fetches configuration from SSM:
+When no `.env` file is present and `STACK_NAME` is not `local`, `run-tests.sh` fetches configuration from the deployed stack:
 
-| SSM Path                            | Environment Variable      |
-|-------------------------------------|---------------------------|
-| `/tests/${SSM_PREFIX}/apiUrl`       | `API_BASE_URL`            |
-| `/tests/${SSM_PREFIX}/oauthBaseUrl` | `OAUTH_BASE_URL`          |
-| `/tests/${SSM_PREFIX}/coreStubUrl`  | `HEADLESS_CORE_STUB_URL`  |
+| Variable                            | Source                                                     |
+|-------------------------------------|------------------------------------------------------------|
+| `PUBLIC_API_BASE_URL`               | `PublicApiBaseUrl` output of the api stack                 |
+| `PRIVATE_API_BASE_URL`              | `PrivateApiBaseUrl` output of the api stack                |
+| `CORE_STUB_URL`                     | `TestHarnessExecuteUrl` output of the test-resources stack |
 
-`SSM_PREFIX` defaults to `ipv-cri-ob-api` and can be overridden via `SSM_PARAM_PREFIX`.
+`STACK_NAME` is taken from `SAM_STACK_NAME`, falling back to `local`.
 
 ### 3. Local sandbox (no config)
 
@@ -48,12 +48,12 @@ If no `.env` file exists and `STACK_NAME` is `local`, tests run against `http://
 
 ### Environment Variable Reference
 
-| Variable                  | Required        | Default                 | Description                                                           |
-|---------------------------|-----------------|-------------------------|-----------------------------------------------------------------------|
-| `API_BASE_URL`            | No              | `http://localhost:3000` | Base URL for the Open Banking API                                     |
-| `OAUTH_BASE_URL`          | Yes (non-local) | —                       | Base URL for OAuth endpoints (`/session`, `/token`, `/authorization`) |
-| `HEADLESS_CORE_STUB_URL`  | Yes (non-local) | —                       | URL of the headless core stub used to create sessions                 |
-| `AWS_REGION`              | No              | `eu-west-2`             | AWS region used for SigV4 signing of core stub requests               |
+| Variable                  | Required        | Default                 | Description                                                                                    |
+|---------------------------|-----------------|-------------------------|------------------------------------------------------------------------------------------------|
+| `PUBLIC_API_BASE_URL`     | No              | `http://localhost:3000` | Public base URL for the Open Banking API (`/token`,`/consents`, `/credential/issue`, `/banks`) |
+| `PRIVATE_API_BASE_URL`    | Yes (non-local) | —                       | Base URL for OAuth endpoints (`/session`, `/authorization`)                                    |
+| `CORE_STUB_URL`           | Yes (non-local) | —                       | URL of the headless core stub used to create sessions                                          |
+| `AWS_REGION`              | No              | `eu-west-2`             | AWS region used for SigV4 signing of core stub requests                                        |
 
 ## Running Tests
 

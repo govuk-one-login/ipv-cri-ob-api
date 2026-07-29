@@ -101,7 +101,7 @@ jobs:
 
       - name: Run tests
         env:
-          CFN_STACK_NAME: ${{ needs.deploy-preview.outputs.stack-name }}
+          SAM_STACK_NAME: ${{ needs.deploy-preview.outputs.stack-name }}
           AWS_REGION: ${{ needs.deploy-preview.outputs.aws-region }}
         run: bash test/acceptance-tests/run-tests.sh
 

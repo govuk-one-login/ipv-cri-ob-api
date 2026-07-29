@@ -4,16 +4,16 @@ import type { OBWorld } from '../world.js'
 
 import { validTokenRequest } from '../data/token.js'
 import { getJwt } from '../helpers/core-stub.js'
-import { createAuthenticatedClients, getBaseUrl } from '../utils/api-client.js'
+import { createAuthenticatedClients, getPublicBaseUrl } from '../utils/api-client.js'
 import { Before } from '@cucumber/cucumber'
 
 Before(
   { tags: 'not @api-test and not @QualityGateSmokeTest and not @QualityGateIntegrationTest' },
   async function (this: OBWorld) {
-    const baseUrl = getBaseUrl()
+    const publicBaseUrl = getPublicBaseUrl()
     const tokenResponse = await this.token.createToken(validTokenRequest)
     const { consents, identityVerification, issueCredential } = createAuthenticatedClients(
-      baseUrl,
+      publicBaseUrl,
       tokenResponse.json<TokenResponse>()
     )
     this.consents = consents
