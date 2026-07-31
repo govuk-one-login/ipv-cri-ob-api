@@ -15,7 +15,10 @@ export default defineConfig(
   {
     languageOptions: {
       parserOptions: {
-        projectService: true
+        projectService: {
+          allowDefaultProject: ['cucumber.mjs'],
+          defaultProject: 'tsconfig.json'
+        }
       }
     },
     rules: {

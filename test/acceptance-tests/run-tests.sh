@@ -4,9 +4,11 @@ set -euo pipefail
 
 STACK_NAME="${SAM_STACK_NAME:-local}"
 AWS_REGION="${AWS_REGION:-eu-west-2}"
+RUN_IN_CONTAINER="${1:-true}"
 
 echo "STACK_NAME: ${STACK_NAME}"
 echo "AWS_REGION: ${AWS_REGION}"
+echo "RUN_IN_CONTAINER: ${RUN_IN_CONTAINER}"
 
 get_stack_output() {
   local stack="$1" key="$2" value
@@ -34,5 +36,10 @@ elif [[ "${STACK_NAME}" != "local" ]]; then
   export CORE_STUB_URL
 fi
 
-[[ -d /app ]] && cd /app
-npm run test:api
+if [[ "${RUN_IN_CONTAINER}" == "true" ]]; then
+  pushd /app
+  npm run test:api
+  popd
+else
+  npm run test:api
+fi

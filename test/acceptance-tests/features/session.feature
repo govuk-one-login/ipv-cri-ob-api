@@ -1,4 +1,4 @@
-@QualityGateIntegrationTest @QualityGateSmokeTest
+@QualityGateIntegrationTest @QualityGateSmokeTest @api-test
 Feature: Session
 
   Scenario: Create a session successfully

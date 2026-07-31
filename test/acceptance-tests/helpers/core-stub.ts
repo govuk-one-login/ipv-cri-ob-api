@@ -18,7 +18,7 @@ export interface CoreStubOverrides {
 export const getJwt = async (
   overrides?: CoreStubOverrides
 ): Promise<{ client_id: string; request: string }> => {
-  const url = new URL(`${getCoreStubUrl()}/start`)
+  const url = new URL(`${getCoreStubUrl()}start`)
   const body = JSON.stringify(overrides ?? {})
 
   const signer = new SignatureV4({
