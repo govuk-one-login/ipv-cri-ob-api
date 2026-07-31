@@ -931,7 +931,7 @@ Outputs:
 
   PublicApiBaseUrl:
     Description: Base url of the Public Open Banking API Gateway
-    Value: !Sub "https://${PublicAPI}.execute-api.${AWS::Region}.amazonaws.com/${Environment}/"
+    Value: !Sub "https://${PublicAPI}.execute-api.${AWS::Region}.amazonaws.com/${Environment}"
     Export:
       Name: !Sub ${AWS::StackName}-PublicApiBaseUrl
 
@@ -943,7 +943,7 @@ Outputs:
 
   PrivateApiBaseUrl:
     Description: Base url of the Private Open Banking API Gateway
-    Value: !Sub "https://${PrivateAPI}.execute-api.${AWS::Region}.amazonaws.com/${Environment}/"
+    Value: !Sub "https://${PrivateAPI}.execute-api.${AWS::Region}.amazonaws.com/${Environment}"
     Export:
       Name: !Sub ${AWS::StackName}-PrivateAPIBaseUrl
 
