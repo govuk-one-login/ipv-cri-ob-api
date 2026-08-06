@@ -20,7 +20,7 @@ export const createTokenRepository = (
 ): TokenRepository => ({
   getToken: async (profile) => {
     const { Item } = await client.send(
-      new GetCommand({ Key: { profile }, TableName: config.tableName })
+      new GetCommand({ Key: { id: profile }, TableName: config.tableName })
     )
     return Item as TokenEntity | undefined
   },
