@@ -1,4 +1,5 @@
-import { getTokenProfileForClientID, TokenProfile } from '@src/token-rotator/model/token-profile'
+import { getTokenProfileForClientID } from '@common/model/oauth-client-id'
+import { TokenProfile } from '@src/token-rotator/model/token-profile'
 import { describe, expect, it } from 'vitest'
 
 describe('getTokenProfileForClientID', () => {

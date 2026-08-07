@@ -2,7 +2,7 @@ import type { APIGatewayProxyEvent, APIGatewayProxyResult, Context } from 'aws-l
 
 import { logger } from '@govuk-one-login/cri-logger'
 import { captureMetric, metrics, MetricUnit } from '@govuk-one-login/cri-metrics'
-import { getTokenProfileForClientID } from '@src/token-rotator/model/token-profile'
+import { getTokenProfileForClientID } from '@common/model/oauth-client-id'
 import { tokenRetrievalService } from '@src/token-rotator/service/token-retrieval-service'
 
 export class BasicFunction {
