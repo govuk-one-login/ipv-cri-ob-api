@@ -31,7 +31,10 @@ export const createTokenRotationService = (
   config: TokenRotationServiceConfig,
   collaborators: TokenRotationServiceCollaborators
 ): TokenRotationService => {
-  const rotate = async (profile: TokenProfile, credentials: ProviderCredentials): Promise<void> => {
+  const doRotate = async (
+    profile: TokenProfile,
+    credentials: ProviderCredentials
+  ): Promise<void> => {
     const { expiresAtSeconds, tokenValue } =
       await collaborators.tokenRotationStrategy.rotate(credentials)
     await collaborators.tokenRepository.putToken({
@@ -51,7 +54,7 @@ export const createTokenRotationService = (
     const credentials = await collaborators.credentialsProvider.getCredentials(
       `${config.credentialsPathPrefix}/${profile}`
     )
-    await rotate(profile, credentials)
+    await doRotate(profile, credentials)
   }
 
   return {

@@ -1,49 +1,49 @@
+import type { CredentialsProvider } from '@src/token-rotator/client/ssm-credentials-provider'
+import type { TokenRepository } from '@src/token-rotator/client/token-repository'
 import type { TokenRotationStrategy } from '@src/token-rotator/model/token-rotation-strategy'
+import type { TokenRotationServiceConfig } from '@src/token-rotator/service/token-rotation-service'
 import type { ScheduledEvent } from 'aws-lambda'
 
 import { createTokenRotator } from '@src/token-rotator/handler/token-rotator'
 import { TokenProfile } from '@src/token-rotator/model/token-profile'
-import { beforeEach, describe, expect, it, vi } from 'vitest'
+import { describe, expect, it, vi } from 'vitest'
 
-const { rotateAllMock } = vi.hoisted(() => ({
-  rotateAllMock: vi.fn()
-}))
-
-vi.mock('@src/token-rotator/client/token-repository', () => ({
-  tokenRepository: {}
-}))
-vi.mock('@src/token-rotator/client/ssm-credentials-provider', () => ({
-  ssmCredentialsProvider: {}
-}))
-vi.mock('@src/token-rotator/util/load-config-from-env', () => ({
-  loadTokenRotatorConfigFromEnv: vi.fn(() => ({
-    credentialsPathPrefix: '/test/third-party-tokens',
-    profiles: [TokenProfile.STUB],
-    refreshWindowSeconds: 300
-  }))
-}))
-vi.mock('@src/token-rotator/service/token-rotation-service', () => ({
-  createTokenRotationService: vi.fn(() => ({
-    rotateAll: rotateAllMock
-  }))
-}))
-
-const buildScheduledEvent = (): ScheduledEvent => ({}) as ScheduledEvent
-
-const buildStrategy = (): TokenRotationStrategy => ({
-  rotate: vi.fn()
+const buildConfig = (): TokenRotationServiceConfig => ({
+  credentialsPathPrefix: '/test/third-party-tokens',
+  profiles: [TokenProfile.STUB],
+  refreshWindowSeconds: 300
 })
 
-beforeEach(() => {
-  vi.clearAllMocks()
+const buildCredentialsProvider = (): CredentialsProvider => ({
+  getCredentials: vi.fn().mockResolvedValue({ 'client-id': 'test' })
+})
+
+const buildTokenRepository = (): TokenRepository => ({
+  getToken: vi.fn().mockResolvedValue(undefined),
+  putToken: vi.fn().mockResolvedValue(undefined)
+})
+
+const buildStrategy = (): TokenRotationStrategy => ({
+  rotate: vi.fn().mockResolvedValue({
+    expiresAtSeconds: Math.floor(Date.now() / 1000) + 3600,
+    tokenValue: 'fresh-token'
+  })
 })
 
 describe('token-rotator handler', () => {
-  it('routes scheduled events to rotateAll', async () => {
-    const handler = createTokenRotator({ tokenRotationStrategy: buildStrategy() })
+  it('rotates all configured profiles when invoked', async () => {
+    const tokenRepository = buildTokenRepository()
+    const tokenRotationStrategy = buildStrategy()
 
-    await handler(buildScheduledEvent())
+    const handler = createTokenRotator(buildConfig(), {
+      credentialsProvider: buildCredentialsProvider(),
+      tokenRepository,
+      tokenRotationStrategy
+    })
 
-    expect(rotateAllMock).toHaveBeenCalledOnce()
+    await handler({} as ScheduledEvent)
+
+    expect(tokenRotationStrategy.rotate).toHaveBeenCalledOnce()
+    expect(tokenRepository.putToken).toHaveBeenCalledOnce()
   })
 })

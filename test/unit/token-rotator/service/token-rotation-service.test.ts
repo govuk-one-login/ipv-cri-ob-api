@@ -150,5 +150,46 @@ describe('token-rotation-service', () => {
         expect.objectContaining({ id: TokenProfile.STUB })
       )
     })
+
+    it('maps credentialsProvider failure to the correct profile', async () => {
+      const credentialsProvider = mockCredentialsProvider()
+      credentialsProvider.getCredentials = vi
+        .fn()
+        .mockRejectedValueOnce(new Error('SSM unavailable'))
+      const tokenRepository = mockTokenRepository()
+      const tokenRotationStrategy = buildStrategy()
+
+      const service = createTokenRotationService(buildConfig(), {
+        credentialsProvider,
+        tokenRepository,
+        tokenRotationStrategy
+      })
+
+      await expect(service.rotateAll()).rejects.toMatchObject({
+        failures: [{ profile: TokenProfile.STUB, reason: 'SSM unavailable' }],
+        name: 'AggregateRotationError'
+      })
+      expect(tokenRotationStrategy.rotate).not.toHaveBeenCalled()
+      expect(tokenRepository.putToken).not.toHaveBeenCalled()
+    })
+
+    it('maps putToken failure to the correct profile', async () => {
+      const credentialsProvider = mockCredentialsProvider()
+      const tokenRepository = mockTokenRepository()
+      tokenRepository.putToken = vi.fn().mockRejectedValueOnce(new Error('DynamoDB unavailable'))
+      const tokenRotationStrategy = buildStrategy()
+
+      const service = createTokenRotationService(buildConfig(), {
+        credentialsProvider,
+        tokenRepository,
+        tokenRotationStrategy
+      })
+
+      await expect(service.rotateAll()).rejects.toMatchObject({
+        failures: [{ profile: TokenProfile.STUB, reason: 'DynamoDB unavailable' }],
+        name: 'AggregateRotationError'
+      })
+      expect(tokenRotationStrategy.rotate).toHaveBeenCalledOnce()
+    })
   })
 })
