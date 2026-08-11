@@ -29,6 +29,8 @@ jobs:
     steps:
       - name: Setup Node
         uses: govuk-one-login/github-actions/node/install-dependencies@4c76410195b5fcb1804fc7c183ed20704252830f
+        with:
+          node-version-file: '.nvmrc'
 
       - name: Unit tests
         run: npm run test:coverage
@@ -65,6 +67,8 @@ jobs:
     steps:
       - name: Setup Node
         uses: govuk-one-login/github-actions/node/install-dependencies@4c76410195b5fcb1804fc7c183ed20704252830f
+        with:
+          node-version-file: '.nvmrc'
       - name: CloudFormation template tests
         run: npm run test:infra
 
@@ -92,6 +96,8 @@ jobs:
     steps:
       - name: Setup Node
         uses: govuk-one-login/github-actions/node/install-dependencies@4c76410195b5fcb1804fc7c183ed20704252830f
+        with:
+          node-version-file: '.nvmrc'
 
       - name: Assume AWS Role
         uses: aws-actions/configure-aws-credentials@8df5847569e6427dd6c4fb1cf565c83acfa8afa7 # v6.0.0
