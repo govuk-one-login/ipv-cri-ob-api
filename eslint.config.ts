@@ -38,6 +38,7 @@ export default defineConfig(
         { blankLine: 'always', next: '*', prev: 'import' },
         { blankLine: 'any', next: 'import', prev: 'import' }
       ],
+      'perfectionist/sort-objects': 'off',
       'perfectionist/sort-imports': [
         'warn',
         {
@@ -86,6 +87,7 @@ export default defineConfig(
   {
     files: ['test/**/*'],
     rules: {
+      '@typescript-eslint/no-empty-function': 'off',
       'no-console': 'off'
     }
   }
