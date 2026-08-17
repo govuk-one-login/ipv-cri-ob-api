@@ -32,13 +32,20 @@ jobs:
         id: get-sha
         run: echo "sha-short=${GITHUB_SHA::7}" >> "$GITHUB_OUTPUT"
 
+      - name: Checkout
+        uses: actions/checkout@v6
+
+      - name: Setup Node
+        uses: actions/setup-node@v6
+        with:
+          node-version-file: '.nvmrc'
+
       - name: Build app
         uses: govuk-one-login/github-actions/sam/build-application@4c76410195b5fcb1804fc7c183ed20704252830f
         with:
           template: deploy/template.yaml
           cache-name: ipv-cri-ob-api-${{ steps.get-sha.outputs.sha-short }}
           aws-role-arn: ${{ secrets.role_arn || secrets.DEV_GHA_PREVIEW_ROLE_ARN }}
-          pull-repository: true
 
   deploy-preview:
     name: Deploy stack

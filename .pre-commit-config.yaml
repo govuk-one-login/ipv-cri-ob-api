@@ -3,39 +3,51 @@ repos:
     rev: v6.0.0
     hooks:
       - id: check-json
+        name: check json
       - id: end-of-file-fixer
+        name: fix end of files
       - id: trailing-whitespace
+        name: trim trailing whitespace
       - id: detect-aws-credentials
+        name: detect aws credentials
         args: [--allow-missing-credentials]
       - id: detect-private-key
+        name: detect private keys
   - repo: https://github.com/aws-cloudformation/cfn-lint
     rev: v1.46.0
     hooks:
       - id: cfn-lint
+        name: cfn lint
         files: template\.ya?ml$
   - repo: https://github.com/bridgecrewio/checkov.git
     rev: 3.2.506
     hooks:
       - id: checkov
+        name: checkov
         files: template\.ya?ml$
         args: [--soft-fail]
   - repo: https://github.com/Yelp/detect-secrets
     rev: v1.5.0
     hooks:
       - id: detect-secrets
+        name: detect secrets
         args: ['--baseline', '.secrets.baseline']
   - repo: local
     hooks:
-      - id: eslint
-        name: ESLint
-        entry: npm run lint:pre-commit
+      - id: oxlint
+        name: oxlint
+        entry: npx oxlint
         language: system
-      - id: prettier
-        name: Prettier
-        entry: npm run format:fix
+        pass_filenames: true
+        types_or: [javascript, ts]
+      - id: oxfmt
+        name: oxfmt
+        entry: npx oxfmt --check
         language: system
+        pass_filenames: true
+        types_or: [javascript, ts, json, css, scss]
       - id: type-check
-        name: Type check
+        name: type check
         entry: npm run type-check
         language: system
         pass_filenames: false
