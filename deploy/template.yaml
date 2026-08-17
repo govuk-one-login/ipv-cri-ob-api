@@ -685,63 +685,13 @@ Resources:
       LogGroupName: !Sub "/aws/lambda/${AWS::StackName}-ecospend-token-rotator"
       RetentionInDays: !Ref LogGroupRetentionInDays
 
-#  # STUB profile credentials
-#  EcospendTokenRotatorStubClientIdParameter:
-#    Type: AWS::SSM::Parameter
-#    Condition: IsNotProduction
-#    Properties:
-#      Name: !If
-#        - UseParameterPrefix
-#        - !Sub "/${ParameterPrefix}/ecospend-token-rotator/STUB/client-id"
-#        - !Sub "/${AWS::StackName}/ecospend-token-rotator/STUB/client-id"
-#      Type: String
-#      Value: external-api-ob
-#
-#  EcospendTokenRotatorStubEndpointUrlParameter:
-#    Type: AWS::SSM::Parameter
-#    Condition: IsNotProduction
-#    Properties:
-#      Name: !If
-#        - UseParameterPrefix
-#        - !Sub "/${ParameterPrefix}/ecospend-token-rotator/STUB/endpoint-url"
-#        - !Sub "/${AWS::StackName}/ecospend-token-rotator/STUB/endpoint-url"
-#      Type: String
-#      Value: !Sub
-#        - "${ImposterBase}/connect/token"
-#        - ImposterBase: !ImportValue ob-third-party-stubs-ImposterStubApiUrl
-#
-#  EcospendTokenRotatorStubGrantTypeParameter:
-#    Type: AWS::SSM::Parameter
-#    Condition: IsNotProduction
-#    Properties:
-#      Name: !If
-#        - UseParameterPrefix
-#        - !Sub "/${ParameterPrefix}/ecospend-token-rotator/STUB/grant-type"
-#        - !Sub "/${AWS::StackName}/ecospend-token-rotator/STUB/grant-type"
-#      Type: String
-#      Value: client_credentials
-#
-#  EcospendTokenRotatorStubScopeParameter:
-#    Type: AWS::SSM::Parameter
-#    Condition: IsNotProduction
-#    Properties:
-#      Name: !If
-#        - UseParameterPrefix
-#        - !Sub "/${ParameterPrefix}/ecospend-token-rotator/STUB/scope"
-#        - !Sub "/${AWS::StackName}/ecospend-token-rotator/STUB/scope"
-#      Type: String
-#      Value: accounts
-#
-#  EcospendTokenRotatorStubClientSecretParameter:
-#    Type: AWS::SSM::Parameter
-#    Condition: IsNotProduction
-#    Properties:
-#      Name: !If
-#        - UseParameterPrefix
-#        - !Sub "/${ParameterPrefix}/ecospend-token-rotator/STUB/client-secret"
-#        - !Sub "/${AWS::StackName}/ecospend-token-rotator/STUB/client-secret"
-#      Type: SecureString
-#      Value:
+  # invokes the ecospend-token-rotator on every stack deploy that changes its code. forces all-profile token recycle
+  # these properties ensure the correct function gets invoked when deploying, don't change them without a good reason
+  EcospendTokenRotatorDeployCheck:
+    Type: Custom::EcospendTokenRotate
+    Properties:
+      ServiceToken: !Ref EcospendTokenRotatorFunction.Alias
+      Version: !Ref EcospendTokenRotatorFunction.Version
 
   ####################################################################
   #                                                                  #

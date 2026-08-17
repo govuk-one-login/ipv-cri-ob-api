@@ -8,7 +8,12 @@ import {
   LambdaResult,
   LambdaStartState
 } from '@common/model/metrics/lambda-metrics'
+import {
+  isCfnCustomResourceEvent,
+  putCustomResourceResponse
+} from '@common/util/cfn-custom-resource'
 import { formatErrorResponse } from '@govuk-one-login/cri-error-response'
+import { logger } from '@govuk-one-login/cri-logger'
 import { captureMetricWithDimensions, MetricUnit } from '@govuk-one-login/cri-metrics'
 
 export { injectLambdaContext } from '@govuk-one-login/cri-logger'
@@ -71,3 +76,18 @@ export const resultRecorder = (): MiddlewareObj<APIGatewayProxyEvent, APIGateway
     }
   }
 }
+
+export const cfnCustomResourceResponse = (): MiddlewareObj<unknown, unknown> => ({
+  after: async (request) => {
+    if (!isCfnCustomResourceEvent(request.event)) return
+    logger.info('Deployment success')
+    await putCustomResourceResponse(request.event, { status: 'SUCCESS' })
+  },
+  onError: async (request) => {
+    if (!isCfnCustomResourceEvent(request.event)) return
+    const reason = request.error instanceof Error ? request.error.message : 'Unknown error'
+    logger.error('Deployment failed', { reason })
+    await putCustomResourceResponse(request.event, { status: 'FAILED', reason })
+    request.response = null
+  }
+})

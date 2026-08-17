@@ -12,7 +12,7 @@ import {
 import { formatTokenExpiry, isTokenDueForRotation } from '@src/token-rotator/util/token-expiry'
 
 export interface TokenRotationService {
-  rotateAll: () => Promise<void>
+  rotateAll: (options?: { force?: boolean }) => Promise<void>
 }
 
 export interface TokenRotationServiceConfig {
@@ -45,11 +45,13 @@ export const createTokenRotationService = (
     logger.info('Token rotated', { expiresAt: formatTokenExpiry(expiresAtSeconds), profile })
   }
 
-  const rotateForProfile = async (profile: TokenProfile): Promise<void> => {
-    const currentToken = await collaborators.tokenRepository.getToken(profile)
-    if (currentToken && !isTokenDueForRotation(currentToken, config.refreshWindowSeconds)) {
-      logger.info('Token still fresh, skipping rotation', { profile })
-      return
+  const rotateForProfile = async (profile: TokenProfile, force: boolean): Promise<void> => {
+    if (!force) {
+      const currentToken = await collaborators.tokenRepository.getToken(profile)
+      if (currentToken && !isTokenDueForRotation(currentToken, config.refreshWindowSeconds)) {
+        logger.info('Token still fresh, skipping rotation', { profile })
+        return
+      }
     }
     const credentials = await collaborators.credentialsProvider.getCredentials(
       `${config.credentialsPathPrefix}/${profile}`
@@ -58,9 +60,9 @@ export const createTokenRotationService = (
   }
 
   return {
-    rotateAll: async () => {
+    rotateAll: async ({ force = false } = {}) => {
       const results = await Promise.allSettled(
-        config.profiles.map((profile) => rotateForProfile(profile))
+        config.profiles.map((profile) => rotateForProfile(profile, force))
       )
 
       const failures: RotationFailure[] = results.flatMap((result, index) => {

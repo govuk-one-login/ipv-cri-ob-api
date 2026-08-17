@@ -1,5 +1,6 @@
-import type { ScheduledEvent } from 'aws-lambda'
+import type { TokenRotatorEvent } from '@src/token-rotator/handler/token-rotator'
 
+import { cfnCustomResourceResponse } from '@common/handler/middleware'
 import { injectLambdaContext } from '@common/handler/middleware'
 import { logger } from '@govuk-one-login/cri-logger'
 import { logMetrics, metrics } from '@govuk-one-login/cri-metrics'
@@ -17,7 +18,8 @@ const tokenRotator = createTokenRotator(loadTokenRotatorConfigFromEnv(), {
   tokenRotationStrategy: ecospendTokenStrategy
 })
 
-export const handler = middy<ScheduledEvent, void>()
+export const handler = middy<TokenRotatorEvent, void>()
   .use(injectLambdaContext(logger, { resetKeys: true }))
   .use(logMetrics(metrics, { captureColdStartMetric: true }))
+  .use(cfnCustomResourceResponse())
   .handler(tokenRotator)

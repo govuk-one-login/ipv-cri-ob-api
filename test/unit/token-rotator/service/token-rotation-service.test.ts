@@ -124,6 +124,25 @@ describe('token-rotation-service', () => {
       expect(tokenRepository.putToken).not.toHaveBeenCalled()
     })
 
+    it('rotates every profile without checking token freshness when force is true', async () => {
+      const credentialsProvider = mockCredentialsProvider()
+      const tokenRepository = mockTokenRepository()
+      tokenRepository.getToken = vi.fn().mockResolvedValue(buildTokenEntity())
+      const tokenRotationStrategy = buildStrategy()
+
+      const service = createTokenRotationService(
+        buildConfig({ profiles: [TokenProfile.STUB, TokenProfile.LIVE] }),
+        { credentialsProvider, tokenRepository, tokenRotationStrategy }
+      )
+
+      await service.rotateAll({ force: true })
+
+      expect(tokenRepository.getToken).not.toHaveBeenCalled()
+      expect(credentialsProvider.getCredentials).toHaveBeenCalledTimes(2)
+      expect(tokenRotationStrategy.rotate).toHaveBeenCalledTimes(2)
+      expect(tokenRepository.putToken).toHaveBeenCalledTimes(2)
+    })
+
     it('throws AggregateRotationError when at least one profile fails', async () => {
       const credentialsProvider = mockCredentialsProvider()
       const tokenRepository = mockTokenRepository()
