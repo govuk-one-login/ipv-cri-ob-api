@@ -133,7 +133,7 @@ describe('token-rotation-service', () => {
           expiresAtSeconds: FRESH_TOKEN_TTL,
           tokenValue: ROTATED_TOKEN
         })
-        .mockRejectedValueOnce(new TokenRotationError('upstream 500'))
+        .mockRejectedValueOnce(new TokenRotationError('crumbs'))
       const tokenRotationStrategy = buildStrategy(rotate)
 
       const service = createTokenRotationService(
@@ -142,7 +142,7 @@ describe('token-rotation-service', () => {
       )
 
       await expect(service.rotateAll()).rejects.toMatchObject({
-        failures: [{ profile: TokenProfile.UAT, reason: 'upstream 500' }],
+        failures: [{ profile: TokenProfile.UAT, reason: 'crumbs' }],
         name: 'AggregateRotationError'
       })
       expect(tokenRepository.putToken).toHaveBeenCalledTimes(1)

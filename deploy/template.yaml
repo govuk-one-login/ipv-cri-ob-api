@@ -508,6 +508,7 @@ Resources:
   BasicFunction:
     Type: AWS::Serverless::Function
     Properties:
+      FunctionName: !Sub "${AWS::StackName}-basic-function"
       VpcConfig:
         SecurityGroupIds:
           - Fn::ImportValue:
@@ -521,6 +522,8 @@ Resources:
               !Sub "${VpcStackName}-ProtectedSubnetIdC"
       Handler: basic-function.lambdaHandler
       CodeUri: ../
+      LoggingConfig:
+        LogGroup: !Ref BasicFunctionLogGroup
       DeploymentPreference:
         Enabled: true
         Type: !Ref LambdaDeploymentPreference
@@ -564,7 +567,7 @@ Resources:
   BasicFunctionLogGroup:
     Type: AWS::Logs::LogGroup
     Properties:
-      LogGroupName: !Sub "/aws/lambda/${BasicFunction}"
+      LogGroupName: !Sub "/aws/lambda/${AWS::StackName}-basic-function"
       RetentionInDays: !Ref LogGroupRetentionInDays
 
   # BasicFunctionLogGroupSubscriptionFilterCsls:
@@ -624,11 +627,11 @@ Resources:
               !Sub "${VpcStackName}-AWSServicesEndpointSecurityGroupId"
         SubnetIds:
           - Fn::ImportValue:
-              !Sub "${VpcStackName}-PrivateSubnetIdA"
+              !Sub "${VpcStackName}-ProtectedSubnetIdA"
           - Fn::ImportValue:
-              !Sub "${VpcStackName}-PrivateSubnetIdB"
+              !Sub "${VpcStackName}-ProtectedSubnetIdB"
           - Fn::ImportValue:
-              !Sub "${VpcStackName}-PrivateSubnetIdC"
+              !Sub "${VpcStackName}-ProtectedSubnetIdC"
       Handler: ecospend-token-rotator.handler
       CodeUri: ../
       LoggingConfig:
@@ -638,11 +641,13 @@ Resources:
           POWERTOOLS_SERVICE_NAME: !Sub "${CriIdentifier}-ecospend-token-rotator"
           TOKEN_ROTATOR_DYNAMO_TABLE_NAME: !Ref TokenRotatorTable
           TOKEN_ROTATOR_PROFILES: !FindInMap [ EnvironmentConfiguration, !Ref Environment, tokenRotatorProfiles ]
-          TOKEN_ROTATOR_REFRESH_WINDOW_SECONDS: "300"
+          TOKEN_ROTATOR_REFRESH_WINDOW_SECONDS: "900"
           TOKEN_ROTATOR_CREDENTIALS_PATH: !If
             - UseParameterPrefix
             - !Sub "/${ParameterPrefix}/ecospend-token-rotator"
             - !Sub "/${AWS::StackName}/ecospend-token-rotator"
+      AutoPublishAlias: live
+      AutoPublishAliasAllProperties: true
       Policies:
         - AWSLambdaBasicExecutionRole
         - AWSXrayWriteOnlyAccess
@@ -657,7 +662,7 @@ Resources:
         ScheduledRotation:
           Type: Schedule
           Properties:
-            Schedule: rate(5 minutes)
+            Schedule: rate(1 minute)
     Metadata:
       BuildMethod: esbuild
       BuildProperties:
