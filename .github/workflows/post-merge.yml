@@ -18,6 +18,8 @@ jobs:
     steps:
       - name: Setup Node
         uses: govuk-one-login/github-actions/node/install-dependencies@4c76410195b5fcb1804fc7c183ed20704252830f
+        with:
+          node-version-file: '.nvmrc'
 
       - name: Unit tests
         run: npm run test:coverage
