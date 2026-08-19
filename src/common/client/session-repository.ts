@@ -5,22 +5,28 @@ import { dynamoDBDocumentClient } from '@common/client/dynamodb-client'
 
 export interface SessionRepository {
   findByAccessToken: (accessToken: string) => Promise<SessionItem | undefined>
+  findBySessionId: (sessionID: string) => Promise<SessionItem | undefined>
 }
 
+const DUMMY_SESSION = {
+  attemptCount: 0,
+  clientId: 'test-client',
+  clientSessionId: 'govuk-signin-journey-123',
+  createdDate: 0,
+  expiryDate: 0,
+  redirectUri: 'https://example.test/callback',
+  sessionId: 'session-123',
+  state: 'test-state',
+  subject: 'subject-xyz'
+} as SessionItem
+
 export const createSessionRepository = (_client: DynamoDBDocumentClient): SessionRepository => ({
+  findBySessionId: (_sessionId) =>
+    // TODO: delete me and get the actual session
+    Promise.resolve(DUMMY_SESSION),
   findByAccessToken: (_accessToken) =>
     // TODO: delete me and get the actual session
-    Promise.resolve({
-      attemptCount: 0,
-      clientId: 'test-client',
-      clientSessionId: 'govuk-signin-journey-123',
-      createdDate: 0,
-      expiryDate: 0,
-      redirectUri: 'https://example.test/callback',
-      sessionId: 'session-123',
-      state: 'test-state',
-      subject: 'subject-xyz'
-    } as SessionItem)
+    Promise.resolve(DUMMY_SESSION)
 })
 
 export const sessionRepository = createSessionRepository(dynamoDBDocumentClient)

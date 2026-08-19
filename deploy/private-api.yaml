@@ -13,7 +13,16 @@ paths:
         uri:
           Fn::Sub: arn:${AWS::Partition}:apigateway:${AWS::Region}:lambda:path/2015-03-31/functions/${BasicFunction.Arn}:live/invocations
         type: "aws_proxy"
-
+  /consent:
+    post:
+      responses:
+        "201":
+          description: "201 response"
+      x-amazon-apigateway-integration:
+        httpMethod: "POST"
+        uri:
+          Fn::Sub: arn:${AWS::Partition}:apigateway:${AWS::Region}:lambda:path/2015-03-31/functions/${ConsentFunction.Arn}:live/invocations
+        type: "aws_proxy"
   /authorization:
     get:
       parameters:

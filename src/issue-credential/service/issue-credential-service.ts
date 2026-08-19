@@ -1,7 +1,7 @@
 import type { AuditEventPublisher } from '@common/service/audit-event-publisher'
 import type { IdentityScoreRepository } from '@src/issue-credential/client/identity-score-repository'
 import type { PersonDetailsRepository } from '@src/issue-credential/client/person-details-repository'
-import type { SessionRepository } from '@src/issue-credential/client/session-repository'
+import type { SessionRepository } from '@common/client/session-repository'
 import type { IssueCredentialRequest } from '@src/issue-credential/model/issue-credential-request'
 import type { IssueCredentialResponse } from '@src/issue-credential/model/issue-credential-response'
 import type { JwtEnvelopeGenerator } from '@src/issue-credential/service/jwt-envelope-generator'
