@@ -69,9 +69,9 @@ To run manually on all files
 
 ## Local Development
 
-The project uses `esbuild` for building and `vitest` for unit testing. All source code is in TypeScript and follows ESLint configuration with Prettier formatting.
+The project uses `esbuild` for building and `vitest` for unit testing. All source code is in TypeScript and uses Oxlint/Oxfmt for linting and formatting.
 
-`esbuild` config is per handler, is managed in `template.yaml` under each Lambda's `Metadata` section and handles TypeScript compilation and dependency bundling.
+`esbuild` config is per handler, it is defined in the `template.yaml` under each Lambda's `Metadata` section and handles TypeScript compilation and dependency bundling.
 
 ### Deployment into Development environment
 
@@ -120,33 +120,3 @@ Ideally, tests tagged with `@QualityGateNewFeatureTest` should be marked with a 
 Acceptance tests are run in the pipeline against the deployed environment. They are tagged with `TBC` and should be added to the `acceptance-tests` directory.
 
 `npm run test:api`
-
-## Architecture & Design Documentation
-
-Detailed documentation for key subsystems lives under `docs/`.
-
-### OAuth ClientId → Profile Mappings (Test Data Strategy)
-[`docs/conventions/test-data-strategy-oauth-clientid-profile-mappings.md`](docs/conventions/test-data-strategy-oauth-clientid-profile-mappings.md)
-
-Explains how OAuth `clientId` values are mapped to config profiles (`STUB`, `UAT`, `LIVE`) at runtime, the SSM parameter layout used (namespace-based under `/{stack-name}/{namespace}/profiles/{PROFILE_NAME}/`), and how to implement a new endpoint connection using `ConfigProvider`, `ssmConfigProvider`, and zod validation.
-
-### Thirdparty Async Token
-
-#### Operation & Design
-[`docs/lambdas/async-token/async-token-design.md`](docs/lambdas/async-token/async-token-design.md)
-
-Covers the scheduled token refresh mechanism: Lambda lifecycle (cold-start bootstrap vs. 1-minute scheduled runs), token update logic, DynamoDB storage schema, TTL/expiry timing, environment variables, error handling matrix, and module structure.
-
-#### Plugin Architecture
-[`docs/lambdas/async-token/token-plugin-architecture.md`](docs/lambdas/async-token/token-plugin-architecture.md)
-
-Describes the Lambda Layer plugin injection pattern used to decouple the `third-party-token` nested stack from any specific plugin implementation. Covers the `createPlugin()` contract, plugin filename convention, the `plugin-loader.ts` dynamic import mechanism, layer build via Makefile, canary deployment guarantee via `THIRDPARTY_TOKEN_PLUGIN_LAYER_ARN`, and the target architecture for SAR publication.
-
-#### Plugin Layer — Authoring Guide
-[`docs/lambdas/async-token/plugin-layer-authoring-guide.md`](docs/lambdas/async-token/plugin-layer-authoring-guide.md)
-
-Step-by-step guide for implementing a new plugin layer: plugin contract, Makefile build, layer resource, nested stack wiring, SSM parameters, and deployment validation.
-
-### RFCs
-
-- [RFC-001: Async Token Alerting Strategy Options](docs/rfc/rfc-001-async-token-alerting-strategy-options.md) — Options analysis for getting profile-level failure context into Slack notifications from the async token Lambda.
