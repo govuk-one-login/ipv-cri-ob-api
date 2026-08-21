@@ -108,9 +108,9 @@ Conditions:
     - !Condition IsNotProduction
   UsingThirdPartyTokenResourcePrefix: !Not
     - !Equals [ !Ref ThirdPartyTokenResourcePrefix, "none" ] # none = current stack by default unless provided
-  ThirdPartyTokenSchedulerEnabled: !Or
-    - !Equals [ !Ref DeploymentType, "pipeline" ] # always on in pipelines
-    - !Equals [ !Ref ThirdPartyTokenSchedulerEnabled, "true" ] # Allows dev stack override
+#  ThirdPartyTokenSchedulerEnabled: !Or
+#    - !Equals [ !Ref DeploymentType, "pipeline" ] # always on in pipelines
+#    - !Equals [ !Ref ThirdPartyTokenSchedulerEnabled, "true" ] # Allows dev stack override
 
 Globals:
   Function:
@@ -239,29 +239,29 @@ Resources:
   #                                                                  #
   ####################################################################
 
-  ThirdPartyToken:
-    Type: AWS::Serverless::Application
-    Properties:
-      Location: ./third-party-token.yaml
-      Parameters:
-        ParentStackName: !Ref AWS::StackName
-        ThirdPartyTokenPluginName: !Ref ThirdPartyTokenPluginName
-        ThirdPartyTokenPluginLayerArn: !Ref ObTokenPluginLayer
-        ThirdPartyTokenResourcePrefix: !Ref ThirdPartyTokenResourcePrefix
-        ThirdPartyTokenSchedulerEnabled: !If [ ThirdPartyTokenSchedulerEnabled, "true", "false" ]
-        ThirdPartyTokenScheduleExpression: "cron(0/1 * * * ? *)"
-        Environment: !Ref Environment
-        VpcStackName: !Ref VpcStackName
-        CriIdentifier: !Ref CriIdentifier
-        ProvisionedConcurrentExecutions: !FindInMap [ EnvironmentConfiguration, !Ref Environment, provisionedConcurrentExecutions ]
-        MemorySize: !FindInMap [ EnvironmentConfiguration, !Ref Environment, memorySize ]
-        LogGroupRetentionInDays: !Ref LogGroupRetentionInDays
-        PermissionsBoundary: !Ref PermissionsBoundary
-        CodeSigningConfigArn: !Ref CodeSigningConfigArn
-        DynatraceSecretArn: !FindInMap [ EnvironmentConfiguration, !Ref Environment, dynatraceSecretArn ]
-        DynatraceSecretLayer: !FindInMap [ EnvironmentConfiguration, !Ref Environment, dynatraceLayer ]
-        LambdaDeploymentPreference: !Ref LambdaDeploymentPreference
-        CodeDeployServiceRoleArn: !GetAtt CodeDeployServiceRole.Arn
+#  ThirdPartyToken:
+#    Type: AWS::Serverless::Application
+#    Properties:
+#      Location: ./third-party-token.yaml
+#      Parameters:
+#        ParentStackName: !Ref AWS::StackName
+#        ThirdPartyTokenPluginName: !Ref ThirdPartyTokenPluginName
+#        ThirdPartyTokenPluginLayerArn: !Ref ObTokenPluginLayer
+#        ThirdPartyTokenResourcePrefix: !Ref ThirdPartyTokenResourcePrefix
+#        ThirdPartyTokenSchedulerEnabled: !If [ ThirdPartyTokenSchedulerEnabled, "true", "false" ]
+#        ThirdPartyTokenScheduleExpression: "cron(0/1 * * * ? *)"
+#        Environment: !Ref Environment
+#        VpcStackName: !Ref VpcStackName
+#        CriIdentifier: !Ref CriIdentifier
+#        ProvisionedConcurrentExecutions: !FindInMap [ EnvironmentConfiguration, !Ref Environment, provisionedConcurrentExecutions ]
+#        MemorySize: !FindInMap [ EnvironmentConfiguration, !Ref Environment, memorySize ]
+#        LogGroupRetentionInDays: !Ref LogGroupRetentionInDays
+#        PermissionsBoundary: !Ref PermissionsBoundary
+#        CodeSigningConfigArn: !Ref CodeSigningConfigArn
+#        DynatraceSecretArn: !FindInMap [ EnvironmentConfiguration, !Ref Environment, dynatraceSecretArn ]
+#        DynatraceSecretLayer: !FindInMap [ EnvironmentConfiguration, !Ref Environment, dynatraceLayer ]
+#        LambdaDeploymentPreference: !Ref LambdaDeploymentPreference
+#        CodeDeployServiceRoleArn: !GetAtt CodeDeployServiceRole.Arn
 
   ####################################################################
   #                                                                  #
