@@ -25,9 +25,9 @@
     "test": "vitest run --project unit",
     "test:watch": "vitest",
     "test:coverage": "vitest run --coverage",
+    "test:infra": "vitest run --project infra",
     "test:api": "cucumber-js --profile api",
     "test:smoke": "cucumber-js --profile smoke",
-    "test:infra": "vitest run --config vitest.infra.config.ts",
     "type-check": "tsc --noEmit"
   },
   "devDependencies": {

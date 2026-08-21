@@ -14,8 +14,9 @@ export default defineConfig({
       {
         resolve: {
           alias: {
-            '@common': path.resolve(__dirname, 'src/common'),
-            '@src': path.resolve(__dirname, 'src')
+            '@common': path.resolve(import.meta.dirname, 'src/common'),
+            '@lib': path.resolve(import.meta.dirname, 'src/lib'),
+            '@src': path.resolve(import.meta.dirname, 'src')
           }
         },
         test: {
@@ -31,6 +32,12 @@ export default defineConfig({
           },
           include: ['test/unit/**/*.test.ts'],
           name: 'unit'
+        }
+      },
+      {
+        test: {
+          include: ['test/infra/**/*.test.ts'],
+          name: 'infra'
         }
       }
     ],
