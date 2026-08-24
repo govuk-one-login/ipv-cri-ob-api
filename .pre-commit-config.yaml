@@ -13,12 +13,14 @@ repos:
         args: [--allow-missing-credentials]
       - id: detect-private-key
         name: detect private keys
+
   - repo: https://github.com/aws-cloudformation/cfn-lint
     rev: v1.46.0
     hooks:
       - id: cfn-lint
         name: cfn lint
         files: template\.ya?ml$
+
   - repo: https://github.com/bridgecrewio/checkov.git
     rev: 3.2.506
     hooks:
@@ -26,23 +28,25 @@ repos:
         name: checkov
         files: template\.ya?ml$
         args: [--soft-fail]
+
   - repo: https://github.com/Yelp/detect-secrets
     rev: v1.5.0
     hooks:
       - id: detect-secrets
         name: detect secrets
         args: ['--baseline', '.secrets.baseline']
+
   - repo: local
     hooks:
       - id: oxlint
         name: oxlint
-        entry: npx oxlint
+        entry: npm run lint:fix --
         language: system
         pass_filenames: true
         types_or: [javascript, ts]
       - id: oxfmt
         name: oxfmt
-        entry: npx oxfmt --check
+        entry: npm run format:fix --
         language: system
         pass_filenames: true
         types_or: [javascript, ts, json, css, scss]
