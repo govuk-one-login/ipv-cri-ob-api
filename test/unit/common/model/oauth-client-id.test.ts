@@ -1,8 +1,17 @@
+import type { MockInstance } from 'vitest'
+
 import { getTokenProfileForClientId, OAuthClientId } from '@common/model/oauth-client-id'
+import { logger } from '@govuk-one-login/cri-logger'
 import { TokenProfile } from '@lib/token-rotator/model/token-profile'
-import { describe, expect, it } from 'vitest'
+import { beforeEach, describe, expect, it, vi } from 'vitest'
 
 describe('getTokenProfileForClientId', () => {
+  let errorSpy: MockInstance<typeof logger.error>
+
+  beforeEach(() => {
+    errorSpy = vi.spyOn(logger, 'error').mockImplementation(() => {})
+  })
+
   it.each([
     [OAuthClientId.IPV_CORE, TokenProfile.LIVE],
     [OAuthClientId.IPV_CORE_STUB, TokenProfile.STUB],
@@ -15,8 +24,14 @@ describe('getTokenProfileForClientId', () => {
   ])('maps client id %s to profile %s', (clientId, expectedProfile) => {
     expect(getTokenProfileForClientId(clientId)).toBe(expectedProfile)
   })
-  it('throws when client is unknown or missing', () => {
-    expect(() => getTokenProfileForClientId('crumbs')).toThrow('Unknown OAuth Client ID')
-    expect(() => getTokenProfileForClientId('')).toThrow('Unknown OAuth Client ID')
-  })
+
+  it.each(['crumbs', ''])(
+    'defaults to LIVE and logs an error for unknown client id %j',
+    (clientId) => {
+      expect(getTokenProfileForClientId(clientId)).toBe(TokenProfile.LIVE)
+      expect(errorSpy).toHaveBeenCalledWith(
+        `Unknown OAuth Client: ${clientId}, defaulting to LIVE profile`
+      )
+    }
+  )
 })

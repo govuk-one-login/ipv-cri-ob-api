@@ -1,3 +1,4 @@
+import { logger } from '@govuk-one-login/cri-logger'
 import { TokenProfile } from '@lib/token-rotator/model/token-profile'
 
 export const OAuthClientId = {
@@ -28,10 +29,11 @@ const isOAuthClientId = (value: string): value is OAuthClientId =>
   (Object.values(OAuthClientId) as string[]).includes(value)
 
 export const getTokenProfileForClientId = (clientId: string): TokenProfile => {
-  const possibleOAuthClientID = isOAuthClientId(clientId) ? clientId : undefined
-  if (possibleOAuthClientID) {
-    return ClientIdToTokenProfileMapping[possibleOAuthClientID]
+  const possibleOAuthClientId = isOAuthClientId(clientId) ? clientId : undefined
+  if (possibleOAuthClientId) {
+    return ClientIdToTokenProfileMapping[possibleOAuthClientId]
   } else {
-    throw new Error('Unknown OAuth Client ID')
+    logger.error(`Unknown OAuth Client: ${clientId}, defaulting to LIVE profile`)
+    return TokenProfile.LIVE
   }
 }

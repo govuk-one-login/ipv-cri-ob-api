@@ -46,12 +46,12 @@ This handler can then be deployed as a Lambda (alongside a DynamoDB table) with 
 
 The following environment values must be present in the Lambda runtime for the handler to load via `loadTokenRotatorConfigFromEnv()`
 
-| Environment variable                   | Description                                                                                                                                                     | Required |
-|----------------------------------------|-----------------------------------------------------------------------------------------------------------------------------------------------------------------|----------|
-| `TOKEN_ROTATOR_DB_TABLE_NAME`          | The name of the database table the token rotator will use to store tokens                                                                                       | Yes      |
-| `TOKEN_ROTATOR_PROFILES`               | A pipe delimited list of profiles the token rotator will store tokens against, at least one profile must be provided. Available profiles: `STUB`, `UAT`, `LIVE` | Yes      |
-| `TOKEN_ROTATOR_REFRESH_WINDOW_SECONDS` | The number of seconds **before** a token expires that the rotator will begin attempting to rotate the token                                                     | Yes      |
-| `TOKEN_ROTATOR_CREDENTIALS_PATH`       | Path prefix used by the selected credentials provider to look up parameters.                                                                                    | Yes      |
+| Environment variable                   | Description                                                                                                                                                                                                                               | Required |
+|----------------------------------------|-------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------|----------|
+| `TOKEN_ROTATOR_DB_TABLE_NAME`          | The name of the database table the token rotator will use to store tokens                                                                                                                                                                 | Yes      |
+| `TOKEN_ROTATOR_PROFILES`               | A pipe delimited list of profiles the token rotator will store tokens against, at least one profile must be provided. Available profiles: `STUB`, `UAT`, `LIVE`                                                                           | Yes      |
+| `TOKEN_ROTATOR_REFRESH_WINDOW_SECONDS` | The number of seconds **before** a token expires that the rotator will begin attempting to rotate the token. This value should be **greater** than your Lambda invocation interval + the 30 second read pad, ideally significantly larger | Yes      |
+| `TOKEN_ROTATOR_CREDENTIALS_PATH`       | Path prefix used by the selected credentials provider to look up parameters.                                                                                                                                                              | Yes      |
 
 ### Retrieving a token
 
