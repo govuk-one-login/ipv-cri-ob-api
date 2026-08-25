@@ -551,8 +551,10 @@ Resources:
         - AWSXrayWriteOnlyAccess
         - KMSDecryptPolicy:
             KeyId: !ImportValue core-infrastructure-CriDecryptionKey1Id
-        - DynamoDBReadPolicy:
-            TableName: !Ref TokenRotatorTable
+        - Statement:
+            - Effect: Allow
+              Action: dynamodb:GetItem
+              Resource: !GetAtt TokenRotatorTable.Arn
       ProvisionedConcurrencyConfig:
         !If
         - AddProvisionedConcurrency
@@ -659,8 +661,12 @@ Resources:
       Policies:
         - AWSLambdaBasicExecutionRole
         - AWSXrayWriteOnlyAccess
-        - DynamoDBCrudPolicy:
-            TableName: !Ref TokenRotatorTable
+        - Statement:
+            - Effect: Allow
+              Action:
+                - dynamodb:GetItem
+                - dynamodb:PutItem
+              Resource: !GetAtt TokenRotatorTable.Arn
         - SSMParameterReadPolicy:
             ParameterName: !If
               - UseParameterPrefix
