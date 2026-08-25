@@ -658,6 +658,8 @@ Resources:
             - !Sub "/${AWS::StackName}/ecospend-token-rotator"
       AutoPublishAlias: live
       AutoPublishAliasAllProperties: true
+      EventInvokeConfig:
+        MaximumRetryAttempts: 0
       Policies:
         - AWSLambdaBasicExecutionRole
         - AWSXrayWriteOnlyAccess
