@@ -1,8 +1,8 @@
 import type { TokenEntity } from '@lib/token-rotator/model/token-entity'
 
-const READ_EXPIRY_PAD_SECONDS = 30
-
 const nowSeconds = (): number => Math.floor(Date.now() / 1000)
+
+export const READ_EXPIRY_PAD_SECONDS = 30
 
 export const isTokenExpiredForRead = (entity: TokenEntity): boolean =>
   nowSeconds() >= entity.ttl - READ_EXPIRY_PAD_SECONDS

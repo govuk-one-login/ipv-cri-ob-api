@@ -1,5 +1,5 @@
-import type { DynamoTokenRepository } from '@lib/token-rotator/client/dynamo-token-repository'
 import type { CredentialsProvider } from '@lib/token-rotator/client/ssm-credentials-provider'
+import type { TokenRepository } from '@lib/token-rotator/model/token-repository'
 import type { TokenRotationStrategy } from '@lib/token-rotator/model/token-rotation-strategy'
 import type { TokenRotationServiceConfig } from '@lib/token-rotator/service/token-rotation-service'
 import type { ScheduledEvent } from 'aws-lambda'
@@ -18,7 +18,7 @@ const buildCredentialsProvider = (): CredentialsProvider => ({
   getCredentials: vi.fn().mockResolvedValue({ 'client-id': 'test' })
 })
 
-const buildTokenRepository = (): DynamoTokenRepository => ({
+const buildTokenRepository = (): TokenRepository => ({
   getToken: vi.fn().mockResolvedValue(undefined),
   putToken: vi.fn().mockResolvedValue(undefined)
 })

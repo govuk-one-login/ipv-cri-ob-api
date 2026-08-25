@@ -1,8 +1,7 @@
-import type { DynamoTokenRepository } from '@lib/token-rotator/client/dynamo-token-repository'
 import type { TokenProfile } from '@lib/token-rotator/model/token-profile'
+import type { TokenRepository } from '@lib/token-rotator/model/token-repository'
 
 import { logger } from '@govuk-one-login/cri-logger'
-import { dynamoTokenRepository } from '@lib/token-rotator/client/dynamo-token-repository'
 import { formatTokenExpiry, isTokenExpiredForRead } from '@lib/token-rotator/util/token-expiry'
 
 export interface TokenRetrievalService {
@@ -10,7 +9,7 @@ export interface TokenRetrievalService {
 }
 
 interface TokenRetrievalServiceCollaborators {
-  tokenRepository: DynamoTokenRepository
+  tokenRepository: TokenRepository
 }
 
 export const createTokenRetrievalService = (
@@ -31,8 +30,4 @@ export const createTokenRetrievalService = (
     }
     return tokenEntity.tokenValue
   }
-})
-
-export const tokenRetrievalService = createTokenRetrievalService({
-  tokenRepository: dynamoTokenRepository
 })

@@ -1,5 +1,6 @@
 import { TokenProfile } from '@lib/token-rotator/model/token-profile'
 import { loadTokenRotatorConfigFromEnv } from '@lib/token-rotator/util/load-config-from-env'
+import { READ_EXPIRY_PAD_SECONDS } from '@lib/token-rotator/util/token-expiry'
 import { afterEach, beforeEach, describe, expect, it } from 'vitest'
 
 const ENV_KEYS = [
@@ -70,5 +71,15 @@ describe('loadTokenRotatorConfigFromEnv', () => {
     })
 
     expect(() => loadTokenRotatorConfigFromEnv()).toThrow(/TOKEN_ROTATOR_CREDENTIALS_PATH/)
+  })
+
+  it('rejects a refresh window that is not greater than the read pad', () => {
+    setEnv({
+      TOKEN_ROTATOR_CREDENTIALS_PATH: '/test/token-rotator',
+      TOKEN_ROTATOR_PROFILES: 'STUB',
+      TOKEN_ROTATOR_REFRESH_WINDOW_SECONDS: `${READ_EXPIRY_PAD_SECONDS}`
+    })
+
+    expect(() => loadTokenRotatorConfigFromEnv()).toThrow(/must be greater than/)
   })
 })

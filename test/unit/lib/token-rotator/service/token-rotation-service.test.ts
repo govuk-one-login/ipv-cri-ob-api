@@ -1,7 +1,7 @@
-import type { DynamoTokenRepository } from '@lib/token-rotator/client/dynamo-token-repository'
 import type { CredentialsProvider } from '@lib/token-rotator/client/ssm-credentials-provider'
 import type { TokenCredentials } from '@lib/token-rotator/model/token-credentials'
 import type { TokenEntity } from '@lib/token-rotator/model/token-entity'
+import type { TokenRepository } from '@lib/token-rotator/model/token-repository'
 import type { TokenRotationStrategy } from '@lib/token-rotator/model/token-rotation-strategy'
 
 import { TokenRotationError } from '@lib/token-rotator/error/token-rotation-errors'
@@ -12,8 +12,10 @@ import {
 } from '@lib/token-rotator/service/token-rotation-service'
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest'
 
+const REFRESH_WINDOW = 300
 const NOW_SECONDS = 690_768_000 // 1991-11-22T00:00:00Z
 const FRESH_TOKEN_TTL = NOW_SECONDS + 1000
+const STALE_TOKEN_TTL = NOW_SECONDS + (REFRESH_WINDOW - 100)
 const FRESH_TOKEN = 'new-access-token'
 
 const PROVIDER_CREDENTIALS: TokenCredentials = {
@@ -29,7 +31,7 @@ const buildConfig = (
 ): TokenRotationServiceConfig => ({
   credentialsPathPrefix: '/test/tokens',
   profiles: [TokenProfile.STUB],
-  refreshWindowSeconds: 300,
+  refreshWindowSeconds: REFRESH_WINDOW,
   ...overrides
 })
 
@@ -51,7 +53,7 @@ const mockCredentialsProvider = (): CredentialsProvider => ({
   getCredentials: vi.fn().mockResolvedValue(PROVIDER_CREDENTIALS)
 })
 
-const mockTokenRepository = (): DynamoTokenRepository => ({
+const mockTokenRepository = (): TokenRepository => ({
   getToken: vi.fn().mockResolvedValue(undefined),
   putToken: vi.fn().mockResolvedValue(undefined)
 })
@@ -117,6 +119,60 @@ describe('token-rotation-service', () => {
       expect(credentialsProvider.getCredentials).not.toHaveBeenCalled()
       expect(tokenRotationStrategy.rotate).not.toHaveBeenCalled()
       expect(tokenRepository.putToken).not.toHaveBeenCalled()
+    })
+
+    it('rotates both profiles when one is stale and the other is uncached', async () => {
+      const credentialsProvider = mockCredentialsProvider()
+      const tokenRepository = mockTokenRepository()
+      tokenRepository.getToken = vi
+        .fn()
+        .mockResolvedValueOnce(undefined)
+        .mockResolvedValueOnce(buildTokenEntity({ id: TokenProfile.UAT, ttl: STALE_TOKEN_TTL }))
+      const tokenRotationStrategy = buildStrategy()
+
+      const service = createTokenRotationService(
+        buildConfig({ profiles: [TokenProfile.STUB, TokenProfile.UAT] }),
+        { credentialsProvider, tokenRepository, tokenRotationStrategy }
+      )
+
+      await service.rotateAll()
+
+      expect(credentialsProvider.getCredentials).toHaveBeenCalledTimes(2)
+      expect(credentialsProvider.getCredentials).toHaveBeenCalledWith('/test/tokens/STUB')
+      expect(credentialsProvider.getCredentials).toHaveBeenCalledWith('/test/tokens/UAT')
+      expect(tokenRotationStrategy.rotate).toHaveBeenCalledTimes(2)
+      expect(tokenRepository.putToken).toHaveBeenCalledTimes(2)
+      expect(tokenRepository.putToken).toHaveBeenCalledWith(
+        expect.objectContaining({ id: TokenProfile.STUB })
+      )
+      expect(tokenRepository.putToken).toHaveBeenCalledWith(
+        expect.objectContaining({ id: TokenProfile.UAT })
+      )
+    })
+
+    it('only rotates the stale profile when another profile is still fresh', async () => {
+      const credentialsProvider = mockCredentialsProvider()
+      const tokenRepository = mockTokenRepository()
+      tokenRepository.getToken = vi
+        .fn()
+        .mockResolvedValueOnce(buildTokenEntity({ id: TokenProfile.UAT, ttl: FRESH_TOKEN_TTL }))
+        .mockResolvedValueOnce(buildTokenEntity({ id: TokenProfile.LIVE, ttl: STALE_TOKEN_TTL }))
+      const tokenRotationStrategy = buildStrategy()
+
+      const service = createTokenRotationService(
+        buildConfig({ profiles: [TokenProfile.UAT, TokenProfile.LIVE] }),
+        { credentialsProvider, tokenRepository, tokenRotationStrategy }
+      )
+
+      await service.rotateAll()
+
+      expect(credentialsProvider.getCredentials).toHaveBeenCalledOnce()
+      expect(credentialsProvider.getCredentials).toHaveBeenCalledWith('/test/tokens/LIVE')
+      expect(tokenRotationStrategy.rotate).toHaveBeenCalledOnce()
+      expect(tokenRepository.putToken).toHaveBeenCalledOnce()
+      expect(tokenRepository.putToken).toHaveBeenCalledWith(
+        expect.objectContaining({ id: TokenProfile.LIVE })
+      )
     })
 
     it('throws AggregateRotationError when at least one profile fails', async () => {

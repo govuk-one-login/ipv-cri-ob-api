@@ -55,9 +55,13 @@ The following environment values must be present in the Lambda runtime for the h
 
 ### Retrieving a token
 
-Consumers can request a stored token by calling the `tokenRetrievalService`:
+Consumers create a `tokenRetrievalService`, passing in the required `TokenRepository`:
 
 ```ts
+const tokenRetrievalService = createTokenRetrievalService({
+  tokenRepository: dynamoTokenRepository
+})
+
 const accessToken = await tokenRetrievalService.retrieveToken(profile) // profile (STUB,UAT,LIVE) tells the retrieval service which token to return
 ```
 

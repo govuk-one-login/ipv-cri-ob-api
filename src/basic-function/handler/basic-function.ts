@@ -4,15 +4,20 @@ import { errorHandler, injectLambdaContext, logMetrics } from '@common/handler/m
 import { getTokenProfileForClientId } from '@common/model/oauth-client-id'
 import { logger } from '@govuk-one-login/cri-logger'
 import { metrics } from '@govuk-one-login/cri-metrics'
-import { tokenRetrievalService } from '@lib/token-rotator/service/token-retrieval-service'
+import { dynamoTokenRepository } from '@lib/token-rotator/client/dynamo-token-repository'
+import { createTokenRetrievalService } from '@lib/token-rotator/service/token-retrieval-service'
 
 import middy from '@middy/core'
+
+const tokens = createTokenRetrievalService({
+  tokenRepository: dynamoTokenRepository
+})
 
 const lambdaHandler = async (event: APIGatewayProxyEvent): Promise<APIGatewayProxyResult> => {
   logger.info('Lambda invoked')
 
   const profile = getTokenProfileForClientId('ipv-core-stub') // example id that maps to STUB, from session normally
-  const tokenValue = await tokenRetrievalService.retrieveToken(profile)
+  const tokenValue = await tokens.retrieveToken(profile)
 
   if (!tokenValue) {
     logger.error('Unable to retrieve access token', { profile })

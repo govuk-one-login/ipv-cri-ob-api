@@ -1,5 +1,5 @@
-import type { DynamoTokenRepository } from '@lib/token-rotator/client/dynamo-token-repository'
 import type { TokenEntity } from '@lib/token-rotator/model/token-entity'
+import type { TokenRepository } from '@lib/token-rotator/model/token-repository'
 
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest'
 
@@ -11,10 +11,6 @@ const NOW_SECONDS = 690_768_000 // 1991-11-22T00:00:00Z
 const FRESH_TOKEN_TTL = NOW_SECONDS + 1000
 const EXPIRED_TOKEN_TTL = NOW_SECONDS - 60
 
-vi.hoisted(() => {
-  vi.stubEnv('TOKEN_ROTATOR_DB_TABLE_NAME', 'token-table')
-})
-
 const buildTokenEntity = (overrides: Partial<TokenEntity> = {}): TokenEntity => ({
   id: TokenProfile.STUB,
   tokenValue: 'cached-token',
@@ -22,7 +18,7 @@ const buildTokenEntity = (overrides: Partial<TokenEntity> = {}): TokenEntity => 
   ...overrides
 })
 
-const mockTokenRepository = (): DynamoTokenRepository => ({
+const mockTokenRepository = (): TokenRepository => ({
   getToken: vi.fn().mockResolvedValue(undefined),
   putToken: vi.fn().mockResolvedValue(undefined)
 })

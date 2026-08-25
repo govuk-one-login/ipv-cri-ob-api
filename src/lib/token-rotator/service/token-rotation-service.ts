@@ -1,7 +1,7 @@
-import type { DynamoTokenRepository } from '@lib/token-rotator/client/dynamo-token-repository'
 import type { CredentialsProvider } from '@lib/token-rotator/client/ssm-credentials-provider'
 import type { TokenCredentials } from '@lib/token-rotator/model/token-credentials'
 import type { TokenProfile } from '@lib/token-rotator/model/token-profile'
+import type { TokenRepository } from '@lib/token-rotator/model/token-repository'
 import type { TokenRotationStrategy } from '@lib/token-rotator/model/token-rotation-strategy'
 
 import { logger } from '@govuk-one-login/cri-logger'
@@ -23,7 +23,7 @@ export interface TokenRotationServiceConfig {
 
 interface TokenRotationServiceCollaborators {
   credentialsProvider: CredentialsProvider
-  tokenRepository: DynamoTokenRepository
+  tokenRepository: TokenRepository
   tokenRotationStrategy: TokenRotationStrategy
 }
 

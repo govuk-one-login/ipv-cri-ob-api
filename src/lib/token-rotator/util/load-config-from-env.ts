@@ -2,6 +2,7 @@ import type { TokenRotationServiceConfig } from '@lib/token-rotator/service/toke
 
 import { TokenProfile } from '@lib/token-rotator/model/token-profile'
 import { requireEnv } from '@lib/token-rotator/util/env'
+import { READ_EXPIRY_PAD_SECONDS } from '@lib/token-rotator/util/token-expiry'
 
 const KNOWN_PROFILES = Object.values(TokenProfile) as TokenProfile[]
 
@@ -22,6 +23,11 @@ const parseRefreshWindow = (raw: string): number => {
   const value = Number(raw)
   if (!Number.isFinite(value) || value <= 0) {
     throw new Error(`TOKEN_ROTATOR_REFRESH_WINDOW_SECONDS must be a positive number, got "${raw}"`)
+  }
+  if (value <= READ_EXPIRY_PAD_SECONDS) {
+    throw new Error(
+      `TOKEN_ROTATOR_REFRESH_WINDOW_SECONDS must be greater than ${READ_EXPIRY_PAD_SECONDS} seconds`
+    )
   }
   return value
 }
