@@ -1,36 +1,28 @@
 import type { APIGatewayProxyEvent, APIGatewayProxyResult } from 'aws-lambda'
 
-import {
-  errorHandler,
-  httpHeaderNormalizer,
-  injectLambdaContext,
-  latencyRecorder,
-  logMetrics,
-  resultRecorder
-} from '@common/handler/middleware'
-import { getConfigProfileNameFromClientId } from '@common/util/client-config-profile-resolver'
+import { errorHandler, injectLambdaContext, logMetrics } from '@common/handler/middleware'
+import { getTokenProfileForClientId } from '@common/model/oauth-client-id'
 import { logger } from '@govuk-one-login/cri-logger'
 import { metrics } from '@govuk-one-login/cri-metrics'
-import { retrieveToken } from '@src/async-token/consumer/token-retrieval'
+import { dynamoTokenRepository } from '@lib/token-rotator/client/dynamo-token-repository'
+import { createTokenRetrievalService } from '@lib/token-rotator/service/token-retrieval-service'
 
 import middy from '@middy/core'
+
+const tokens = createTokenRetrievalService({
+  tokenRepository: dynamoTokenRepository
+})
 
 const lambdaHandler = async (event: APIGatewayProxyEvent): Promise<APIGatewayProxyResult> => {
   logger.info('Lambda invoked')
 
-  // ThirdParty Token Example
-  const clientIdFromSessionItem = 'ipv-core'
-  const configProfileName = getConfigProfileNameFromClientId(clientIdFromSessionItem)
-  const tokenValue = await retrieveToken(configProfileName)
-
-  logger.info(`Token retrieved: ${!!tokenValue}`)
+  const profile = getTokenProfileForClientId('ipv-core-stub') // example id that maps to STUB, from session normally
+  const tokenValue = await tokens.retrieveToken(profile)
 
   if (!tokenValue) {
-    logger.error('Unable to retrieve token')
-
+    logger.error('Unable to retrieve access token', { profile })
     return {
       body: JSON.stringify({
-        // oauth_error aligns with Limes use of common-expresses error handler
         oauth_error: {
           error: 'server_error',
           error_description: 'Unexpected server error'
@@ -40,9 +32,11 @@ const lambdaHandler = async (event: APIGatewayProxyEvent): Promise<APIGatewayPro
     }
   }
 
+  logger.info('Access token retrieved', { profile })
+
   return {
     body: JSON.stringify({
-      message: 'Successfully executed',
+      message: 'Success',
       path: event.path
     }),
     statusCode: 200
@@ -50,10 +44,7 @@ const lambdaHandler = async (event: APIGatewayProxyEvent): Promise<APIGatewayPro
 }
 
 export const handler = middy<APIGatewayProxyEvent, APIGatewayProxyResult>()
-  .use(latencyRecorder())
-  .use(resultRecorder())
   .use(injectLambdaContext(logger, { resetKeys: true }))
   .use(logMetrics(metrics, { captureColdStartMetric: true }))
-  .use(httpHeaderNormalizer())
   .use(errorHandler())
   .handler(lambdaHandler)

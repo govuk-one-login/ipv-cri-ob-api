@@ -73,64 +73,8 @@ jobs:
           template: deploy/template.yaml
           aws-role-arn: ${{ secrets.role_arn }}
 
-      # Workaround: devplatform-upload-action only signs Functions/Layers found
-      # in the top-level template and writes provenance metadata (repository, commitsha
-      # etc.) to their S3 objects. Functions inside nested AWS::Serverless::Application
-      # stacks are not discovered. This step iterates sam build output directories for
-      # each nested stack, runs sam package to sign and upload their functions, then
-      # writes the same provenance metadata to the S3 objects directly. The upload
-      # action's subsequent sam package then sees the nested resources are already
-      # packaged and preserves them.
-      - name: Sign nested stack functions
-        working-directory: .aws-sam/build
-        env:
-          ARTIFACT_BUCKET: ${{ secrets.artifact_bucket }}
-          SIGNING_PROFILE: ${{ secrets.signing_profile }}
-        run: |
-          [[ -z "$SIGNING_PROFILE" ]] && echo "No signing profile set, skipping" && exit 0
-
-          head_message=$(git log -1 --format=%s)
-
-          release_metadata=(
-            "commitsha=${GITHUB_SHA}"
-            "committag=$(git describe --tags --first-parent --always)"
-            "commitmessage='$(echo "${head_message//\'/\\\'}" | head -n 1 | cut -c1-50)'"
-            "mergetime=$(TZ=UTC0 git log -1 --format=%cd --date=format-local:"%F %T")"
-            "commitauthor='${GITHUB_ACTOR}'"
-            "repository=${GITHUB_REPOSITORY}"
-          )
-          metadata=$(IFS="," && echo "${release_metadata[*]}")
-
-          for stack in $(yq '.Resources[] | select(.Type=="AWS::Serverless::Application") | key' template.yaml); do
-            # sam build outputs nested stacks to ./<StackName>/template.yaml regardless of the original Location
-            built_template="${stack}/template.yaml"
-            [[ -f "$built_template" ]] || continue
-            signing_args=""
-            for resource in $(yq '.Resources[] | select(.Type=="AWS::Serverless::Function" or .Type=="AWS::Serverless::LayerVersion") | key' "$built_template"); do
-              signing_args+="${resource}=${SIGNING_PROFILE} "
-            done
-            if [[ -n "$signing_args" ]]; then
-              echo "Signing nested resources in $stack: $signing_args"
-              (cd "$stack" && sam package \
-                --template-file template.yaml \
-                --output-template-file template.yaml.packaged \
-                --s3-bucket "$ARTIFACT_BUCKET" \
-                --signing-profiles $signing_args \
-                && mv template.yaml.packaged template.yaml)
-              # sam package uploads the Lambda code to S3 and rewrites CodeUri to the S3 URI.
-              # Write provenance metadata to each uploaded S3 object now, mirroring what
-              # devplatform-upload-action does for top-level resources after its sam package.
-              for resource in $(yq '.Resources[] | select(.Type=="AWS::Serverless::Function" or .Type=="AWS::Serverless::LayerVersion") | key' "$built_template"); do
-                uri=$(yq ".Resources.${resource}.Properties | .CodeUri // .ContentUri" "${stack}/template.yaml")
-                [[ -z "$uri" || "$uri" == "null" ]] && continue
-                echo "Writing provenance metadata for $resource: $uri"
-                aws s3 cp "$uri" "$uri" --metadata "$metadata"
-              done
-            fi
-          done
-
       - name: SAM package and upload to S3
-        uses: govuk-one-login/devplatform-upload-action@245bad4dc21702a5e665f1ca615108f6e70546d2 # v4.0.0
+        uses: govuk-one-login/devplatform-upload-action/sam@ec09f4b1f8648fe21dd18a40a2d8e2fa94d0ad41 # v4.2.0
         with:
           aws-role-arn: ${{ secrets.role_arn}}
           artifact-bucket-name: ${{ secrets.artifact_bucket }}
