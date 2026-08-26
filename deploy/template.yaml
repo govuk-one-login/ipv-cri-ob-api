@@ -701,6 +701,12 @@ Resources:
       LogGroupName: !Sub "/aws/lambda/${AWS::StackName}-ecospend-token-rotator"
       RetentionInDays: !Ref LogGroupRetentionInDays
 
+  EcospendTokenRotatorDeployCheck:
+    Type: Custom::EcospendTokenRotate
+    Properties:
+      ServiceToken: !Ref EcospendTokenRotatorFunction.Alias
+      Version: !Ref EcospendTokenRotatorFunction.Version
+
   ####################################################################
   #                                                                  #
   # API config                                                       #

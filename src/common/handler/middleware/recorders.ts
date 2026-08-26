@@ -8,21 +8,9 @@ import {
   LambdaResult,
   LambdaStartState
 } from '@common/model/metrics/lambda-metrics'
-import { formatErrorResponse } from '@govuk-one-login/cri-error-response'
 import { captureMetricWithDimensions, MetricUnit } from '@govuk-one-login/cri-metrics'
 
-export { injectLambdaContext } from '@govuk-one-login/cri-logger'
-export { logMetrics } from '@govuk-one-login/cri-metrics'
-export { default as httpHeaderNormalizer } from '@middy/http-header-normalizer'
-
-// TODO this need changed, this will leak internal error messages to the user
-export const errorHandler = (): MiddlewareObj<APIGatewayProxyEvent, APIGatewayProxyResult> => ({
-  onError: (request) => {
-    request.response = formatErrorResponse(request.error)
-  }
-})
-
-export const latencyRecorder = (): MiddlewareObj<APIGatewayProxyEvent, APIGatewayProxyResult> => {
+const latencyRecorder = (): MiddlewareObj<APIGatewayProxyEvent, APIGatewayProxyResult> => {
   const startTimes = new WeakMap<object, number>()
   let startState: LambdaStartState = LambdaStartState.COLD
 
@@ -50,7 +38,7 @@ export const latencyRecorder = (): MiddlewareObj<APIGatewayProxyEvent, APIGatewa
   }
 }
 
-export const resultRecorder = (): MiddlewareObj<APIGatewayProxyEvent, APIGatewayProxyResult> => {
+const resultRecorder = (): MiddlewareObj<APIGatewayProxyEvent, APIGatewayProxyResult> => {
   const emit = (request: { context: Context }, result: LambdaResult): void => {
     captureMetricWithDimensions(
       LAMBDA_RESULT_METRIC_NAME,
@@ -72,3 +60,5 @@ export const resultRecorder = (): MiddlewareObj<APIGatewayProxyEvent, APIGateway
     }
   }
 }
+
+export { latencyRecorder, resultRecorder }

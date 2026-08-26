@@ -1,18 +1,12 @@
 import type { APIGatewayProxyEvent, APIGatewayProxyResult } from 'aws-lambda'
 
 import { UnauthorisedError } from '@common/error/unauthorised-error'
-import {
-  errorHandler,
-  httpHeaderNormalizer,
-  injectLambdaContext,
-  latencyRecorder,
-  logMetrics,
-  resultRecorder
-} from '@common/handler/middleware'
+import { latencyRecorder, resultRecorder } from '@common/handler/middleware/recorders'
+import { errorResponder } from '@common/handler/middleware/responders'
 import { auditEventPublisher } from '@common/service/audit-event-publisher'
 import { parseBearerToken } from '@common/util/bearer-token'
-import { logger } from '@govuk-one-login/cri-logger'
-import { metrics } from '@govuk-one-login/cri-metrics'
+import { injectLambdaContext, logger } from '@govuk-one-login/cri-logger'
+import { logMetrics, metrics } from '@govuk-one-login/cri-metrics'
 import { identityScoreRepository } from '@src/issue-credential/client/identity-score-repository'
 import { personDetailsRepository } from '@src/issue-credential/client/person-details-repository'
 import { sessionRepository } from '@src/issue-credential/client/session-repository'
@@ -22,6 +16,7 @@ import { verifiableCredentialBuilder } from '@src/issue-credential/service/verif
 import { verifiableCredentialSigner } from '@src/issue-credential/service/verifiable-credential-signer'
 
 import middy from '@middy/core'
+import httpHeaderNormalizer from '@middy/http-header-normalizer'
 
 const issueCredentialService = createIssueCredentialService({
   auditEventPublisher,
@@ -54,5 +49,5 @@ export const handler = middy<APIGatewayProxyEvent, APIGatewayProxyResult>()
   .use(injectLambdaContext(logger, { resetKeys: true }))
   .use(logMetrics(metrics, { captureColdStartMetric: true }))
   .use(httpHeaderNormalizer())
-  .use(errorHandler()) // errorHandler is last
+  .use(errorResponder()) // errorResponder is always last
   .handler(lambdaHandler)
