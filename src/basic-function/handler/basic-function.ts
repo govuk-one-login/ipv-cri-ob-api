@@ -4,13 +4,13 @@ import { errorHandler, injectLambdaContext, logMetrics } from '@common/handler/m
 import { getTokenProfileForClientId } from '@common/model/oauth-client-id'
 import { logger } from '@govuk-one-login/cri-logger'
 import { metrics } from '@govuk-one-login/cri-metrics'
-import { dynamoTokenRepository } from '@lib/token-rotator/client/dynamo-token-repository'
+import { getDynamoTokenRepository } from '@lib/token-rotator/client/dynamo-token-repository'
 import { createTokenRetrievalService } from '@lib/token-rotator/service/token-retrieval-service'
 
 import middy from '@middy/core'
 
 const tokens = createTokenRetrievalService({
-  tokenRepository: dynamoTokenRepository
+  tokenRepository: getDynamoTokenRepository()
 })
 
 const lambdaHandler = async (event: APIGatewayProxyEvent): Promise<APIGatewayProxyResult> => {

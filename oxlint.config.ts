@@ -37,6 +37,17 @@ export default defineConfig({
     'typescript/no-floating-promises': 'error',
     'typescript/prefer-nullish-coalescing': 'off',
     'no-console': 'error',
+    'no-restricted-imports': [
+      'warn',
+      {
+        patterns: [
+          {
+            regex: '^\\.\\.?/',
+            message: 'Use path aliases (@src, @lib, @common) instead of relative imports.'
+          }
+        ]
+      }
+    ],
     'perfectionist/sort-imports': [
       'warn',
       {
@@ -88,7 +99,8 @@ export default defineConfig({
       rules: {
         'no-console': 'off',
         'no-empty-pattern': 'off',
-        'no-unsafe-optional-chaining': 'warn'
+        'no-unsafe-optional-chaining': 'warn',
+        'no-restricted-imports': 'off'
       }
     }
   ]
