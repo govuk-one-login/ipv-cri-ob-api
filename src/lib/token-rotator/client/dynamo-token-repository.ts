@@ -24,7 +24,8 @@ export const createDynamoTokenRepository = (
   }
 })
 
-export const dynamoTokenRepository = createDynamoTokenRepository(
-  { tableName: requireEnv('TOKEN_ROTATOR_DB_TABLE_NAME') },
-  DynamoDBDocumentClient.from(new DynamoDBClient({}))
-)
+export const getDynamoTokenRepository = (): TokenRepository =>
+  createDynamoTokenRepository(
+    { tableName: requireEnv('TOKEN_ROTATOR_DB_TABLE_NAME') },
+    DynamoDBDocumentClient.from(new DynamoDBClient({}))
+  )

@@ -31,27 +31,29 @@ Consumers then build the token rotator function handler:
 
 ```ts
 const tokenRotatorHandler = createTokenRotator(
-  loadTokenRotatorConfigFromEnv(),               // library provided
+  loadTokenRotatorConfigFromEnv(),                // library provided
   {
-    credentialsProvider: ssmCredentialsProvider, // library provided
-    tokenRepository: dynamoTokenRepository,      // library provided
-    tokenRotationStrategy: myTokenStrategy       // consumer provided
+    credentialsProvider: ssmCredentialsProvider,  // library provided
+    tokenRepository: getDynamoTokenRepository(),  // library provided
+    tokenRotationStrategy: myTokenStrategy        // consumer provided
   }
 )
 ```
 
-This handler can then be deployed as a Lambda (alongside a DynamoDB table) with a suitable ScheduledRotation as a fully asynchronous access token life cycle manager
+Consumers can opt to use the library provided Dynamo and SSM adapters or roll their own.
+
+This handler can then be deployed as a Lambda (alongside a suitable database table) on a ScheduledRotation as a fully asynchronous access token life cycle manager
 
 ### Environment Variables
 
-The following environment values must be present in the Lambda runtime for the handler to load via `loadTokenRotatorConfigFromEnv()`
+The following environment values can be loaded in the Lambda runtime in order to use the provided convenience helpers (`loadTokenRotatorConfigFromEnv(), getDynamoTokenRepository()`)
 
-| Environment variable                   | Description                                                                                                                                                                                                                               | Required |
-|----------------------------------------|-------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------|----------|
-| `TOKEN_ROTATOR_DB_TABLE_NAME`          | The name of the database table the token rotator will use to store tokens                                                                                                                                                                 | Yes      |
-| `TOKEN_ROTATOR_PROFILES`               | A pipe delimited list of profiles the token rotator will store tokens against, at least one profile must be provided. Available profiles: `STUB`, `UAT`, `LIVE`                                                                           | Yes      |
-| `TOKEN_ROTATOR_REFRESH_WINDOW_SECONDS` | The number of seconds **before** a token expires that the rotator will begin attempting to rotate the token. This value should be **greater** than your Lambda invocation interval + the 30 second read pad, ideally significantly larger | Yes      |
-| `TOKEN_ROTATOR_CREDENTIALS_PATH`       | Path prefix used by the selected credentials provider to look up parameters.                                                                                                                                                              | Yes      |
+| Environment variable                   | Description                                                                                                                                                                                                                               | Required                                                     |
+|----------------------------------------|-------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------|--------------------------------------------------------------|
+| `TOKEN_ROTATOR_DB_TABLE_NAME`          | The name of the Dynamo database table the token rotator will use to store tokens                                                                                                                                                          | Yes (if using convenience `getDynamoTokenRepository()`)      |
+| `TOKEN_ROTATOR_PROFILES`               | A pipe delimited list of profiles the token rotator will store tokens against, at least one profile must be provided. Available profiles: `STUB`, `UAT`, `LIVE`                                                                           | Yes (if using convenience `loadTokenRotatorConfigFromEnv()`) |
+| `TOKEN_ROTATOR_REFRESH_WINDOW_SECONDS` | The number of seconds **before** a token expires that the rotator will begin attempting to rotate the token. This value should be **greater** than your Lambda invocation interval + the 30 second read pad, ideally significantly larger | Yes (if using convenience `loadTokenRotatorConfigFromEnv()`) |
+| `TOKEN_ROTATOR_CREDENTIALS_PATH`       | Path prefix used by the selected credentials provider to look up parameters.                                                                                                                                                              | Yes (if using convenience `loadTokenRotatorConfigFromEnv()`) |
 
 ### Retrieving a token
 
@@ -59,7 +61,7 @@ Consumers create a `tokenRetrievalService`, passing in the required `TokenReposi
 
 ```ts
 const tokenRetrievalService = createTokenRetrievalService({
-  tokenRepository: dynamoTokenRepository
+  tokenRepository: getDynamoTokenRepository() // or createDynamoTokenRepository({...}) if using library provided Dynamo adapter
 })
 
 const accessToken = await tokenRetrievalService.retrieveToken(profile) // profile (STUB,UAT,LIVE) tells the retrieval service which token to return
