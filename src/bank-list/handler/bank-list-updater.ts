@@ -1,9 +1,8 @@
 import type { ScheduledEvent } from 'aws-lambda'
 
-import { injectLambdaContext, logMetrics } from '@common/handler/middleware'
 import { requireEnv } from '@common/util/env'
-import { logger } from '@govuk-one-login/cri-logger'
-import { metrics } from '@govuk-one-login/cri-metrics'
+import { injectLambdaContext, logger } from '@govuk-one-login/cri-logger'
+import { logMetrics, metrics } from '@govuk-one-login/cri-metrics'
 import { getDynamoTokenRepository } from '@lib/token-rotator/client/dynamo-token-repository'
 import { createTokenRetrievalService } from '@lib/token-rotator/service/token-retrieval-service'
 import { getBankListRepository } from '@src/bank-list/client/bank-list-repository'

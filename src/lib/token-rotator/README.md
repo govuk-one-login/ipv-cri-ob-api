@@ -27,10 +27,10 @@ export const myTokenStrategy: TokenRotationStrategy = {
 
 `credentials` is passed into the `rotate` function when the library calls it during a rotation event. The library looks up credentials via the chosen `credentialsProvider`
 
-Consumers then build the token rotator function handler:
+Consumers then build the token rotation service:
 
 ```ts
-const tokenRotatorHandler = createTokenRotator(
+const tokenRotationService = createTokenRotationService(
   loadTokenRotatorConfigFromEnv(),                // library provided
   {
     credentialsProvider: ssmCredentialsProvider,  // library provided
@@ -38,6 +38,12 @@ const tokenRotatorHandler = createTokenRotator(
     tokenRotationStrategy: myTokenStrategy        // consumer provided
   }
 )
+
+// scheduled invocation: rotate only profiles inside the refresh window
+await tokenRotationService.rotateAll()
+
+// on-demand invocation (e.g. deploy hook): force rotation of every profile
+await tokenRotationService.rotateAll({ force: true })
 ```
 
 Consumers can opt to use the library provided Dynamo and SSM adapters or roll their own.
