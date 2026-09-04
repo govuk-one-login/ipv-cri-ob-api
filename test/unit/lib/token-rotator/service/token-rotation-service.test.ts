@@ -224,6 +224,53 @@ describe('token-rotation-service', () => {
       expect(tokenRepository.putToken).not.toHaveBeenCalled()
     })
 
+    describe('when force is true', () => {
+      it('rotates every profile even when the cached token is still fresh', async () => {
+        const credentialsProvider = mockCredentialsProvider()
+        const tokenRepository = mockTokenRepository()
+
+        tokenRepository.getToken = vi
+          .fn()
+          .mockResolvedValueOnce(buildTokenEntity({ id: TokenProfile.STUB, ttl: FRESH_TOKEN_TTL }))
+          .mockResolvedValueOnce(buildTokenEntity({ id: TokenProfile.UAT, ttl: FRESH_TOKEN_TTL }))
+
+        const tokenRotationStrategy = buildStrategy()
+
+        const service = createTokenRotationService(
+          buildConfig({ profiles: [TokenProfile.STUB, TokenProfile.UAT] }),
+          { credentialsProvider, tokenRepository, tokenRotationStrategy }
+        )
+
+        await service.rotateAll({ force: true })
+
+        expect(credentialsProvider.getCredentials).toHaveBeenCalledTimes(2)
+        expect(tokenRotationStrategy.rotate).toHaveBeenCalledTimes(2)
+        expect(tokenRepository.putToken).toHaveBeenCalledTimes(2)
+        expect(tokenRepository.putToken).toHaveBeenCalledWith(
+          expect.objectContaining({ id: TokenProfile.STUB })
+        )
+        expect(tokenRepository.putToken).toHaveBeenCalledWith(
+          expect.objectContaining({ id: TokenProfile.UAT })
+        )
+      })
+
+      it('does not read existing tokens when force is true', async () => {
+        const credentialsProvider = mockCredentialsProvider()
+        const tokenRepository = mockTokenRepository()
+        const tokenRotationStrategy = buildStrategy()
+
+        const service = createTokenRotationService(buildConfig(), {
+          credentialsProvider,
+          tokenRepository,
+          tokenRotationStrategy
+        })
+
+        await service.rotateAll({ force: true })
+
+        expect(tokenRepository.getToken).not.toHaveBeenCalled()
+      })
+    })
+
     it('maps putToken failure to the correct profile', async () => {
       const credentialsProvider = mockCredentialsProvider()
       const tokenRepository = mockTokenRepository()

@@ -11,9 +11,9 @@ export const LambdaStartState = {
 export type LambdaStartState = (typeof LambdaStartState)[keyof typeof LambdaStartState]
 
 export const LambdaMetricDimensions = {
-  Lambda: 'lambda',
-  Result: 'result',
-  StartState: 'start_state'
+  LAMBDA: 'lambda',
+  RESULT: 'result',
+  START_STATE: 'start_state'
 } as const
 
 export const LAMBDA_RESULT_METRIC_NAME = 'lambda_result'
