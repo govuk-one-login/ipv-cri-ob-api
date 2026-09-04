@@ -1,12 +1,15 @@
 import type { DynamoDBDocumentClient } from '@aws-sdk/lib-dynamodb'
 import type { SessionItem } from '@govuk-one-login/cri-types'
 
-import { dynamoDBDocumentClient } from '@common/client/dynamodb-client'
 import { OAuthClientId } from '@common/model/oauth-client-id'
 
 export interface SessionRepository {
   findByAccessToken: (accessToken: string) => Promise<SessionItem | undefined>
   findBySessionId: (sessionId: string) => Promise<SessionItem | undefined>
+}
+
+export interface SessionRepositoryConfig {
+  tableName: string
 }
 
 const DUMMY_SESSION = {
@@ -21,7 +24,10 @@ const DUMMY_SESSION = {
   subject: 'subject-xyz'
 } as SessionItem
 
-export const createSessionRepository = (_client: DynamoDBDocumentClient): SessionRepository => ({
+export const createSessionRepository = (
+  _config: SessionRepositoryConfig,
+  _client: DynamoDBDocumentClient
+): SessionRepository => ({
   findBySessionId: (_sessionId) =>
     // TODO: delete me and get the actual session
     Promise.resolve(DUMMY_SESSION),
@@ -30,5 +36,3 @@ export const createSessionRepository = (_client: DynamoDBDocumentClient): Sessio
     // TODO: delete me and get the actual session
     Promise.resolve(DUMMY_SESSION)
 })
-
-export const sessionRepository = createSessionRepository(dynamoDBDocumentClient)

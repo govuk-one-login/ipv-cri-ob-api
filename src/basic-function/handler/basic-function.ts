@@ -1,16 +1,21 @@
 import type { APIGatewayProxyEvent, APIGatewayProxyResult } from 'aws-lambda'
 
+import { dynamoDBDocumentClient } from '@common/client/dynamodb-client'
 import { errorHandler, injectLambdaContext, logMetrics } from '@common/handler/middleware'
 import { getTokenProfileForClientId } from '@common/model/oauth-client-id'
+import { requireEnv } from '@common/util/env'
 import { logger } from '@govuk-one-login/cri-logger'
 import { metrics } from '@govuk-one-login/cri-metrics'
-import { getDynamoTokenRepository } from '@lib/token-rotator/client/dynamo-token-repository'
+import { createDynamoTokenRepository } from '@lib/token-rotator/client/dynamo-token-repository'
 import { createTokenRetrievalService } from '@lib/token-rotator/service/token-retrieval-service'
 
 import middy from '@middy/core'
 
 const tokens = createTokenRetrievalService({
-  tokenRepository: getDynamoTokenRepository()
+  tokenRepository: createDynamoTokenRepository(
+    { tableName: requireEnv('TOKEN_ROTATOR_DB_TABLE_NAME') },
+    dynamoDBDocumentClient
+  )
 })
 
 const lambdaHandler = async (event: APIGatewayProxyEvent): Promise<APIGatewayProxyResult> => {

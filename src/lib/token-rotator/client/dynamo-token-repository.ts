@@ -1,11 +1,9 @@
 import type { TokenEntity } from '@lib/token-rotator/model/token-entity'
 import type { TokenRepository } from '@lib/token-rotator/model/token-repository'
 
-import { DynamoDBClient } from '@aws-sdk/client-dynamodb'
-import { DynamoDBDocumentClient, GetCommand, PutCommand } from '@aws-sdk/lib-dynamodb'
-import { requireEnv } from '@lib/token-rotator/util/env'
+import { type DynamoDBDocumentClient, GetCommand, PutCommand } from '@aws-sdk/lib-dynamodb'
 
-interface DynamoTokenRepositoryConfig {
+export interface DynamoTokenRepositoryConfig {
   tableName: string
 }
 
@@ -23,9 +21,3 @@ export const createDynamoTokenRepository = (
     await client.send(new PutCommand({ Item: entity, TableName: config.tableName }))
   }
 })
-
-export const getDynamoTokenRepository = (): TokenRepository =>
-  createDynamoTokenRepository(
-    { tableName: requireEnv('TOKEN_ROTATOR_DB_TABLE_NAME') },
-    DynamoDBDocumentClient.from(new DynamoDBClient({}))
-  )

@@ -467,6 +467,9 @@ Resources:
           AUDIT_COMPONENT_ID: !FindInMap [EnvironmentConfiguration, !Ref Environment, vcDomain]
           AUDIT_EVENT_NAME_PREFIX: !Ref AuditEventNamePrefix
           AUDIT_QUEUE_URL: !ImportValue txma-infrastructure-AuditEventQueueUrl
+          SESSION_DB_TABLE_NAME: !GetAtt OAuth.Outputs.DbSessionTableName
+          PERSON_IDENTITY_DB_TABLE_NAME: !GetAtt OAuth.Outputs.DbPersonIdentityTableName
+          IDENTITY_SCORE_DB_TABLE_NAME: "blah" # TODO create the identity score database
       AutoPublishAlias: live
       AutoPublishAliasAllProperties: true
       DeploymentPreference:
@@ -845,6 +848,7 @@ Resources:
         Variables:
           POWERTOOLS_SERVICE_NAME: !Sub "${CriIdentifier}-bank-list-retriever"
           BANK_LIST_DB_TABLE_NAME: !Ref BankListTable
+          SESSION_DB_TABLE_NAME: !GetAtt OAuth.Outputs.DbSessionTableName
       AutoPublishAlias: live
       AutoPublishAliasAllProperties: true
       EventInvokeConfig:
@@ -852,6 +856,8 @@ Resources:
       Policies:
         - AWSLambdaBasicExecutionRole
         - AWSXrayWriteOnlyAccess
+        - DynamoDBReadPolicy:
+            TableName: !GetAtt OAuth.Outputs.DbSessionTableName
         - Statement:
             - Effect: Allow
               Action:
