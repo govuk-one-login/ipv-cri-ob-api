@@ -14,6 +14,10 @@ vi.mock('@src/bank-list/client/bank-list-repository', () => ({
   getBankListRepository: () => ({ getList: vi.fn(), replaceList: vi.fn() })
 }))
 
+vi.mock('@src/common/client/session-repository', () => ({
+  getSessionRepository: () => ({ findByAccessToken: vi.fn(), findBySessionId: vi.fn() })
+}))
+
 vi.mock('@src/bank-list/service/bank-list-retrieval-service', () => ({
   createBankListRetrievalService: () => bankListRetrievalService
 }))

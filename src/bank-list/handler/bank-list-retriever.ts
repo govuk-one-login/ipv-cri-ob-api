@@ -1,6 +1,6 @@
 import type { APIGatewayProxyEvent, APIGatewayProxyResult } from 'aws-lambda'
 
-import { sessionRepository } from '@common/client/session-repository'
+import { getSessionRepository } from '@common/client/session-repository'
 import {
   errorHandler,
   httpHeaderNormalizer,
@@ -18,7 +18,7 @@ import { createBankListRetrievalService } from '@src/bank-list/service/bank-list
 import middy from '@middy/core'
 
 const bankListRetrievalService = createBankListRetrievalService({
-  sessionRepository,
+  sessionRepository: getSessionRepository(),
   bankListRepository: getBankListRepository()
 })
 

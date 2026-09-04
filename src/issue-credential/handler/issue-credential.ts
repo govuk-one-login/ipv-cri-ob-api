@@ -1,6 +1,8 @@
 import type { APIGatewayProxyEvent, APIGatewayProxyResult } from 'aws-lambda'
 
-import { sessionRepository } from '@common/client/session-repository'
+import { getIdentityScoreRepository } from '@common/client/identity-score-repository'
+import { getPersonIdentityRepository } from '@common/client/person-identity-repository'
+import { getSessionRepository } from '@common/client/session-repository'
 import {
   errorHandler,
   httpHeaderNormalizer,
@@ -13,8 +15,6 @@ import { auditEventPublisher } from '@common/service/audit-event-publisher'
 import { requireBearerToken } from '@common/util/headers'
 import { logger } from '@govuk-one-login/cri-logger'
 import { metrics } from '@govuk-one-login/cri-metrics'
-import { identityScoreRepository } from '@src/issue-credential/client/identity-score-repository'
-import { personDetailsRepository } from '@src/issue-credential/client/person-details-repository'
 import { createIssueCredentialService } from '@src/issue-credential/service/issue-credential-service'
 import { jwtEnvelopeGenerator } from '@src/issue-credential/service/jwt-envelope-generator'
 import { verifiableCredentialBuilder } from '@src/issue-credential/service/verifiable-credential-builder'
@@ -24,10 +24,10 @@ import middy from '@middy/core'
 
 const issueCredentialService = createIssueCredentialService({
   auditEventPublisher,
-  identityScoreRepository,
+  identityScoreRepository: getIdentityScoreRepository(),
   jwtEnvelopeGenerator,
-  personDetailsRepository,
-  sessionRepository,
+  personDetailsRepository: getPersonIdentityRepository(),
+  sessionRepository: getSessionRepository(),
   verifiableCredentialBuilder,
   verifiableCredentialSigner
 })
