@@ -9,7 +9,7 @@ import {
   logMetrics,
   resultRecorder
 } from '@common/handler/middleware'
-import { parseSessionId } from '@common/util/session-id'
+import { requireSessionId } from '@common/util/headers'
 import { logger } from '@govuk-one-login/cri-logger'
 import { metrics } from '@govuk-one-login/cri-metrics'
 import { getBankListRepository } from '@src/bank-list/client/bank-list-repository'
@@ -24,12 +24,12 @@ const bankListRetrievalService = createBankListRetrievalService({
 
 const lambdaHandler = async (event: APIGatewayProxyEvent): Promise<APIGatewayProxyResult> => {
   logger.info('Lambda invoked')
-  const sessionId = parseSessionId(event.headers?.['session-id'])
+  const sessionId = requireSessionId(event.headers?.['session-id'])
 
   const { bankList } = await bankListRetrievalService({ sessionId })
 
   if (!bankList) {
-    return { body: '', statusCode: 200 }
+    return { body: '', statusCode: 204 }
   }
 
   return {

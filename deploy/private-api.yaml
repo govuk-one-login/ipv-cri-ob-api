@@ -25,6 +25,8 @@ paths:
             application/json:
               schema:
                 $ref: "#/components/schemas/BankList"
+        "204":
+          description: "204 response"
         "401":
           description: "401 response"
           content:
@@ -212,7 +214,7 @@ components:
       required:
         - "banks"
         - "profile"
-        - "refreshedAt"
+        - "refreshedAtSeconds"
       type: "object"
       properties:
         banks:

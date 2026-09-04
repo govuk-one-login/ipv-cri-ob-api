@@ -1,7 +1,6 @@
 import type { APIGatewayProxyEvent, APIGatewayProxyResult } from 'aws-lambda'
 
 import { sessionRepository } from '@common/client/session-repository'
-import { UnauthorisedError } from '@common/error/unauthorised-error'
 import {
   errorHandler,
   httpHeaderNormalizer,
@@ -11,7 +10,7 @@ import {
   resultRecorder
 } from '@common/handler/middleware'
 import { auditEventPublisher } from '@common/service/audit-event-publisher'
-import { parseBearerToken } from '@common/util/bearer-token'
+import { requireBearerToken } from '@common/util/headers'
 import { logger } from '@govuk-one-login/cri-logger'
 import { metrics } from '@govuk-one-login/cri-metrics'
 import { identityScoreRepository } from '@src/issue-credential/client/identity-score-repository'
@@ -35,11 +34,7 @@ const issueCredentialService = createIssueCredentialService({
 
 const lambdaHandler = async (event: APIGatewayProxyEvent): Promise<APIGatewayProxyResult> => {
   logger.info('Lambda invoked')
-  const authorisation = event.headers?.['authorization']
-  if (!authorisation) {
-    throw new UnauthorisedError('You must provide a valid access token')
-  }
-  const accessToken = parseBearerToken(authorisation)
+  const accessToken = requireBearerToken(event.headers?.['authorization'])
   const { credential } = await issueCredentialService({ accessToken })
   return {
     body: credential,

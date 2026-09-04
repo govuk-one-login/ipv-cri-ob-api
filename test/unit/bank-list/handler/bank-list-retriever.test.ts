@@ -41,6 +41,14 @@ describe('bank-list-retriever handler', () => {
     vi.clearAllMocks()
   })
 
+  it('passes session-id to the service', async () => {
+    bankListRetrievalService.mockResolvedValue({ bankList: buildBankListEntity() })
+
+    await handler(buildEvent({ headers: { 'session-id': '  session-abc  ' } }), buildContext())
+
+    expect(bankListRetrievalService).toHaveBeenCalledWith({ sessionId: 'session-abc' })
+  })
+
   it('returns 200 bank list as application/json', async () => {
     const bankList = buildBankListEntity()
     bankListRetrievalService.mockResolvedValue({ bankList })
@@ -52,14 +60,6 @@ describe('bank-list-retriever handler', () => {
     expect(JSON.parse(result.body)).toEqual(bankList)
   })
 
-  it('passes session-id to the service', async () => {
-    bankListRetrievalService.mockResolvedValue({ bankList: buildBankListEntity() })
-
-    await handler(buildEvent({ headers: { 'session-id': '  session-abc  ' } }), buildContext())
-
-    expect(bankListRetrievalService).toHaveBeenCalledWith({ sessionId: 'session-abc' })
-  })
-
   it('returns 401 when the session-id header is missing', async () => {
     const result = await handler(buildEvent({ headers: {} }), buildContext())
 
@@ -67,12 +67,12 @@ describe('bank-list-retriever handler', () => {
     expect(bankListRetrievalService).not.toHaveBeenCalled()
   })
 
-  it('returns 200 empty body when no bank list is available', async () => {
+  it('returns 204 empty body when no bank list is available', async () => {
     bankListRetrievalService.mockResolvedValue({ bankList: undefined })
 
     const result = await handler(buildEvent(), buildContext())
 
-    expect(result.statusCode).toBe(200)
+    expect(result.statusCode).toBe(204)
     expect(result.body).toBe('')
   })
 
