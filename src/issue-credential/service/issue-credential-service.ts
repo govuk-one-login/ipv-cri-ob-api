@@ -1,7 +1,7 @@
+import type { IdentityScoreRepository } from '@common/client/identity-score-repository'
+import type { PersonIdentityRepository } from '@common/client/person-identity-repository'
 import type { SessionRepository } from '@common/client/session-repository'
 import type { AuditEventPublisher } from '@common/service/audit-event-publisher'
-import type { IdentityScoreRepository } from '@src/issue-credential/client/identity-score-repository'
-import type { PersonDetailsRepository } from '@src/issue-credential/client/person-details-repository'
 import type { IssueCredentialRequest } from '@src/issue-credential/model/issue-credential-request'
 import type { IssueCredentialResponse } from '@src/issue-credential/model/issue-credential-response'
 import type { JwtEnvelopeGenerator } from '@src/issue-credential/service/jwt-envelope-generator'
@@ -12,17 +12,19 @@ import { SessionNotFoundError } from '@common/error/session-not-found-error'
 import { logger } from '@govuk-one-login/cri-logger'
 import { IdentityScoreNotFoundError, PersonDetailsNotFoundError } from '@src/issue-credential/error'
 
+export type IssueCredentialService = (
+  request: IssueCredentialRequest
+) => Promise<IssueCredentialResponse>
+
 interface IssueCredentialCollaborators {
   auditEventPublisher: AuditEventPublisher
   identityScoreRepository: IdentityScoreRepository
   jwtEnvelopeGenerator: JwtEnvelopeGenerator
-  personDetailsRepository: PersonDetailsRepository
+  personDetailsRepository: PersonIdentityRepository
   sessionRepository: SessionRepository
   verifiableCredentialBuilder: VerifiableCredentialBuilder
   verifiableCredentialSigner: VerifiableCredentialSigner
 }
-
-type IssueCredentialService = (request: IssueCredentialRequest) => Promise<IssueCredentialResponse>
 
 export const createIssueCredentialService = (
   collaborators: IssueCredentialCollaborators
