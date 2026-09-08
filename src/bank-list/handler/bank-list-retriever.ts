@@ -1,5 +1,7 @@
 import type { APIGatewayProxyEvent, APIGatewayProxyResult } from 'aws-lambda'
 
+import { dynamoDBDocumentClient } from '@common/client/dynamodb-client'
+import { createSessionRepository } from '@common/client/session-repository'
 import {
   errorHandler,
   httpHeaderNormalizer,
@@ -8,13 +10,24 @@ import {
   logMetrics,
   resultRecorder
 } from '@common/handler/middleware'
+import { requireEnv } from '@common/util/env'
 import { requireSessionId } from '@common/util/headers'
 import { logger } from '@govuk-one-login/cri-logger'
 import { metrics } from '@govuk-one-login/cri-metrics'
+import { createBankListRepository } from '@src/bank-list/client/bank-list-repository'
 import { createBankListRetrievalService } from '@src/bank-list/service/bank-list-retrieval-service'
-import { bankListRepository, sessionRepository } from '@src/bank-list/wiring'
 
 import middy from '@middy/core'
+
+const sessionRepository = createSessionRepository(
+  { tableName: requireEnv('SESSION_DB_TABLE_NAME') },
+  dynamoDBDocumentClient
+)
+
+const bankListRepository = createBankListRepository(
+  { tableName: requireEnv('BANK_LIST_DB_TABLE_NAME') },
+  dynamoDBDocumentClient
+)
 
 const bankListRetrievalService = createBankListRetrievalService({
   sessionRepository,
