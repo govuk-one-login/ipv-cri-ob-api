@@ -1,5 +1,9 @@
 import type { APIGatewayProxyEvent, APIGatewayProxyResult } from 'aws-lambda'
 
+import { dynamoDBDocumentClient } from '@common/client/dynamodb-client'
+import { createIdentityScoreRepository } from '@common/client/identity-score-repository'
+import { createPersonIdentityRepository } from '@common/client/person-identity-repository'
+import { createSessionRepository } from '@common/client/session-repository'
 import {
   errorHandler,
   httpHeaderNormalizer,
@@ -9,6 +13,7 @@ import {
   resultRecorder
 } from '@common/handler/middleware'
 import { auditEventPublisher } from '@common/service/audit-event-publisher'
+import { requireEnv } from '@common/util/env'
 import { requireBearerToken } from '@common/util/headers'
 import { logger } from '@govuk-one-login/cri-logger'
 import { metrics } from '@govuk-one-login/cri-metrics'
@@ -16,13 +21,23 @@ import { createIssueCredentialService } from '@src/issue-credential/service/issu
 import { jwtEnvelopeGenerator } from '@src/issue-credential/service/jwt-envelope-generator'
 import { verifiableCredentialBuilder } from '@src/issue-credential/service/verifiable-credential-builder'
 import { verifiableCredentialSigner } from '@src/issue-credential/service/verifiable-credential-signer'
-import {
-  identityScoreRepository,
-  personIdentityRepository,
-  sessionRepository
-} from '@src/issue-credential/wiring'
 
 import middy from '@middy/core'
+
+const sessionRepository = createSessionRepository(
+  { tableName: requireEnv('SESSION_DB_TABLE_NAME') },
+  dynamoDBDocumentClient
+)
+
+const personIdentityRepository = createPersonIdentityRepository(
+  { tableName: requireEnv('PERSON_IDENTITY_DB_TABLE_NAME') },
+  dynamoDBDocumentClient
+)
+
+const identityScoreRepository = createIdentityScoreRepository(
+  { tableName: requireEnv('IDENTITY_SCORE_DB_TABLE_NAME') },
+  dynamoDBDocumentClient
+)
 
 const issueCredentialService = createIssueCredentialService({
   auditEventPublisher,

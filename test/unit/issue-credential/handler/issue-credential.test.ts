@@ -19,10 +19,16 @@ const { issueCredentialService } = vi.hoisted(() => ({
   issueCredentialService: vi.fn<IssueCredentialService>()
 }))
 
-vi.mock('@src/issue-credential/wiring', () => ({
-  identityScoreRepository: { findBySessionId: vi.fn() },
-  personIdentityRepository: { findBySessionId: vi.fn() },
-  sessionRepository: { findByAccessToken: vi.fn(), findBySessionId: vi.fn() }
+vi.mock('@common/client/session-repository', () => ({
+  createSessionRepository: () => ({ findByAccessToken: vi.fn(), findBySessionId: vi.fn() })
+}))
+
+vi.mock('@common/client/person-identity-repository', () => ({
+  createPersonIdentityRepository: () => ({ findBySessionId: vi.fn() })
+}))
+
+vi.mock('@common/client/identity-score-repository', () => ({
+  createIdentityScoreRepository: () => ({ findBySessionId: vi.fn() })
 }))
 
 vi.mock('@src/issue-credential/service/issue-credential-service', () => ({
