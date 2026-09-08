@@ -1,6 +1,5 @@
 import type { APIGatewayProxyEvent, APIGatewayProxyResult } from 'aws-lambda'
 
-import { sessionRepository } from '@common/client/session-repository'
 import {
   errorHandler,
   httpHeaderNormalizer,
@@ -12,14 +11,14 @@ import {
 import { requireSessionId } from '@common/util/headers'
 import { logger } from '@govuk-one-login/cri-logger'
 import { metrics } from '@govuk-one-login/cri-metrics'
-import { getBankListRepository } from '@src/bank-list/client/bank-list-repository'
 import { createBankListRetrievalService } from '@src/bank-list/service/bank-list-retrieval-service'
+import { bankListRepository, sessionRepository } from '@src/bank-list/wiring'
 
 import middy from '@middy/core'
 
 const bankListRetrievalService = createBankListRetrievalService({
   sessionRepository,
-  bankListRepository: getBankListRepository()
+  bankListRepository
 })
 
 const lambdaHandler = async (event: APIGatewayProxyEvent): Promise<APIGatewayProxyResult> => {

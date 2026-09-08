@@ -2,15 +2,13 @@ import type { DynamoDBDocumentClient } from '@aws-sdk/lib-dynamodb'
 import type { BankListEntity, BanksEndpointProfile } from '@src/bank-list/model/bank-list'
 
 import { GetCommand, PutCommand } from '@aws-sdk/lib-dynamodb'
-import { dynamoDBDocumentClient } from '@common/client/dynamodb-client'
-import { requireEnv } from '@common/util/env'
 
 export interface BankListRepository {
   getList: (profile: BanksEndpointProfile) => Promise<BankListEntity | undefined>
   replaceList: (entity: BankListEntity) => Promise<void>
 }
 
-interface BankListRepositoryConfig {
+export interface BankListRepositoryConfig {
   tableName: string
 }
 
@@ -37,9 +35,3 @@ export const createBankListRepository = (
     )
   }
 })
-
-export const getBankListRepository = (): BankListRepository =>
-  createBankListRepository(
-    { tableName: requireEnv('BANK_LIST_DB_TABLE_NAME') },
-    dynamoDBDocumentClient
-  )

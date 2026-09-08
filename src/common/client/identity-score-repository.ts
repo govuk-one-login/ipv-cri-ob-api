@@ -1,13 +1,16 @@
 import type { DynamoDBDocumentClient } from '@aws-sdk/lib-dynamodb'
 import type { IdentityScore } from '@src/issue-credential/model/identity-score'
 
-import { dynamoDBDocumentClient } from '@common/client/dynamodb-client'
-
 export interface IdentityScoreRepository {
   findBySessionId: (sessionId: string) => Promise<IdentityScore | undefined>
 }
 
+export interface IdentityScoreRepositoryConfig {
+  tableName: string
+}
+
 export const createIdentityScoreRepository = (
+  _config: IdentityScoreRepositoryConfig,
   _client: DynamoDBDocumentClient
 ): IdentityScoreRepository => ({
   findBySessionId: (_sessionId) =>
@@ -24,5 +27,3 @@ export const createIdentityScoreRepository = (
       verificationScore: 3
     } as IdentityScore)
 })
-
-export const identityScoreRepository = createIdentityScoreRepository(dynamoDBDocumentClient)

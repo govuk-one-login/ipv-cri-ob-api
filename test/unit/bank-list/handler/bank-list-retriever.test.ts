@@ -10,8 +10,9 @@ const { bankListRetrievalService } = vi.hoisted(() => ({
   bankListRetrievalService: vi.fn<BankListRetrievalService>()
 }))
 
-vi.mock('@src/bank-list/client/bank-list-repository', () => ({
-  getBankListRepository: () => ({ getList: vi.fn(), replaceList: vi.fn() })
+vi.mock('@src/bank-list/wiring', () => ({
+  bankListRepository: { getList: vi.fn(), replaceList: vi.fn() },
+  sessionRepository: { findByAccessToken: vi.fn(), findBySessionId: vi.fn() }
 }))
 
 vi.mock('@src/bank-list/service/bank-list-retrieval-service', () => ({
