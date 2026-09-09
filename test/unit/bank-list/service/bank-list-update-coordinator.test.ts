@@ -7,12 +7,12 @@ import { createBankListUpdateCoordinator } from '@src/bank-list/service/bank-lis
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest'
 
 describe('bank-list-update-coordinator', () => {
-  let updateBankList: BankListUpdateService
+  let bankListUpdateService: BankListUpdateService
   let infoSpy: MockInstance<typeof logger.info>
   let errorSpy: MockInstance<typeof logger.error>
 
   beforeEach(() => {
-    updateBankList = vi.fn().mockResolvedValue({ updated: false })
+    bankListUpdateService = vi.fn().mockResolvedValue({ updated: false })
 
     infoSpy = vi.spyOn(logger, 'info').mockImplementation(() => {})
     errorSpy = vi.spyOn(logger, 'error').mockImplementation(() => {})
@@ -23,14 +23,7 @@ describe('bank-list-update-coordinator', () => {
   })
 
   const createCoordinator = (profiles: readonly BanksEndpointProfile[]) =>
-    createBankListUpdateCoordinator(
-      {
-        updateBankList
-      },
-      {
-        profiles
-      }
-    )
+    createBankListUpdateCoordinator({ profiles }, { bankListUpdateService })
 
   it('updates every enabled profile', async () => {
     const coordinator = createCoordinator([
@@ -41,14 +34,14 @@ describe('bank-list-update-coordinator', () => {
 
     await coordinator.updateAll()
 
-    expect(updateBankList).toHaveBeenCalledTimes(3)
-    expect(updateBankList).toHaveBeenNthCalledWith(1, BanksEndpointProfile.STUB)
-    expect(updateBankList).toHaveBeenNthCalledWith(2, BanksEndpointProfile.UAT)
-    expect(updateBankList).toHaveBeenNthCalledWith(3, BanksEndpointProfile.LIVE)
+    expect(bankListUpdateService).toHaveBeenCalledTimes(3)
+    expect(bankListUpdateService).toHaveBeenNthCalledWith(1, BanksEndpointProfile.STUB)
+    expect(bankListUpdateService).toHaveBeenNthCalledWith(2, BanksEndpointProfile.UAT)
+    expect(bankListUpdateService).toHaveBeenNthCalledWith(3, BanksEndpointProfile.LIVE)
   })
 
   it('logs the outcome of update checks', async () => {
-    vi.mocked(updateBankList)
+    vi.mocked(bankListUpdateService)
       .mockResolvedValueOnce({ updated: true })
       .mockResolvedValueOnce({ updated: false })
 
@@ -67,7 +60,7 @@ describe('bank-list-update-coordinator', () => {
   })
 
   it('completes successful updates and throws after attempting all profiles when any update fails', async () => {
-    vi.mocked(updateBankList)
+    vi.mocked(bankListUpdateService)
       .mockRejectedValueOnce(new Error('STUB unavailable'))
       .mockResolvedValueOnce({ updated: true })
 
@@ -75,9 +68,9 @@ describe('bank-list-update-coordinator', () => {
 
     await expect(coordinator.updateAll()).rejects.toThrow('Bank list update(s) failed for: STUB')
 
-    expect(updateBankList).toHaveBeenCalledTimes(2)
-    expect(updateBankList).toHaveBeenNthCalledWith(1, BanksEndpointProfile.STUB)
-    expect(updateBankList).toHaveBeenNthCalledWith(2, BanksEndpointProfile.UAT)
+    expect(bankListUpdateService).toHaveBeenCalledTimes(2)
+    expect(bankListUpdateService).toHaveBeenNthCalledWith(1, BanksEndpointProfile.STUB)
+    expect(bankListUpdateService).toHaveBeenNthCalledWith(2, BanksEndpointProfile.UAT)
 
     expect(errorSpy).toHaveBeenCalledWith('Bank list update failed', {
       profile: BanksEndpointProfile.STUB,
@@ -90,7 +83,7 @@ describe('bank-list-update-coordinator', () => {
   })
 
   it('throws when every enabled profile fails', async () => {
-    vi.mocked(updateBankList)
+    vi.mocked(bankListUpdateService)
       .mockRejectedValueOnce(new Error('STUB unavailable'))
       .mockRejectedValueOnce(new Error('UAT unavailable'))
 
@@ -99,7 +92,7 @@ describe('bank-list-update-coordinator', () => {
     await expect(coordinator.updateAll()).rejects.toThrow(
       'Bank list update(s) failed for: STUB, UAT'
     )
-    expect(updateBankList).toHaveBeenCalledTimes(2)
+    expect(bankListUpdateService).toHaveBeenCalledTimes(2)
     expect(errorSpy).toHaveBeenCalledTimes(2)
   })
 })

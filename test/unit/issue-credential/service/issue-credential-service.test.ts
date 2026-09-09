@@ -1,10 +1,10 @@
 import type { IdentityScoreRepository } from '@common/client/identity-score-repository'
 import type { PersonIdentityRepository } from '@common/client/person-identity-repository'
 import type { SessionRepository } from '@common/client/session-repository'
+import type { IdentityScore } from '@common/model/identity-score'
 import type { AuditEventPublisher } from '@common/service/audit-event-publisher'
 import type { PersonIdentityItem, SessionItem } from '@govuk-one-login/cri-types'
 import type { IdentityCheckCredentialJWTClass } from '@govuk-one-login/data-vocab/credentials'
-import type { IdentityScore } from '@src/issue-credential/model/identity-score'
 import type {
   JwtEnvelopeClaims,
   JwtEnvelopeGenerator

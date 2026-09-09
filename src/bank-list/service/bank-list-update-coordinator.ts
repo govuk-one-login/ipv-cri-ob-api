@@ -5,7 +5,7 @@ import { logger } from '@govuk-one-login/cri-logger'
 import { getErrorMessage } from '@src/bank-list/util/get-error-message'
 
 interface BankListUpdateCoordinatorCollaborators {
-  updateBankList: BankListUpdateService
+  bankListUpdateService: BankListUpdateService
 }
 
 interface BankListUpdateCoordinatorConfig {
@@ -18,13 +18,12 @@ interface BankListUpdateCoordinatorFailure {
 }
 
 export const createBankListUpdateCoordinator = (
-  collaborators: BankListUpdateCoordinatorCollaborators,
-  config: BankListUpdateCoordinatorConfig
+  config: BankListUpdateCoordinatorConfig,
+  collaborators: BankListUpdateCoordinatorCollaborators
 ) => ({
   updateAll: async (): Promise<void> => {
-    const enabledProfiles = config.profiles
     const results = await Promise.allSettled(
-      enabledProfiles.map((profile) => collaborators.updateBankList(profile))
+      config.profiles.map((profile) => collaborators.bankListUpdateService(profile))
     )
 
     const failures: BankListUpdateCoordinatorFailure[] = []

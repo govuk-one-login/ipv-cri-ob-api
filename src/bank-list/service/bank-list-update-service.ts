@@ -1,3 +1,4 @@
+import type { SSMConfigProvider } from '@common/client/ssm-config-provider'
 import type { BankListRepository } from '@src/bank-list/client/bank-list-repository'
 import type { BanksEndpointProfile } from '@src/bank-list/model/bank-list'
 import type { BankListProvider } from '@src/bank-list/model/bank-list-provider'
@@ -13,15 +14,17 @@ export type BankListUpdateService = (
 interface BankListUpdateCollaborators {
   bankListProvider: BankListProvider
   bankListRepository: BankListRepository
+  ssmConfigProvider: SSMConfigProvider
 }
 
 interface BankListUpdateConfig {
+  banksRequestConfigPathPrefix: string
   refreshAfterSeconds: number
 }
 
 export const createBankListUpdateService = (
-  collaborators: BankListUpdateCollaborators,
-  config: BankListUpdateConfig
+  config: BankListUpdateConfig,
+  collaborators: BankListUpdateCollaborators
 ): BankListUpdateService => {
   return async (profile) => {
     const existingList = await collaborators.bankListRepository.getList(profile)
@@ -34,7 +37,11 @@ export const createBankListUpdateService = (
       }
     }
 
-    const banks = await collaborators.bankListProvider.getBanks(profile)
+    const requestConfig = await collaborators.ssmConfigProvider.get(
+      `${config.banksRequestConfigPathPrefix}/${profile}`
+    )
+
+    const banks = await collaborators.bankListProvider.getBanks(profile, requestConfig)
 
     // Note: open question on if an empty list is a valid response to be saved or if we should reject this
 
