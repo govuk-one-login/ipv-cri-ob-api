@@ -1,10 +1,11 @@
-import type { DynamoDBDocumentClient } from '@aws-sdk/lib-dynamodb'
+import type { AccessTokenSessionItem } from '@common/model/session'
 import type { SessionItem } from '@govuk-one-login/cri-types'
 
-import { OAuthClientId } from '@common/model/oauth-client-id'
+import { type DynamoDBDocumentClient, GetCommand, QueryCommand } from '@aws-sdk/lib-dynamodb'
+import { AmbiguousAccessTokenError } from '@common/error/ambiguous-access-token-error'
 
 export interface SessionRepository {
-  findByAccessToken: (accessToken: string) => Promise<SessionItem | undefined>
+  findByAccessToken: (accessToken: string) => Promise<AccessTokenSessionItem | undefined>
   findBySessionId: (sessionId: string) => Promise<SessionItem | undefined>
 }
 
@@ -12,27 +13,34 @@ export interface SessionRepositoryConfig {
   tableName: string
 }
 
-const DUMMY_SESSION = {
-  attemptCount: 0,
-  clientId: OAuthClientId.IPV_CORE_STUB_AWS_BUILD_THIRD_PARTY,
-  clientSessionId: 'govuk-signin-journey-123',
-  createdDate: 0,
-  expiryDate: 0,
-  redirectUri: 'https://example.test/callback',
-  sessionId: 'session-123',
-  state: 'test-state',
-  subject: 'subject-xyz'
-} as SessionItem
+// see oauth common SessionTable
+const ACCESS_TOKEN_INDEX = 'access-token-index-with-event-data'
 
 export const createSessionRepository = (
-  _config: SessionRepositoryConfig,
-  _client: DynamoDBDocumentClient
+  config: SessionRepositoryConfig,
+  client: DynamoDBDocumentClient
 ): SessionRepository => ({
-  findBySessionId: (_sessionId) =>
-    // TODO: delete me and get the actual session
-    Promise.resolve(DUMMY_SESSION),
+  findByAccessToken: async (accessToken) => {
+    const { Items } = await client.send(
+      new QueryCommand({
+        ExpressionAttributeValues: { ':accessToken': accessToken },
+        IndexName: ACCESS_TOKEN_INDEX,
+        KeyConditionExpression: 'accessToken = :accessToken',
+        TableName: config.tableName
+      })
+    )
+    if (Items && Items.length > 1) throw new AmbiguousAccessTokenError()
+    return Items?.[0] as AccessTokenSessionItem | undefined
+  },
 
-  findByAccessToken: (_accessToken) =>
-    // TODO: delete me and get the actual session
-    Promise.resolve(DUMMY_SESSION)
+  findBySessionId: async (sessionId) => {
+    const { Item } = await client.send(
+      new GetCommand({
+        ConsistentRead: true,
+        Key: { sessionId },
+        TableName: config.tableName
+      })
+    )
+    return Item as SessionItem | undefined
+  }
 })

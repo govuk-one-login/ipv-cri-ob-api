@@ -1,3 +1,4 @@
+import type { AuditableSessionItem } from '@common/model/session'
 import type { SessionItem } from '@govuk-one-login/cri-types'
 
 import { AuditEvents } from '@common/model/audit-events'
@@ -15,24 +16,29 @@ export interface AuditEventPublisherConfig {
 }
 
 export interface CredentialIssuedEvent {
-  session: SessionItem
+  session: AuditableSessionItem
 }
 
 export interface JourneyEndEvent {
-  session: SessionItem
+  session: AuditableSessionItem
 }
 
 export const createAuditEventPublisher = (
   config: AuditEventPublisherConfig
 ): AuditEventPublisher => ({
   publishJourneyEnd: (event) =>
-    buildAndSendAuditEvent(config.queueUrl, AuditEvents.END, config.componentId, event.session),
+    buildAndSendAuditEvent(
+      config.queueUrl,
+      AuditEvents.END,
+      config.componentId,
+      event.session as SessionItem
+    ),
   publishVCIssued: (event) =>
     buildAndSendAuditEvent(
       config.queueUrl,
       AuditEvents.VC_ISSUED,
       config.componentId,
-      event.session
+      event.session as SessionItem
     )
 })
 

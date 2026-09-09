@@ -1,5 +1,6 @@
-import type { DynamoDBDocumentClient } from '@aws-sdk/lib-dynamodb'
 import type { PersonIdentityItem } from '@govuk-one-login/cri-types'
+
+import { type DynamoDBDocumentClient, GetCommand } from '@aws-sdk/lib-dynamodb'
 
 export interface PersonIdentityRepository {
   findBySessionId: (sessionId: string) => Promise<PersonIdentityItem | undefined>
@@ -10,22 +11,17 @@ export interface PersonIdentityRepositoryConfig {
 }
 
 export const createPersonIdentityRepository = (
-  _config: PersonIdentityRepositoryConfig,
-  _client: DynamoDBDocumentClient
+  config: PersonIdentityRepositoryConfig,
+  client: DynamoDBDocumentClient
 ): PersonIdentityRepository => ({
-  findBySessionId: (_sessionId) =>
-    // TODO: delete me and get the actual person details
-    Promise.resolve({
-      birthDates: [{ value: '1970-01-01' }],
-      expiryDate: 0,
-      names: [
-        {
-          nameParts: [
-            { type: 'GivenName', value: 'Alice' },
-            { type: 'FamilyName', value: 'Doe' }
-          ]
-        }
-      ],
-      sessionId: 'session-123'
-    } as PersonIdentityItem)
+  findBySessionId: async (sessionId) => {
+    const { Item } = await client.send(
+      new GetCommand({
+        ConsistentRead: true,
+        Key: { sessionId },
+        TableName: config.tableName
+      })
+    )
+    return Item as PersonIdentityItem | undefined
+  }
 })
