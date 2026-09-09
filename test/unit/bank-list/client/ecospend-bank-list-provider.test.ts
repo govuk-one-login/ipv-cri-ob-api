@@ -8,6 +8,11 @@ const ACCESS_TOKEN = 'test-access-token'
 const CUSTOM_LIST = 'stub-banks'
 const ENDPOINT_URL = 'https://provider.test/banks'
 
+const rawRequestConfigWithCustomList = {
+  'custom-list': CUSTOM_LIST,
+  'endpoint-url': ENDPOINT_URL
+}
+
 const validBank = {
   bank_id: 'example-bank',
   friendly_name: 'Example Bank',
@@ -36,15 +41,11 @@ const stubFetch = (fetchMock: Mock = vi.fn()): Mock => {
 }
 
 const createTestContext = () => {
-  const getBanksRequestConfig = vi.fn().mockResolvedValue({
-    endpointUrl: ENDPOINT_URL,
-    customList: CUSTOM_LIST
-  })
+  const retrieveToken = vi.fn().mockResolvedValue(ACCESS_TOKEN)
+  const tokenRetrievalService = { retrieveToken }
+  const provider = createEcospendBankListProvider({ tokenRetrievalService })
 
-  const retrieveAccessToken = vi.fn().mockResolvedValue(ACCESS_TOKEN)
-  const provider = createEcospendBankListProvider({ getBanksRequestConfig, retrieveAccessToken })
-
-  return { getBanksRequestConfig, provider, retrieveAccessToken }
+  return { provider, retrieveToken }
 }
 
 afterEach(() => {
@@ -56,12 +57,14 @@ describe('createEcospendBankListProvider', () => {
     const fetchMock = stubFetch(
       vi.fn().mockResolvedValue(createSuccessResponse(successResponseBody))
     )
-    const { getBanksRequestConfig, provider, retrieveAccessToken } = createTestContext()
+    const { provider, retrieveToken } = createTestContext()
 
-    const result = await provider.getBanks(BanksEndpointProfile.STUB)
+    const result = await provider.getBanks(
+      BanksEndpointProfile.STUB,
+      rawRequestConfigWithCustomList
+    )
 
-    expect(retrieveAccessToken).toHaveBeenCalledWith(BanksEndpointProfile.STUB)
-    expect(getBanksRequestConfig).toHaveBeenCalledWith(BanksEndpointProfile.STUB)
+    expect(retrieveToken).toHaveBeenCalledWith(BanksEndpointProfile.STUB)
 
     expect(fetchMock).toHaveBeenCalledOnce()
     expect(fetchMock).toHaveBeenCalledWith(expect.any(Request))
@@ -120,7 +123,7 @@ describe('createEcospendBankListProvider', () => {
 
     const { provider } = createTestContext()
 
-    await provider.getBanks(profile)
+    await provider.getBanks(profile, rawRequestConfigWithCustomList)
 
     expect(fetchMock).toHaveBeenCalledOnce()
     expect(fetchMock).toHaveBeenCalledWith(expect.any(Request))
@@ -135,10 +138,9 @@ describe('createEcospendBankListProvider', () => {
     const fetchMock = stubFetch(
       vi.fn().mockResolvedValue(createSuccessResponse(successResponseBody))
     )
-    const { getBanksRequestConfig, provider } = createTestContext()
+    const { provider } = createTestContext()
 
-    getBanksRequestConfig.mockResolvedValue({ endpointUrl: 'https://provider.test/banks' })
-    await provider.getBanks(BanksEndpointProfile.STUB)
+    await provider.getBanks(BanksEndpointProfile.STUB, { 'endpoint-url': ENDPOINT_URL })
 
     const [request] = fetchMock.mock.calls[0] as [Request]
     const url = new URL(request.url)
@@ -146,17 +148,27 @@ describe('createEcospendBankListProvider', () => {
     expect(url.searchParams.has('custom_list')).toBe(false)
   })
 
+  it('throws when the request config is missing endpoint-url', async () => {
+    const fetchMock = stubFetch()
+    const { provider } = createTestContext()
+
+    await expect(
+      provider.getBanks(BanksEndpointProfile.STUB, { 'custom-list': CUSTOM_LIST })
+    ).rejects.toThrow(/Invalid banks request config for STUB/)
+
+    expect(fetchMock).not.toHaveBeenCalled()
+  })
+
   it('does not make a request when no token is available', async () => {
     const fetchMock = stubFetch()
-    const { getBanksRequestConfig, provider, retrieveAccessToken } = createTestContext()
+    const { provider, retrieveToken } = createTestContext()
 
-    retrieveAccessToken.mockResolvedValue(undefined)
+    retrieveToken.mockResolvedValue(undefined)
 
-    await expect(provider.getBanks(BanksEndpointProfile.STUB)).rejects.toThrow(
-      'No token is available for STUB'
-    )
+    await expect(
+      provider.getBanks(BanksEndpointProfile.STUB, rawRequestConfigWithCustomList)
+    ).rejects.toThrow('No token is available for STUB')
 
-    expect(getBanksRequestConfig).not.toHaveBeenCalled()
     expect(fetchMock).not.toHaveBeenCalled()
   })
 
@@ -165,9 +177,9 @@ describe('createEcospendBankListProvider', () => {
 
     const { provider } = createTestContext()
 
-    await expect(provider.getBanks(BanksEndpointProfile.STUB)).rejects.toThrow(
-      'Banks request returned 502 for STUB'
-    )
+    await expect(
+      provider.getBanks(BanksEndpointProfile.STUB, rawRequestConfigWithCustomList)
+    ).rejects.toThrow('Banks request returned 502 for STUB')
   })
 
   it('wraps fetch failures', async () => {
@@ -175,9 +187,9 @@ describe('createEcospendBankListProvider', () => {
 
     const { provider } = createTestContext()
 
-    await expect(provider.getBanks(BanksEndpointProfile.STUB)).rejects.toThrow(
-      "Banks request failed for STUB: 'connection failed'"
-    )
+    await expect(
+      provider.getBanks(BanksEndpointProfile.STUB, rawRequestConfigWithCustomList)
+    ).rejects.toThrow("Banks request failed for STUB: 'connection failed'")
   })
 
   it('wraps invalid JSON responses', async () => {
@@ -190,9 +202,9 @@ describe('createEcospendBankListProvider', () => {
 
     const { provider } = createTestContext()
 
-    await expect(provider.getBanks(BanksEndpointProfile.STUB)).rejects.toThrow(
-      "Banks response for STUB was not valid JSON: 'Unexpected token <'"
-    )
+    await expect(
+      provider.getBanks(BanksEndpointProfile.STUB, rawRequestConfigWithCustomList)
+    ).rejects.toThrow("Banks response for STUB was not valid JSON: 'Unexpected token <'")
   })
 
   it('throws when the response fails validation', async () => {
@@ -200,9 +212,9 @@ describe('createEcospendBankListProvider', () => {
 
     const { provider } = createTestContext()
 
-    await expect(provider.getBanks(BanksEndpointProfile.STUB)).rejects.toThrow(
-      /Unexpected banks response for STUB: /
-    )
+    await expect(
+      provider.getBanks(BanksEndpointProfile.STUB, rawRequestConfigWithCustomList)
+    ).rejects.toThrow(/Unexpected banks response for STUB: /)
   })
 
   it('rejects a response when total_count does not match the returned banks', async () => {
@@ -221,8 +233,8 @@ describe('createEcospendBankListProvider', () => {
 
     const { provider } = createTestContext()
 
-    await expect(provider.getBanks(BanksEndpointProfile.STUB)).rejects.toThrow(
-      'Banks response for STUB reported 2 banks but returned 1'
-    )
+    await expect(
+      provider.getBanks(BanksEndpointProfile.STUB, rawRequestConfigWithCustomList)
+    ).rejects.toThrow('Banks response for STUB reported 2 banks but returned 1')
   })
 })

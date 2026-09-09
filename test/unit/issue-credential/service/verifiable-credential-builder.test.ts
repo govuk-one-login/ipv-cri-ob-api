@@ -1,5 +1,5 @@
+import type { IdentityScore } from '@common/model/identity-score'
 import type { PersonIdentityItem } from '@govuk-one-login/cri-types'
-import type { IdentityScore } from '@src/issue-credential/model/identity-score'
 import type { JwtEnvelopeClaims } from '@src/issue-credential/service/jwt-envelope-generator'
 
 import { verifiableCredentialBuilder } from '@src/issue-credential/service/verifiable-credential-builder'

@@ -1,6 +1,8 @@
+import type { TokenRetrievalService } from '@lib/token-rotator/service/token-retrieval-service'
 import type { BankListProvider } from '@src/bank-list/model/bank-list-provider'
 
 import { BanksEndpointProfile } from '@src/bank-list/model/bank-list'
+import { banksRequestConfigSchema } from '@src/bank-list/model/banks-request-config'
 import { ecospendBankListResponseSchema } from '@src/bank-list/model/ecospend-banks-response'
 import { getErrorMessage } from '@src/bank-list/util/get-error-message'
 
@@ -14,27 +16,30 @@ const BANKS_QUERY_PARAMS = {
   standard: 'OBIE'
 } as const satisfies Record<string, string>
 
-export interface BanksRequestConfig {
-  customList?: string
-  endpointUrl: string
-}
-
 interface EcospendBankListProviderCollaborators {
-  getBanksRequestConfig: (profile: BanksEndpointProfile) => Promise<BanksRequestConfig>
-  retrieveAccessToken: (profile: BanksEndpointProfile) => Promise<string | undefined>
+  tokenRetrievalService: TokenRetrievalService
 }
 
 export const createEcospendBankListProvider = (
   collaborators: EcospendBankListProviderCollaborators
 ): BankListProvider => ({
-  getBanks: async (profile) => {
-    const token = await collaborators.retrieveAccessToken(profile)
+  getBanks: async (profile, rawRequestConfig) => {
+    const parsedRequestConfig = banksRequestConfigSchema.safeParse(rawRequestConfig)
+
+    if (!parsedRequestConfig.success) {
+      throw new Error(
+        `Invalid banks request config for ${profile}: ${parsedRequestConfig.error.message}`
+      )
+    }
+
+    const requestConfig = parsedRequestConfig.data
+
+    const token = await collaborators.tokenRetrievalService.retrieveToken(profile)
 
     if (!token) {
       throw new Error(`No token is available for ${profile}`)
     }
 
-    const requestConfig = await collaborators.getBanksRequestConfig(profile)
     const url = new URL(requestConfig.endpointUrl)
 
     for (const [name, value] of Object.entries(BANKS_QUERY_PARAMS)) {

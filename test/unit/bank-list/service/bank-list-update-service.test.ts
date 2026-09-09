@@ -1,3 +1,4 @@
+import type { SSMConfigProvider } from '@common/client/ssm-config-provider'
 import type { BankListRepository } from '@src/bank-list/client/bank-list-repository'
 import type { BankListEntity, StoredBank } from '@src/bank-list/model/bank-list'
 import type { BankListProvider } from '@src/bank-list/model/bank-list-provider'
@@ -8,6 +9,14 @@ import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest'
 
 const NOW_EPOCH_SECONDS = 1_800_000_000
 const REFRESH_AFTER_SECONDS = 55 * 60
+const CONFIG_PATH_PREFIX = '/test/bank-list'
+const ENDPOINT_URL = 'https://provider.test/banks'
+const CUSTOM_LIST = 'stub-banks'
+
+const rawRequestConfig = {
+  'custom-list': CUSTOM_LIST,
+  'endpoint-url': ENDPOINT_URL
+}
 
 const oneBank: StoredBank[] = [
   {
@@ -27,6 +36,7 @@ const buildBankListEntity = (overrides: Partial<BankListEntity> = {}): BankListE
 describe('createBankListUpdateService', () => {
   let bankListProvider: BankListProvider
   let bankListRepository: BankListRepository
+  let ssmConfigProvider: SSMConfigProvider
 
   beforeEach(() => {
     vi.useFakeTimers()
@@ -40,6 +50,10 @@ describe('createBankListUpdateService', () => {
       getList: vi.fn(),
       replaceList: vi.fn().mockResolvedValue(undefined)
     }
+
+    ssmConfigProvider = {
+      get: vi.fn().mockResolvedValue(rawRequestConfig)
+    }
   })
 
   afterEach(() => {
@@ -49,11 +63,13 @@ describe('createBankListUpdateService', () => {
   const createService = () =>
     createBankListUpdateService(
       {
-        bankListProvider,
-        bankListRepository
+        banksRequestConfigPathPrefix: CONFIG_PATH_PREFIX,
+        refreshAfterSeconds: REFRESH_AFTER_SECONDS
       },
       {
-        refreshAfterSeconds: REFRESH_AFTER_SECONDS
+        bankListProvider,
+        bankListRepository,
+        ssmConfigProvider
       }
     )
 
@@ -63,7 +79,11 @@ describe('createBankListUpdateService', () => {
     const result = await createService()(BanksEndpointProfile.STUB)
 
     expect(bankListRepository.getList).toHaveBeenCalledWith(BanksEndpointProfile.STUB)
-    expect(bankListProvider.getBanks).toHaveBeenCalledWith(BanksEndpointProfile.STUB)
+    expect(ssmConfigProvider.get).toHaveBeenCalledWith(`${CONFIG_PATH_PREFIX}/STUB`)
+    expect(bankListProvider.getBanks).toHaveBeenCalledWith(
+      BanksEndpointProfile.STUB,
+      rawRequestConfig
+    )
     expect(bankListRepository.replaceList).toHaveBeenCalledWith({
       banks: oneBank,
       refreshedAtSeconds: NOW_EPOCH_SECONDS,
@@ -81,6 +101,7 @@ describe('createBankListUpdateService', () => {
 
     const result = await createService()(BanksEndpointProfile.STUB)
 
+    expect(ssmConfigProvider.get).not.toHaveBeenCalled()
     expect(bankListProvider.getBanks).not.toHaveBeenCalled()
     expect(bankListRepository.replaceList).not.toHaveBeenCalled()
     expect(result).toEqual({ updated: false })
@@ -95,7 +116,10 @@ describe('createBankListUpdateService', () => {
 
     const result = await createService()(BanksEndpointProfile.STUB)
 
-    expect(bankListProvider.getBanks).toHaveBeenCalledWith(BanksEndpointProfile.STUB)
+    expect(bankListProvider.getBanks).toHaveBeenCalledWith(
+      BanksEndpointProfile.STUB,
+      rawRequestConfig
+    )
     expect(bankListRepository.replaceList).toHaveBeenCalledWith({
       banks: oneBank,
       refreshedAtSeconds: NOW_EPOCH_SECONDS,
@@ -113,7 +137,10 @@ describe('createBankListUpdateService', () => {
 
     const result = await createService()(BanksEndpointProfile.STUB)
 
-    expect(bankListProvider.getBanks).toHaveBeenCalledWith(BanksEndpointProfile.STUB)
+    expect(bankListProvider.getBanks).toHaveBeenCalledWith(
+      BanksEndpointProfile.STUB,
+      rawRequestConfig
+    )
     expect(bankListRepository.replaceList).toHaveBeenCalledWith({
       banks: oneBank,
       refreshedAtSeconds: NOW_EPOCH_SECONDS,
@@ -126,9 +153,6 @@ describe('createBankListUpdateService', () => {
     const existingList = buildBankListEntity({
       refreshedAtSeconds: NOW_EPOCH_SECONDS - REFRESH_AFTER_SECONDS
     })
-    vi.mocked(bankListRepository.getList).mockResolvedValue(
-      buildBankListEntity({ refreshedAtSeconds: NOW_EPOCH_SECONDS - REFRESH_AFTER_SECONDS })
-    )
 
     vi.mocked(bankListRepository.getList).mockResolvedValue(existingList)
     vi.mocked(bankListProvider.getBanks).mockRejectedValue(
@@ -152,5 +176,14 @@ describe('createBankListUpdateService', () => {
     await expect(createService()(BanksEndpointProfile.STUB)).rejects.toThrow(
       'Bank list replacement failed'
     )
+  })
+
+  it('propagates ssm config provider failures', async () => {
+    vi.mocked(bankListRepository.getList).mockResolvedValue(undefined)
+    vi.mocked(ssmConfigProvider.get).mockRejectedValue(new Error('SSM unavailable'))
+
+    await expect(createService()(BanksEndpointProfile.STUB)).rejects.toThrow('SSM unavailable')
+    expect(bankListProvider.getBanks).not.toHaveBeenCalled()
+    expect(bankListRepository.replaceList).not.toHaveBeenCalled()
   })
 })

@@ -1,5 +1,5 @@
 import type { DynamoDBDocumentClient } from '@aws-sdk/lib-dynamodb'
-import type { IdentityScore } from '@src/issue-credential/model/identity-score'
+import type { IdentityScore } from '@common/model/identity-score'
 
 export interface IdentityScoreRepository {
   findBySessionId: (sessionId: string) => Promise<IdentityScore | undefined>
