@@ -127,6 +127,7 @@ Globals:
           - '{{resolve:secretsmanager:${SecretArn}:SecretString:DT_TENANT}}'
           - SecretArn: !FindInMap [ EnvironmentConfiguration, !Ref Environment, dynatraceSecretArn ]
         AWS_STACK_NAME: !Sub ${AWS::StackName}
+        LOG_FULL_ERRORS: !FindInMap [ EnvironmentConfiguration, !Ref Environment, logFullErrors ]
         POWERTOOLS_LOG_LEVEL: INFO
         POWERTOOLS_METRICS_NAMESPACE: !Ref CriIdentifier
         ENVIRONMENT: !Ref Environment
@@ -144,6 +145,7 @@ Mappings:
       vcDomain: review-ob.dev.account.gov.uk
       tokenRotatorProfiles: STUB|UAT
       bankListUpdaterProfiles: STUB|UAT
+      logFullErrors: "true"
     build:
       dynatraceSecretArn: arn:aws:secretsmanager:eu-west-2:216552277552:secret:DynatraceNonProductionVariables
       dynatraceLayer: arn:aws:lambda:eu-west-2:216552277552:layer:Dynatrace_OneAgent_1_329_73_20260123-140641_with_collector_nodejs_arm:1
@@ -152,6 +154,7 @@ Mappings:
       vcDomain: review-ob.build.account.gov.uk
       tokenRotatorProfiles: STUB|UAT
       bankListUpdaterProfiles: STUB|UAT
+      logFullErrors: "true"
     staging:
       dynatraceSecretArn: arn:aws:secretsmanager:eu-west-2:216552277552:secret:DynatraceNonProductionVariables
       dynatraceLayer: arn:aws:lambda:eu-west-2:216552277552:layer:Dynatrace_OneAgent_1_329_73_20260123-140641_with_collector_nodejs_arm:1
@@ -160,6 +163,7 @@ Mappings:
       vcDomain: review-ob.staging.account.gov.uk
       tokenRotatorProfiles: STUB|UAT
       bankListUpdaterProfiles: STUB|UAT
+      logFullErrors: "true"
     integration:
       dynatraceSecretArn: arn:aws:secretsmanager:eu-west-2:216552277552:secret:DynatraceNonProductionVariables
       dynatraceLayer: arn:aws:lambda:eu-west-2:216552277552:layer:Dynatrace_OneAgent_1_329_73_20260123-140641_with_collector_nodejs_arm:1
@@ -168,6 +172,7 @@ Mappings:
       vcDomain: review-ob.integration.account.gov.uk
       tokenRotatorProfiles: UAT
       bankListUpdaterProfiles: UAT
+      logFullErrors: "false"
     production:
       dynatraceSecretArn: arn:aws:secretsmanager:eu-west-2:216552277552:secret:DynatraceProductionVariables
       dynatraceLayer: arn:aws:lambda:eu-west-2:216552277552:layer:Dynatrace_OneAgent_1_329_73_20260123-140641_with_collector_nodejs_arm:1
@@ -176,6 +181,7 @@ Mappings:
       vcDomain: review-ob.account.gov.uk
       tokenRotatorProfiles: LIVE
       bankListUpdaterProfiles: LIVE
+      logFullErrors: "false"
 
   # Local Dev
   IPVCoreStubLocalMapping:
@@ -487,6 +493,8 @@ Resources:
             TableName: !GetAtt OAuth.Outputs.DbSessionTableName
         - DynamoDBReadPolicy:
             TableName: !GetAtt OAuth.Outputs.DbPersonIdentityTableName
+        - KMSDecryptPolicy:
+            KeyId: !GetAtt OAuth.Outputs.DbCustomerManagedKeyID
         - Statement:
             Effect: Allow
             Action: kms:Sign
@@ -858,6 +866,8 @@ Resources:
         - AWSXrayWriteOnlyAccess
         - DynamoDBReadPolicy:
             TableName: !GetAtt OAuth.Outputs.DbSessionTableName
+        - KMSDecryptPolicy:
+            KeyId: !GetAtt OAuth.Outputs.DbCustomerManagedKeyID
         - Statement:
             - Effect: Allow
               Action:

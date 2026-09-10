@@ -4,6 +4,7 @@ import { TokenProfile } from '@lib/token-rotator/model/token-profile'
 export const OAuthClientId = {
   IPV_CORE: 'ipv-core',
   IPV_CORE_STUB: 'ipv-core-stub',
+  IPV_CORE_STUB_AWS_HEADLESS: 'ipv-core-stub-aws-headless',
   IPV_CORE_STUB_AWS_BUILD: 'ipv-core-stub-aws-build',
   IPV_CORE_STUB_AWS_BUILD_THIRD_PARTY: 'ipv-core-stub-aws-build_3rdparty',
   IPV_CORE_STUB_AWS_PROD: 'ipv-core-stub-aws-prod',
@@ -17,6 +18,7 @@ export type OAuthClientId = (typeof OAuthClientId)[keyof typeof OAuthClientId]
 export const ClientIdToTokenProfileMapping: Record<OAuthClientId, TokenProfile> = {
   [OAuthClientId.IPV_CORE]: TokenProfile.LIVE,
   [OAuthClientId.IPV_CORE_STUB]: TokenProfile.STUB,
+  [OAuthClientId.IPV_CORE_STUB_AWS_HEADLESS]: TokenProfile.UAT,
   [OAuthClientId.IPV_CORE_STUB_AWS_BUILD]: TokenProfile.STUB,
   [OAuthClientId.IPV_CORE_STUB_AWS_BUILD_THIRD_PARTY]: TokenProfile.UAT,
   [OAuthClientId.IPV_CORE_STUB_AWS_PROD]: TokenProfile.STUB,
