@@ -20,17 +20,21 @@ const DEFAULT_TIMEOUT_MS = 10_000
 
 export async function apiFetch(url: string, init?: RequestInit): Promise<ApiResponse> {
   let res: Response
+  const method = init?.method ?? 'GET'
   const signal = init?.signal ?? AbortSignal.timeout(DEFAULT_TIMEOUT_MS)
+  console.log(`→ ${method} ${url}`)
   try {
     res = await fetch(url, { ...init, signal })
   } catch (err) {
     const message = err instanceof Error ? err.message : String(err)
-    throw new Error(`Network error calling ${init?.method ?? 'GET'} ${url}: ${message}`, {
+    console.error(`✗ ${method} ${url}: ${message}`)
+    throw new Error(`Network error calling ${method} ${url}: ${message}`, {
       cause: err
     })
   }
 
   const rawText = await res.text()
+  console.log(`← ${res.status} ${method} ${url}${res.status >= 400 ? ` | ${rawText}` : ''}`)
 
   return {
     json: <T>() => {

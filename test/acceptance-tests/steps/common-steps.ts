@@ -28,6 +28,10 @@ Then('the response body should be empty', function (this: OBWorld) {
   assert.equal(this.lastResponse.text(), '')
 })
 
+Then('the response body should be {string}', function (this: OBWorld, expected: string) {
+  assert.equal(this.lastResponse.text(), expected)
+})
+
 Then('the response body should be a valid JWT', function (this: OBWorld) {
   const parts = this.lastResponse.text().split('.')
   assert.equal(parts.length, 3, 'Expected a JWT with 3 dot-separated parts')

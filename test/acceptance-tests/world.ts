@@ -1,4 +1,3 @@
-import type { BanksRequestParams } from '../../src/types/banks.js'
 import type { ConsentsClient } from './clients/consents-client.js'
 import type { IdentityVerificationClient } from './clients/identity-verification-client.js'
 import type { IssueCredentialClient } from './clients/issue-credential-client.js'
@@ -11,7 +10,6 @@ import { type ApiResponse, getPrivateBaseUrl, getPublicBaseUrl } from './utils/a
 import { setWorldConstructor, World } from '@cucumber/cucumber'
 
 export class OBWorld extends World {
-  readonly banks: BanksClient
   readonly session: SessionClient
   readonly token: TokenClient
 
@@ -19,24 +17,21 @@ export class OBWorld extends World {
     if (!this._accessToken) throw new Error('accessToken not set — did the Before hook run?')
     return this._accessToken
   }
+
   set accessToken(value: string) {
     this._accessToken = value
   }
-
   get authCode(): string {
     if (!this._authCode) throw new Error('authCode not set — did the authorization step run?')
     return this._authCode
   }
+
   set authCode(value: string) {
     this._authCode = value
   }
-
-  get bankParams(): BanksRequestParams {
-    if (!this._bankParams) throw new Error('bankParams not set — did a Given step run first?')
-    return this._bankParams
-  }
-  set bankParams(value: BanksRequestParams) {
-    this._bankParams = value
+  get banks(): BanksClient {
+    if (!this._banks) throw new Error('banks not initialised — did the Before hook run?')
+    return this._banks
   }
 
   get consentId(): string {
@@ -87,6 +82,7 @@ export class OBWorld extends World {
   }
   set sessionId(value: string) {
     this._sessionId = value
+    this._banks = new BanksClient(getPrivateBaseUrl(), value)
   }
 
   get sessionRedirectUri(): string {
@@ -108,7 +104,7 @@ export class OBWorld extends World {
 
   private _accessToken: string | undefined
   private _authCode: string | undefined
-  private _bankParams: BanksRequestParams | undefined
+  private _banks: BanksClient | undefined
   private _consentId: string | undefined
   private _consents: ConsentsClient | undefined
   private _identityVerification: IdentityVerificationClient | undefined
@@ -123,7 +119,6 @@ export class OBWorld extends World {
     const publicBaseUrl = getPublicBaseUrl()
     const privateBaseUrl = getPrivateBaseUrl()
     this.session = new SessionClient(privateBaseUrl)
-    this.banks = new BanksClient(publicBaseUrl)
     this.token = new TokenClient(publicBaseUrl)
   }
 }
