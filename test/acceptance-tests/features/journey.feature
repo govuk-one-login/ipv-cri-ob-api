@@ -3,11 +3,10 @@ Feature: Open Banking Verification Journey
 
   Scenario: Complete the full open banking verification journey
     Given a session has been created via the core stub
-    And I have the default bank query params
     When I request the list of banks
     Then the response status should be 200
-    And the response body should have field "data"
-    And the response body should have field "meta"
+    And the response body should have field "banks"
+    And the response body should have field "profile"
 
     When I create a consent with valid details
     Then the response status should be 200

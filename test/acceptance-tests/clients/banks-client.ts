@@ -1,19 +1,18 @@
-import type { BanksRequestParams } from '../../../src/types/banks.js'
-
-import { apiFetch, type ApiResponse } from '../utils/api-client.js'
+import { apiFetch, type ApiResponse, mergeHeaders } from '../utils/api-client.js'
 
 export class BanksClient {
   private readonly endpoint: string
+  private readonly sessionId: string
 
-  constructor(baseUrl: string) {
+  constructor(baseUrl: string, sessionId: string) {
     this.endpoint = `${baseUrl}/banks`
+    this.sessionId = sessionId
   }
 
-  async getBanks(params?: BanksRequestParams, options?: RequestInit): Promise<ApiResponse> {
-    const entries = Object.entries(params ?? {})
-      .filter(([, v]) => v !== undefined)
-      .map(([k, v]) => [k, String(v)])
-    const query = entries.length ? `?${new URLSearchParams(entries).toString()}` : ''
-    return apiFetch(`${this.endpoint}${query}`, options)
+  async getBanks(options?: RequestInit): Promise<ApiResponse> {
+    return apiFetch(this.endpoint, {
+      ...options,
+      headers: mergeHeaders({ 'session-id': this.sessionId }, options?.headers)
+    })
   }
 }

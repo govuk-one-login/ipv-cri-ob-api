@@ -230,9 +230,8 @@ describe('template.yaml JWKSBucketRole IAM policy', () => {
 })
 
 describe('template.yaml LoggingKmsKey policy', () => {
-  const keyPolicy = (resources['LoggingKmsKey']?.['Properties'] as Record<string, unknown>)[
-    'KeyPolicy'
-  ] as Record<string, unknown>
+  const props = resources['LoggingKmsKey']?.['Properties'] as Record<string, unknown>
+  const keyPolicy = props['KeyPolicy'] as Record<string, unknown>
   const statements = keyPolicy['Statement'] as Record<string, unknown>[]
 
   it('grants CloudWatch Logs service principal encrypt/decrypt permissions', () => {

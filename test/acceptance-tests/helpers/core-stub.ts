@@ -40,11 +40,13 @@ export const getJwt = async (
     protocol: url.protocol
   })
 
+  console.log(`→ POST ${url.toString()}`)
   const res = await fetch(url.toString(), {
     body,
     headers: signed.headers as Record<string, string>,
     method: 'POST'
   })
+  console.log(`← ${res.status} POST ${url.toString()}`)
 
   if (!res.ok) throw new Error(`Headless stub /start failed: ${res.status}`)
   return res.json() as Promise<{ client_id: string; request: string }>
