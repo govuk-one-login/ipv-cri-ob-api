@@ -1,18 +1,16 @@
 import type { TokenEntity } from '@lib/token-rotator/model/token-entity'
 import type { TokenRepository } from '@lib/token-rotator/model/token-repository'
 
+import { createTokenRetrievalService } from '@lib/token-rotator/service/token-retrieval-service'
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest'
-
-const { TokenProfile } = await import('@lib/token-rotator/model/token-profile')
-const { createTokenRetrievalService } =
-  await import('@lib/token-rotator/service/token-retrieval-service')
 
 const NOW_SECONDS = 690_768_000 // 1991-11-22T00:00:00Z
 const FRESH_TOKEN_TTL = NOW_SECONDS + 1000
 const EXPIRED_TOKEN_TTL = NOW_SECONDS - 60
+const PROFILE = 'EXAMPLE'
 
 const buildTokenEntity = (overrides: Partial<TokenEntity> = {}): TokenEntity => ({
-  id: TokenProfile.STUB,
+  id: PROFILE,
   tokenValue: 'cached-token',
   ttl: FRESH_TOKEN_TTL,
   ...overrides
@@ -39,16 +37,16 @@ describe('token-retrieval-service', () => {
       tokenRepository.getToken = vi.fn().mockResolvedValue(buildTokenEntity())
 
       const service = createTokenRetrievalService({ tokenRepository })
-      const token = await service.retrieveToken(TokenProfile.STUB)
+      const token = await service.retrieveToken(PROFILE)
 
       expect(token).toBe('cached-token')
-      expect(tokenRepository.getToken).toHaveBeenCalledWith(TokenProfile.STUB)
+      expect(tokenRepository.getToken).toHaveBeenCalledWith(PROFILE)
     })
 
     it('returns undefined when no token is cached for the profile', async () => {
       const service = createTokenRetrievalService({ tokenRepository: mockTokenRepository() })
 
-      const token = await service.retrieveToken(TokenProfile.STUB)
+      const token = await service.retrieveToken(PROFILE)
 
       expect(token).toBeUndefined()
     })
@@ -60,7 +58,7 @@ describe('token-retrieval-service', () => {
         .mockResolvedValue(buildTokenEntity({ ttl: EXPIRED_TOKEN_TTL }))
 
       const service = createTokenRetrievalService({ tokenRepository })
-      const token = await service.retrieveToken(TokenProfile.STUB)
+      const token = await service.retrieveToken(PROFILE)
 
       expect(token).toBeUndefined()
     })

@@ -25,75 +25,79 @@ export const myTokenStrategy: TokenRotationStrategy = {
 }
 ```
 
-`credentials` is passed into the `rotate` function when the library calls it during a rotation event. The library looks up credentials via the chosen `credentialsProvider`
+`credentials` is passed into the `rotate` function when the library calls it during a rotation event. The library loads credentials via a consumer credential provider implementing the [CredentialsProvider](./model/credentials-provider.ts) interface. This is generic over the consumer's profile type, e.g. `CredentialsProvider<Profile>`.
 
-Consumers then build the token rotator function handler:
+Consumers then build the token rotator function handler. The library is generic over a consumer-defined profile type. For example:
 
 ```ts
-const tokenRotatorHandler = createTokenRotator(
-  loadTokenRotatorConfigFromEnv(),                       // library provided
+type Profile = 'STUB' | 'UAT' | 'LIVE'
+
+const myProvider: CredentialsProvider<Profile> = {...}
+
+const tokenRotatorHandler = createTokenRotator<Profile>(
   {
-    credentialsProvider: ssmCredentialsProvider,         // library provided
+    profiles: ['STUB', 'UAT'],
+    refreshWindowSeconds: 600
+  },
+  {
+    credentialsProvider: myProvider,                     // consumer provided
     tokenRepository: createDynamoTokenRepository({...}), // library provided
     tokenRotationStrategy: myTokenStrategy               // consumer provided
   }
 )
 ```
 
-Consumers can use the library-provided Dynamo and SSM adapters or roll their own.
+Consumers can use the library-provided Dynamo adapter or roll their own.
 
 This handler can then be deployed as a Lambda (alongside a suitable database table) on a ScheduledRotation as a fully asynchronous access token life cycle manager
 
-### Environment Variables
+### Configuration
 
-The following environment values can be loaded in the Lambda runtime in order to use the provided convenience helper `loadTokenRotatorConfigFromEnv()`
+The library does not read from environment variables directly — consumers are expected to build a `TokenRotationServiceConfig` in their own composition root and hand it to `createTokenRotator`. This keeps env-var names and validation rules with the consuming Lambda rather than the library.
 
-| Environment variable                   | Description                                                                                                                                                                                                                               | Required                                                     |
-|----------------------------------------|-------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------|--------------------------------------------------------------|
-| `TOKEN_ROTATOR_PROFILES`               | A pipe delimited list of profiles the token rotator will store tokens against, at least one profile must be provided. Available profiles: `STUB`, `UAT`, `LIVE`                                                                           | Yes (if using convenience `loadTokenRotatorConfigFromEnv()`) |
-| `TOKEN_ROTATOR_REFRESH_WINDOW_SECONDS` | The number of seconds **before** a token expires that the rotator will begin attempting to rotate the token. This value should be **greater** than your Lambda invocation interval + the 30 second read pad, ideally significantly larger | Yes (if using convenience `loadTokenRotatorConfigFromEnv()`) |
-| `TOKEN_ROTATOR_CREDENTIALS_PATH`       | Path prefix used by the selected credentials provider to look up parameters.                                                                                                                                                              | Yes (if using convenience `loadTokenRotatorConfigFromEnv()`) |
+`TokenRotationServiceConfig<TProfile>` fields:
+
+| Field                   | Description                                                                                                                                                                                                                        |
+|-------------------------|------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------|
+| `profiles`              | List of consumer-defined profiles the token rotator will store tokens against. At least one must be provided.                                                                                                                       |
+| `refreshWindowSeconds`  | The number of seconds **before** a token expires that the rotator will begin attempting to rotate the token. This value should be **greater** than your Lambda invocation interval + the 30 second read pad, ideally significantly larger. |
+
+The library exports a helper for parsing the refresh window from a raw string:
+
+```ts
+import { parseRefreshWindowSeconds } from '@lib/token-rotator/util/parse-refresh-window'
+const refreshWindowSeconds = parseRefreshWindowSeconds(process.env.MY_REFRESH_WINDOW!)
+```
+
+This helper enforces that the value is a positive number greater than the library's 30s read-expiry pad. Use it in your composition root so that a misconfiguration fails at cold start.
 
 ### Retrieving a token
 
 Consumers create a `tokenRetrievalService`, passing in the required `TokenRepository`:
 
 ```ts
-const tokenRetrievalService = createTokenRetrievalService({
+const tokenRetrievalService = createTokenRetrievalService<Profile>({
   tokenRepository: createDynamoTokenRepository({...}) // if using library provided Dynamo adapter
 })
 
-const accessToken = await tokenRetrievalService.retrieveToken(profile) // profile (STUB,UAT,LIVE) tells the retrieval service which token to return
+const accessToken = await tokenRetrievalService.retrieveToken(profile) // profile tells the retrieval service which token to return
 ```
 
 `accessToken` in this example will be the token value or `undefined` if there is no token available for the requested profile (missing or expired)
 
 ## Test data strategy
 
-The token rotator is intended to store tokens under separate profiles. The available profiles are:
+The token rotator is intended to store tokens under separate profiles named by the consumer. Consider the following example:
 
-- STUB
-- UAT
-- LIVE
+As a consumer I want to create a token rotator that cycles tokens for the `STUB` and `UAT` profiles
 
-Consider the following example:
+I create a `tokenRotator` with the following configuration:
+- `profiles`: `['STUB', 'UAT']`
+- `refreshWindowSeconds`: `600`
 
-As a consumer I want to create a token rotator that cycles tokens for the `TEST` and `UAT` profiles
+The rotation service will now call the `rotate` function from the provided strategy twice (once per configured profile), passing in the credentials the `CredentialsProvider` returned for that profile.
 
-I create a `tokenRotator` with the following env configuration:
-
-- `TOKEN_ROTATOR_PROFILES`: `STUB|UAT`
-- `TOKEN_ROTATOR_CREDENTIALS_PATH`: `/my-stack-name/my-awesome-token-rotator`
-- `TOKEN_ROTATOR_REFRESH_WINDOW_SECONDS`: `600`
-
-If the `ssmCredentialsProvider` is chosen when creating the `tokenRotator`, the rotation service will look up credentials from SSM in the following locations:
-
-- `/my-stack-name/my-awesome-token-rotator/STUB/*`
-- `/my-stack-name/my-awesome-token-rotator/UAT/*`
-
-The rotation service will now call the `rotate` function from the provided strategy twice, passing in the credentials loaded from SSM using the configured profiles.
-
-The rotation service stores each returned token in the provided `dynamoTokenRepository`. Each token entity includes the `profile`, `tokenValue` and `ttl` (token expiry)
+The rotation service stores each returned token in the provided `dynamoTokenRepository`. Each token entity includes the profile as `id`, `tokenValue` and `ttl` (token expiry)
 
 On each scheduled invocation of the `tokenRotator` Lambda, the rotation service checks the `ttl` of a stored token for each configured profile.
 

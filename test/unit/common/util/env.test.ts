@@ -1,4 +1,4 @@
-import { requireEnv } from '@src/common/util/env'
+import { requireEnv } from '@common/util/env'
 import { afterEach, beforeEach, describe, expect, it } from 'vitest'
 
 const KEY = 'TEST_REQUIRE_ENV_VAR'

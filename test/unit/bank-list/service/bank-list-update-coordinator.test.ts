@@ -1,8 +1,8 @@
 import type { BankListUpdateService } from '@src/bank-list/service/bank-list-update-service'
 import type { MockInstance } from 'vitest'
 
+import { EndpointProfile } from '@common/model/endpoint-profile'
 import { logger } from '@govuk-one-login/cri-logger'
-import { BanksEndpointProfile } from '@src/bank-list/model/bank-list'
 import { createBankListUpdateCoordinator } from '@src/bank-list/service/bank-list-update-coordinator'
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest'
 
@@ -22,22 +22,22 @@ describe('bank-list-update-coordinator', () => {
     vi.restoreAllMocks()
   })
 
-  const createCoordinator = (profiles: readonly BanksEndpointProfile[]) =>
+  const createCoordinator = (profiles: readonly EndpointProfile[]) =>
     createBankListUpdateCoordinator({ profiles }, { bankListUpdateService })
 
   it('updates every enabled profile', async () => {
     const coordinator = createCoordinator([
-      BanksEndpointProfile.STUB,
-      BanksEndpointProfile.UAT,
-      BanksEndpointProfile.LIVE
+      EndpointProfile.STUB,
+      EndpointProfile.UAT,
+      EndpointProfile.LIVE
     ])
 
     await coordinator.updateAll()
 
     expect(bankListUpdateService).toHaveBeenCalledTimes(3)
-    expect(bankListUpdateService).toHaveBeenNthCalledWith(1, BanksEndpointProfile.STUB)
-    expect(bankListUpdateService).toHaveBeenNthCalledWith(2, BanksEndpointProfile.UAT)
-    expect(bankListUpdateService).toHaveBeenNthCalledWith(3, BanksEndpointProfile.LIVE)
+    expect(bankListUpdateService).toHaveBeenNthCalledWith(1, EndpointProfile.STUB)
+    expect(bankListUpdateService).toHaveBeenNthCalledWith(2, EndpointProfile.UAT)
+    expect(bankListUpdateService).toHaveBeenNthCalledWith(3, EndpointProfile.LIVE)
   })
 
   it('logs the outcome of update checks', async () => {
@@ -45,16 +45,16 @@ describe('bank-list-update-coordinator', () => {
       .mockResolvedValueOnce({ updated: true })
       .mockResolvedValueOnce({ updated: false })
 
-    const coordinator = createCoordinator([BanksEndpointProfile.STUB, BanksEndpointProfile.UAT])
+    const coordinator = createCoordinator([EndpointProfile.STUB, EndpointProfile.UAT])
 
     await coordinator.updateAll()
 
     expect(infoSpy).toHaveBeenCalledWith('Bank list update completed', {
-      profile: BanksEndpointProfile.STUB,
+      profile: EndpointProfile.STUB,
       updated: true
     })
     expect(infoSpy).toHaveBeenCalledWith('Bank list update completed', {
-      profile: BanksEndpointProfile.UAT,
+      profile: EndpointProfile.UAT,
       updated: false
     })
   })
@@ -64,20 +64,20 @@ describe('bank-list-update-coordinator', () => {
       .mockRejectedValueOnce(new Error('STUB unavailable'))
       .mockResolvedValueOnce({ updated: true })
 
-    const coordinator = createCoordinator([BanksEndpointProfile.STUB, BanksEndpointProfile.UAT])
+    const coordinator = createCoordinator([EndpointProfile.STUB, EndpointProfile.UAT])
 
     await expect(coordinator.updateAll()).rejects.toThrow('Bank list update(s) failed for: STUB')
 
     expect(bankListUpdateService).toHaveBeenCalledTimes(2)
-    expect(bankListUpdateService).toHaveBeenNthCalledWith(1, BanksEndpointProfile.STUB)
-    expect(bankListUpdateService).toHaveBeenNthCalledWith(2, BanksEndpointProfile.UAT)
+    expect(bankListUpdateService).toHaveBeenNthCalledWith(1, EndpointProfile.STUB)
+    expect(bankListUpdateService).toHaveBeenNthCalledWith(2, EndpointProfile.UAT)
 
     expect(errorSpy).toHaveBeenCalledWith('Bank list update failed', {
-      profile: BanksEndpointProfile.STUB,
+      profile: EndpointProfile.STUB,
       reason: 'STUB unavailable'
     })
     expect(infoSpy).toHaveBeenCalledWith('Bank list update completed', {
-      profile: BanksEndpointProfile.UAT,
+      profile: EndpointProfile.UAT,
       updated: true
     })
   })
@@ -87,7 +87,7 @@ describe('bank-list-update-coordinator', () => {
       .mockRejectedValueOnce(new Error('STUB unavailable'))
       .mockRejectedValueOnce(new Error('UAT unavailable'))
 
-    const coordinator = createCoordinator([BanksEndpointProfile.STUB, BanksEndpointProfile.UAT])
+    const coordinator = createCoordinator([EndpointProfile.STUB, EndpointProfile.UAT])
 
     await expect(coordinator.updateAll()).rejects.toThrow(
       'Bank list update(s) failed for: STUB, UAT'

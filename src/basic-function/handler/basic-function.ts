@@ -2,7 +2,7 @@ import type { APIGatewayProxyEvent, APIGatewayProxyResult } from 'aws-lambda'
 
 import { dynamoDBDocumentClient } from '@common/client/dynamodb-client'
 import { errorHandler, injectLambdaContext, logMetrics } from '@common/handler/middleware'
-import { getTokenProfileForClientId } from '@common/model/oauth-client-id'
+import { getEndpointProfileForClientId } from '@common/model/oauth-client-id'
 import { requireEnv } from '@common/util/env'
 import { logger } from '@govuk-one-login/cri-logger'
 import { metrics } from '@govuk-one-login/cri-metrics'
@@ -21,7 +21,7 @@ const tokens = createTokenRetrievalService({
 const lambdaHandler = async (event: APIGatewayProxyEvent): Promise<APIGatewayProxyResult> => {
   logger.info('Lambda invoked')
 
-  const profile = getTokenProfileForClientId('ipv-core-stub') // example id that maps to STUB, from session normally
+  const profile = getEndpointProfileForClientId('ipv-core-stub') // example id that maps to STUB, from session normally
   const tokenValue = await tokens.retrieveToken(profile)
 
   if (!tokenValue) {

@@ -2,10 +2,10 @@ import type { DynamoDBDocumentClient } from '@aws-sdk/lib-dynamodb'
 import type { TokenEntity } from '@lib/token-rotator/model/token-entity'
 
 import { createDynamoTokenRepository } from '@lib/token-rotator/client/dynamo-token-repository'
-import { TokenProfile } from '@lib/token-rotator/model/token-profile'
 import { beforeEach, describe, expect, it, vi } from 'vitest'
 
 const TABLE_NAME = 'token-rotator-table'
+const PROFILE = 'EXAMPLE'
 
 const mockSendCommand = vi.fn()
 const mockDynamoDBDocumentClient = { send: mockSendCommand } as unknown as DynamoDBDocumentClient
@@ -16,7 +16,7 @@ const repository = createDynamoTokenRepository(
 )
 
 const buildTokenEntity = (overrides: Partial<TokenEntity> = {}): TokenEntity => ({
-  id: TokenProfile.STUB,
+  id: PROFILE,
   tokenValue: 'cached-token',
   ttl: 1_000,
   ...overrides
@@ -30,11 +30,11 @@ beforeEach(() => {
 describe('token-repository', () => {
   describe('getToken', () => {
     it('queries DynamoDB with the token profile', async () => {
-      await repository.getToken(TokenProfile.STUB)
+      await repository.getToken(PROFILE)
 
       expect(mockSendCommand).toHaveBeenCalledWith(
         expect.objectContaining({
-          input: { Key: { id: TokenProfile.STUB }, TableName: TABLE_NAME }
+          input: { Key: { id: PROFILE }, TableName: TABLE_NAME }
         })
       )
     })
@@ -43,11 +43,11 @@ describe('token-repository', () => {
       const entity = buildTokenEntity()
       mockSendCommand.mockResolvedValueOnce({ Item: entity })
 
-      expect(await repository.getToken(TokenProfile.STUB)).toEqual(entity)
+      expect(await repository.getToken(PROFILE)).toEqual(entity)
     })
 
     it('returns undefined when no Item is returned', async () => {
-      expect(await repository.getToken(TokenProfile.STUB)).toBeUndefined()
+      expect(await repository.getToken(PROFILE)).toBeUndefined()
     })
   })
 

@@ -1,6 +1,5 @@
-import type { CredentialsProvider } from '@lib/token-rotator/client/ssm-credentials-provider'
+import type { CredentialsProvider } from '@lib/token-rotator/model/credentials-provider'
 import type { TokenCredentials } from '@lib/token-rotator/model/token-credentials'
-import type { TokenProfile } from '@lib/token-rotator/model/token-profile'
 import type { TokenRepository } from '@lib/token-rotator/model/token-repository'
 import type { TokenRotationStrategy } from '@lib/token-rotator/model/token-rotation-strategy'
 
@@ -15,23 +14,22 @@ export interface TokenRotationService {
   rotateAll: () => Promise<void>
 }
 
-export interface TokenRotationServiceConfig {
-  credentialsPathPrefix: string
-  profiles: TokenProfile[]
+export interface TokenRotationServiceConfig<TProfile extends string> {
+  profiles: TProfile[]
   refreshWindowSeconds: number
 }
 
-interface TokenRotationServiceCollaborators {
-  credentialsProvider: CredentialsProvider
+interface TokenRotationServiceCollaborators<TProfile extends string> {
+  credentialsProvider: CredentialsProvider<TProfile>
   tokenRepository: TokenRepository
   tokenRotationStrategy: TokenRotationStrategy
 }
 
-export const createTokenRotationService = (
-  config: TokenRotationServiceConfig,
-  collaborators: TokenRotationServiceCollaborators
+export const createTokenRotationService = <TProfile extends string>(
+  config: TokenRotationServiceConfig<TProfile>,
+  collaborators: TokenRotationServiceCollaborators<TProfile>
 ): TokenRotationService => {
-  const doRotate = async (profile: TokenProfile, credentials: TokenCredentials): Promise<void> => {
+  const doRotate = async (profile: TProfile, credentials: TokenCredentials): Promise<void> => {
     const { expiresAtSeconds, tokenValue } =
       await collaborators.tokenRotationStrategy.rotate(credentials)
     await collaborators.tokenRepository.putToken({
@@ -42,15 +40,13 @@ export const createTokenRotationService = (
     logger.info('Token rotated', { expiresAt: formatTokenExpiry(expiresAtSeconds), profile })
   }
 
-  const rotateForProfile = async (profile: TokenProfile): Promise<void> => {
+  const rotateForProfile = async (profile: TProfile): Promise<void> => {
     const currentToken = await collaborators.tokenRepository.getToken(profile)
     if (currentToken && !isTokenDueForRotation(currentToken, config.refreshWindowSeconds)) {
       logger.info('Token still fresh, skipping rotation', { profile })
       return
     }
-    const credentials = await collaborators.credentialsProvider.getCredentials(
-      `${config.credentialsPathPrefix}/${profile}`
-    )
+    const credentials = await collaborators.credentialsProvider.getCredentials(profile)
     await doRotate(profile, credentials)
   }
 

@@ -1,9 +1,11 @@
+import type { EndpointProfile } from '@common/model/endpoint-profile'
 import type { ScheduledEvent } from 'aws-lambda'
 
 import { dynamoDBDocumentClient } from '@common/client/dynamodb-client'
 import { ssmConfigProvider } from '@common/client/ssm-config-provider'
 import { injectLambdaContext, logMetrics } from '@common/handler/middleware'
 import { requireEnv } from '@common/util/env'
+import { parseProfiles } from '@common/util/parse-profiles'
 import { logger } from '@govuk-one-login/cri-logger'
 import { metrics } from '@govuk-one-login/cri-metrics'
 import { createDynamoTokenRepository } from '@lib/token-rotator/client/dynamo-token-repository'
@@ -12,13 +14,12 @@ import { createBankListRepository } from '@src/bank-list/client/bank-list-reposi
 import { createEcospendBankListProvider } from '@src/bank-list/client/ecospend-bank-list-provider'
 import { createBankListUpdateCoordinator } from '@src/bank-list/service/bank-list-update-coordinator'
 import { createBankListUpdateService } from '@src/bank-list/service/bank-list-update-service'
-import { parseProfiles } from '@src/bank-list/util/load-config-from-env'
 
 import middy from '@middy/core'
 
 const REFRESH_AFTER_SECONDS = 55 * 60
 
-const enabledProfiles = parseProfiles(requireEnv('BANK_LIST_PROFILES'))
+const enabledProfiles = parseProfiles(requireEnv('ENDPOINT_PROFILES'))
 const banksRequestConfigPathPrefix = `/${requireEnv('PARAMETER_PREFIX')}/bank-list`
 
 const bankListRepository = createBankListRepository(
@@ -31,7 +32,7 @@ const dynamoTokenRepository = createDynamoTokenRepository(
   dynamoDBDocumentClient
 )
 
-const tokenRetrievalService = createTokenRetrievalService({
+const tokenRetrievalService = createTokenRetrievalService<EndpointProfile>({
   tokenRepository: dynamoTokenRepository
 })
 

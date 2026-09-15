@@ -5,10 +5,9 @@ import type { BankListEntity } from '@src/bank-list/model/bank-list'
 import type { MockInstance } from 'vitest'
 
 import { SessionNotFoundError } from '@common/error/session-not-found-error'
+import { EndpointProfile } from '@common/model/endpoint-profile'
 import { OAuthClientId } from '@common/model/oauth-client-id'
 import { logger } from '@govuk-one-login/cri-logger'
-import { TokenProfile } from '@lib/token-rotator/model/token-profile'
-import { BanksEndpointProfile } from '@src/bank-list/model/bank-list'
 import { createBankListRetrievalService } from '@src/bank-list/service/bank-list-retrieval-service'
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest'
 
@@ -20,7 +19,7 @@ const buildBankListEntity = (overrides: Partial<BankListEntity> = {}): BankListE
       serviceStatus: true
     }
   ],
-  profile: BanksEndpointProfile.STUB,
+  profile: EndpointProfile.STUB,
   refreshedAtSeconds: 1_800_000_000,
   ...overrides
 })
@@ -85,7 +84,7 @@ describe('bank-list-retrieval-service', () => {
     await service({ sessionId: 'session-123' })
 
     expect(sessionRepository.findBySessionId).toHaveBeenCalledWith('session-123')
-    expect(bankListRepository.getList).toHaveBeenCalledWith(TokenProfile.STUB)
+    expect(bankListRepository.getList).toHaveBeenCalledWith(EndpointProfile.STUB)
   })
 
   it('returns the stored bank list', async () => {
@@ -107,7 +106,7 @@ describe('bank-list-retrieval-service', () => {
       cri_session_id: 'session-123',
       govuk_signin_journey_id: 'client-session-1'
     })
-    expect(appendKeysSpy).toHaveBeenCalledWith({ profile: TokenProfile.STUB })
+    expect(appendKeysSpy).toHaveBeenCalledWith({ profile: EndpointProfile.STUB })
     expect(infoSpy).toHaveBeenCalledWith('Session retrieved')
     expect(infoSpy).toHaveBeenCalledWith('Querying bank list')
     expect(infoSpy).toHaveBeenCalledWith('Returning bank list', {

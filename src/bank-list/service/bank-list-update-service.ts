@@ -1,15 +1,13 @@
 import type { SSMConfigProvider } from '@common/client/ssm-config-provider'
+import type { EndpointProfile } from '@common/model/endpoint-profile'
 import type { BankListRepository } from '@src/bank-list/client/bank-list-repository'
-import type { BanksEndpointProfile } from '@src/bank-list/model/bank-list'
 import type { BankListProvider } from '@src/bank-list/model/bank-list-provider'
 
 export interface BankListUpdateResponse {
   updated: boolean
 }
 
-export type BankListUpdateService = (
-  profile: BanksEndpointProfile
-) => Promise<BankListUpdateResponse>
+export type BankListUpdateService = (profile: EndpointProfile) => Promise<BankListUpdateResponse>
 
 interface BankListUpdateCollaborators {
   bankListProvider: BankListProvider
