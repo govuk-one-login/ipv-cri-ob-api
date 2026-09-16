@@ -1,5 +1,5 @@
+import { EndpointProfile } from '@common/model/endpoint-profile'
 import { logger } from '@govuk-one-login/cri-logger'
-import { TokenProfile } from '@lib/token-rotator/model/token-profile'
 
 export const OAuthClientId = {
   IPV_CORE: 'ipv-core',
@@ -15,27 +15,27 @@ export const OAuthClientId = {
 
 export type OAuthClientId = (typeof OAuthClientId)[keyof typeof OAuthClientId]
 
-export const ClientIdToTokenProfileMapping: Record<OAuthClientId, TokenProfile> = {
-  [OAuthClientId.IPV_CORE]: TokenProfile.LIVE,
-  [OAuthClientId.IPV_CORE_STUB]: TokenProfile.STUB,
-  [OAuthClientId.IPV_CORE_STUB_AWS_HEADLESS]: TokenProfile.UAT,
-  [OAuthClientId.IPV_CORE_STUB_AWS_BUILD]: TokenProfile.STUB,
-  [OAuthClientId.IPV_CORE_STUB_AWS_BUILD_THIRD_PARTY]: TokenProfile.UAT,
-  [OAuthClientId.IPV_CORE_STUB_AWS_PROD]: TokenProfile.STUB,
-  [OAuthClientId.IPV_CORE_STUB_AWS_PROD_THIRD_PARTY]: TokenProfile.UAT,
-  [OAuthClientId.IPV_CORE_STUB_PRE_PROD_AWS_BUILD]: TokenProfile.LIVE,
-  [OAuthClientId.IPV_CORE_THIRD_PARTY_STUBS]: TokenProfile.STUB
+export const ClientIdToEndpointProfileMapping: Record<OAuthClientId, EndpointProfile> = {
+  [OAuthClientId.IPV_CORE]: EndpointProfile.LIVE,
+  [OAuthClientId.IPV_CORE_STUB]: EndpointProfile.STUB,
+  [OAuthClientId.IPV_CORE_STUB_AWS_HEADLESS]: EndpointProfile.UAT,
+  [OAuthClientId.IPV_CORE_STUB_AWS_BUILD]: EndpointProfile.STUB,
+  [OAuthClientId.IPV_CORE_STUB_AWS_BUILD_THIRD_PARTY]: EndpointProfile.UAT,
+  [OAuthClientId.IPV_CORE_STUB_AWS_PROD]: EndpointProfile.STUB,
+  [OAuthClientId.IPV_CORE_STUB_AWS_PROD_THIRD_PARTY]: EndpointProfile.UAT,
+  [OAuthClientId.IPV_CORE_STUB_PRE_PROD_AWS_BUILD]: EndpointProfile.LIVE,
+  [OAuthClientId.IPV_CORE_THIRD_PARTY_STUBS]: EndpointProfile.STUB
 } as const
 
 const isOAuthClientId = (value: string): value is OAuthClientId =>
   (Object.values(OAuthClientId) as string[]).includes(value)
 
-export const getTokenProfileForClientId = (clientId: string): TokenProfile => {
+export const getEndpointProfileForClientId = (clientId: string): EndpointProfile => {
   const possibleOAuthClientId = isOAuthClientId(clientId) ? clientId : undefined
   if (possibleOAuthClientId) {
-    return ClientIdToTokenProfileMapping[possibleOAuthClientId]
+    return ClientIdToEndpointProfileMapping[possibleOAuthClientId]
   } else {
     logger.error(`Unknown OAuth Client: ${clientId}, defaulting to LIVE profile`)
-    return TokenProfile.LIVE
+    return EndpointProfile.LIVE
   }
 }

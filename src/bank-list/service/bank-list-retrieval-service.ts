@@ -3,7 +3,7 @@ import type { BankListRepository } from '@src/bank-list/client/bank-list-reposit
 import type { BankListRetrievalResponse } from '@src/bank-list/model/bank-list-retrieval-response'
 
 import { SessionNotFoundError } from '@common/error/session-not-found-error'
-import { getTokenProfileForClientId } from '@common/model/oauth-client-id'
+import { getEndpointProfileForClientId } from '@common/model/oauth-client-id'
 import { logger } from '@govuk-one-login/cri-logger'
 
 export type BankListRetrievalService = (request: {
@@ -27,7 +27,7 @@ export const createBankListRetrievalService = (
     })
     logger.info('Session retrieved')
 
-    const profile = getTokenProfileForClientId(session.clientId)
+    const profile = getEndpointProfileForClientId(session.clientId)
     logger.appendKeys({ profile })
 
     logger.info('Querying bank list')

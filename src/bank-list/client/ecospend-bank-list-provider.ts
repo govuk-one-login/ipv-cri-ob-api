@@ -1,7 +1,7 @@
 import type { TokenRetrievalService } from '@lib/token-rotator/service/token-retrieval-service'
 import type { BankListProvider } from '@src/bank-list/model/bank-list-provider'
 
-import { BanksEndpointProfile } from '@src/bank-list/model/bank-list'
+import { EndpointProfile } from '@common/model/endpoint-profile'
 import { banksRequestConfigSchema } from '@src/bank-list/model/banks-request-config'
 import { ecospendBankListResponseSchema } from '@src/bank-list/model/ecospend-banks-response'
 import { getErrorMessage } from '@src/bank-list/util/get-error-message'
@@ -17,7 +17,7 @@ const BANKS_QUERY_PARAMS = {
 } as const satisfies Record<string, string>
 
 interface EcospendBankListProviderCollaborators {
-  tokenRetrievalService: TokenRetrievalService
+  tokenRetrievalService: TokenRetrievalService<EndpointProfile>
 }
 
 export const createEcospendBankListProvider = (
@@ -46,7 +46,7 @@ export const createEcospendBankListProvider = (
       url.searchParams.set(name, value)
     }
 
-    url.searchParams.set('is_sandbox', String(profile !== BanksEndpointProfile.LIVE))
+    url.searchParams.set('is_sandbox', String(profile !== EndpointProfile.LIVE))
 
     if (requestConfig.customList !== undefined) {
       url.searchParams.set('custom_list', requestConfig.customList)

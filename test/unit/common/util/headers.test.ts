@@ -1,5 +1,5 @@
 import { UnauthorisedError } from '@common/error/unauthorised-error'
-import { requireBearerToken, requireSessionId } from '@src/common/util/headers'
+import { requireBearerToken, requireSessionId } from '@common/util/headers'
 import { describe, expect, it } from 'vitest'
 
 describe('requireSessionId', () => {

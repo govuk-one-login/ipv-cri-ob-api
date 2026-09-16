@@ -2,8 +2,8 @@ import type { BankListEntity } from '@src/bank-list/model/bank-list'
 import type { BankListRetrievalService } from '@src/bank-list/service/bank-list-retrieval-service'
 import type { APIGatewayProxyEvent, Context } from 'aws-lambda'
 
+import { EndpointProfile } from '@common/model/endpoint-profile'
 import { handler } from '@src/bank-list/handler/bank-list-retriever'
-import { BanksEndpointProfile } from '@src/bank-list/model/bank-list'
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest'
 
 const { bankListRetrievalService } = vi.hoisted(() => ({
@@ -32,7 +32,7 @@ const buildContext = (): Context => ({ functionName: 'bank-list-retriever-test' 
 
 const buildBankListEntity = (): BankListEntity => ({
   banks: [{ bankId: 'iron-bank', friendlyName: 'Iron Bank', serviceStatus: true }],
-  profile: BanksEndpointProfile.STUB,
+  profile: EndpointProfile.STUB,
   refreshedAtSeconds: 1_800_000_000
 })
 

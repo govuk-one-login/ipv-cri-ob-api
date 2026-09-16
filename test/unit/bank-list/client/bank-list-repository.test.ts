@@ -1,8 +1,8 @@
 import type { DynamoDBDocumentClient } from '@aws-sdk/lib-dynamodb'
 import type { BankListEntity, StoredBank } from '@src/bank-list/model/bank-list'
 
+import { EndpointProfile } from '@common/model/endpoint-profile'
 import { createBankListRepository } from '@src/bank-list/client/bank-list-repository'
-import { BanksEndpointProfile } from '@src/bank-list/model/bank-list'
 import { beforeEach, describe, expect, it, vi } from 'vitest'
 
 const TABLE_NAME = 'bank-list-table'
@@ -22,7 +22,7 @@ const banks: StoredBank[] = [
 
 const buildBankListEntity = (overrides: Partial<BankListEntity> = {}): BankListEntity => ({
   banks,
-  profile: BanksEndpointProfile.STUB,
+  profile: EndpointProfile.STUB,
   refreshedAtSeconds: 1_800_000_000,
   ...overrides
 })
@@ -39,13 +39,13 @@ beforeEach(() => {
 describe('bank-list-repository', () => {
   describe('getList', () => {
     it('reads the cache for the requested profile', async () => {
-      await repository.getList(BanksEndpointProfile.STUB)
+      await repository.getList(EndpointProfile.STUB)
 
       expect(mockSendCommand).toHaveBeenCalledWith(
         expect.objectContaining({
           input: {
             ConsistentRead: true,
-            Key: { profile: BanksEndpointProfile.STUB },
+            Key: { profile: EndpointProfile.STUB },
             TableName: TABLE_NAME
           }
         })
@@ -57,21 +57,19 @@ describe('bank-list-repository', () => {
 
       mockSendCommand.mockResolvedValueOnce({ Item: entity })
 
-      await expect(repository.getList(BanksEndpointProfile.STUB)).resolves.toEqual(entity)
+      await expect(repository.getList(EndpointProfile.STUB)).resolves.toEqual(entity)
     })
 
     it('returns undefined when no snapshot exists', async () => {
       mockSendCommand.mockResolvedValueOnce({})
 
-      await expect(repository.getList(BanksEndpointProfile.STUB)).resolves.toBeUndefined()
+      await expect(repository.getList(EndpointProfile.STUB)).resolves.toBeUndefined()
     })
 
     it('propagates DynamoDB read failures', async () => {
       mockSendCommand.mockRejectedValueOnce(new Error('DynamoDB unavailable'))
 
-      await expect(repository.getList(BanksEndpointProfile.STUB)).rejects.toThrow(
-        'DynamoDB unavailable'
-      )
+      await expect(repository.getList(EndpointProfile.STUB)).rejects.toThrow('DynamoDB unavailable')
     })
   })
 

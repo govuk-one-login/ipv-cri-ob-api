@@ -1,20 +1,20 @@
-import type { CredentialsProvider } from '@lib/token-rotator/client/ssm-credentials-provider'
+import type { CredentialsProvider } from '@lib/token-rotator/model/credentials-provider'
 import type { TokenRepository } from '@lib/token-rotator/model/token-repository'
 import type { TokenRotationStrategy } from '@lib/token-rotator/model/token-rotation-strategy'
 import type { TokenRotationServiceConfig } from '@lib/token-rotator/service/token-rotation-service'
 import type { ScheduledEvent } from 'aws-lambda'
 
 import { createTokenRotator } from '@lib/token-rotator/handler/token-rotator'
-import { TokenProfile } from '@lib/token-rotator/model/token-profile'
 import { describe, expect, it, vi } from 'vitest'
 
-const buildConfig = (): TokenRotationServiceConfig => ({
-  credentialsPathPrefix: '/test/tokens',
-  profiles: [TokenProfile.STUB],
+type TestProfile = 'ALPHA' | 'BETA'
+
+const buildConfig = (): TokenRotationServiceConfig<TestProfile> => ({
+  profiles: ['ALPHA'],
   refreshWindowSeconds: 300
 })
 
-const buildCredentialsProvider = (): CredentialsProvider => ({
+const buildCredentialsProvider = (): CredentialsProvider<TestProfile> => ({
   getCredentials: vi.fn().mockResolvedValue({ 'client-id': 'test' })
 })
 

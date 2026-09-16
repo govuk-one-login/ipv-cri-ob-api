@@ -1,4 +1,4 @@
-import type { CredentialsProvider } from '@lib/token-rotator/client/ssm-credentials-provider'
+import type { CredentialsProvider } from '@lib/token-rotator/model/credentials-provider'
 import type { TokenRepository } from '@lib/token-rotator/model/token-repository'
 import type { TokenRotationStrategy } from '@lib/token-rotator/model/token-rotation-strategy'
 import type { TokenRotationServiceConfig } from '@lib/token-rotator/service/token-rotation-service'
@@ -6,8 +6,8 @@ import type { ScheduledEvent } from 'aws-lambda'
 
 import { createTokenRotationService } from '@lib/token-rotator/service/token-rotation-service'
 
-interface TokenRotatorCollaborators {
-  credentialsProvider: CredentialsProvider
+interface TokenRotatorCollaborators<TProfile extends string> {
+  credentialsProvider: CredentialsProvider<TProfile>
   tokenRepository: TokenRepository
   tokenRotationStrategy: TokenRotationStrategy
 }
@@ -16,9 +16,9 @@ interface TokenRotatorCollaborators {
  * `ScheduledEvent` triggers rotateAll, all configured profiles are checked for token freshness, fresh
  * tokens are skipped, stale/expired/missing tokens are rotated
  */
-export const createTokenRotator = (
-  config: TokenRotationServiceConfig,
-  collaborators: TokenRotatorCollaborators
+export const createTokenRotator = <TProfile extends string>(
+  config: TokenRotationServiceConfig<TProfile>,
+  collaborators: TokenRotatorCollaborators<TProfile>
 ) => {
   const tokenRotationService = createTokenRotationService(config, collaborators)
 

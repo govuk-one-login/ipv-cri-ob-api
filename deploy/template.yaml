@@ -143,8 +143,7 @@ Mappings:
       provisionedConcurrentExecutions: 0
       memorySize: 1024
       vcDomain: review-ob.dev.account.gov.uk
-      tokenRotatorProfiles: STUB|UAT
-      bankListUpdaterProfiles: STUB|UAT
+      endpointProfiles: STUB|UAT
       logFullErrors: "true"
     build:
       dynatraceSecretArn: arn:aws:secretsmanager:eu-west-2:216552277552:secret:DynatraceNonProductionVariables
@@ -152,8 +151,7 @@ Mappings:
       provisionedConcurrentExecutions: 1
       memorySize: 1024
       vcDomain: review-ob.build.account.gov.uk
-      tokenRotatorProfiles: STUB|UAT
-      bankListUpdaterProfiles: STUB|UAT
+      endpointProfiles: STUB|UAT
       logFullErrors: "true"
     staging:
       dynatraceSecretArn: arn:aws:secretsmanager:eu-west-2:216552277552:secret:DynatraceNonProductionVariables
@@ -161,8 +159,7 @@ Mappings:
       provisionedConcurrentExecutions: 1
       memorySize: 1024
       vcDomain: review-ob.staging.account.gov.uk
-      tokenRotatorProfiles: STUB|UAT
-      bankListUpdaterProfiles: STUB|UAT
+      endpointProfiles: STUB|UAT
       logFullErrors: "true"
     integration:
       dynatraceSecretArn: arn:aws:secretsmanager:eu-west-2:216552277552:secret:DynatraceNonProductionVariables
@@ -170,8 +167,7 @@ Mappings:
       provisionedConcurrentExecutions: 1
       memorySize: 1024
       vcDomain: review-ob.integration.account.gov.uk
-      tokenRotatorProfiles: UAT
-      bankListUpdaterProfiles: UAT
+      endpointProfiles: UAT
       logFullErrors: "false"
     production:
       dynatraceSecretArn: arn:aws:secretsmanager:eu-west-2:216552277552:secret:DynatraceProductionVariables
@@ -179,8 +175,7 @@ Mappings:
       provisionedConcurrentExecutions: 1
       memorySize: 1024
       vcDomain: review-ob.account.gov.uk
-      tokenRotatorProfiles: LIVE
-      bankListUpdaterProfiles: LIVE
+      endpointProfiles: LIVE
       logFullErrors: "false"
 
   # Local Dev
@@ -193,27 +188,27 @@ Mappings:
       authenticationAlg: "ES256"
       jwksEndpoint: "https://cri.core.build.stubs.account.gov.uk/.well-known/jwks.json"
 
-  ProfileEndpointMappings:
+  ProfileEndpoints:
     dev:
-      StubBanksEndpointUrl: https://8nqpgft8mc.execute-api.eu-west-2.amazonaws.com/dev/api/v2.0/banks
-      UatBanksEndpointUrl: https://aisapi.sb.ecospend.com/api/v2.0/banks
-      LiveBanksEndpointUrl: https://aisapi.ecospend.com/api/v2.0/banks
+      StubEndpointUrl: https://8nqpgft8mc.execute-api.eu-west-2.amazonaws.com/dev
+      UatEndpointUrl: https://aisapi.sb.ecospend.com
+      LiveEndpointUrl: https://aisapi.ecospend.com
     build:
-      StubBanksEndpointUrl: https://babtt0cp72.execute-api.eu-west-2.amazonaws.com/build/api/v2.0/banks
-      UatBanksEndpointUrl: https://aisapi.sb.ecospend.com/api/v2.0/banks
-      LiveBanksEndpointUrl: https://aisapi.ecospend.com/api/v2.0/banks
+      StubEndpointUrl: https://babtt0cp72.execute-api.eu-west-2.amazonaws.com/build
+      UatEndpointUrl: https://aisapi.sb.ecospend.com
+      LiveEndpointUrl: https://aisapi.ecospend.com
     staging:
-      StubBanksEndpointUrl: https://52wrvaocmk.execute-api.eu-west-2.amazonaws.com/staging/api/v2.0/banks
-      UatBanksEndpointUrl: https://aisapi.sb.ecospend.com/api/v2.0/banks
-      LiveBanksEndpointUrl: https://aisapi.ecospend.com/api/v2.0/banks
+      StubEndpointUrl: https://52wrvaocmk.execute-api.eu-west-2.amazonaws.com/staging
+      UatEndpointUrl: https://aisapi.sb.ecospend.com
+      LiveEndpointUrl: https://aisapi.ecospend.com
     integration:
-      StubBanksEndpointUrl: https://aisapi.sb.ecospend.com/api/v2.0/banks
-      UatBanksEndpointUrl: https://aisapi.sb.ecospend.com/api/v2.0/banks
-      LiveBanksEndpointUrl: https://aisapi.ecospend.com/api/v2.0/banks
+      StubEndpointUrl: https://aisapi.sb.ecospend.com
+      UatEndpointUrl: https://aisapi.sb.ecospend.com
+      LiveEndpointUrl: https://aisapi.ecospend.com
     production:
-      StubBanksEndpointUrl: https://aisapi.ecospend.com/api/v2.0/banks
-      UatBanksEndpointUrl: https://aisapi.ecospend.com/api/v2.0/banks
-      LiveBanksEndpointUrl: https://aisapi.ecospend.com/api/v2.0/banks
+      StubEndpointUrl: https://aisapi.ecospend.com
+      UatEndpointUrl: https://aisapi.ecospend.com
+      LiveEndpointUrl: https://aisapi.ecospend.com
 
 
 
@@ -691,7 +686,7 @@ Resources:
         Variables:
           POWERTOOLS_SERVICE_NAME: !Sub "${CriIdentifier}-ecospend-token-rotator"
           TOKEN_ROTATOR_DB_TABLE_NAME: !Ref TokenRotatorTable
-          TOKEN_ROTATOR_PROFILES: !FindInMap [ EnvironmentConfiguration, !Ref Environment, tokenRotatorProfiles ]
+          ENDPOINT_PROFILES: !FindInMap [ EnvironmentConfiguration, !Ref Environment, endpointProfiles ]
           TOKEN_ROTATOR_REFRESH_WINDOW_SECONDS: "900"
           TOKEN_ROTATOR_CREDENTIALS_PATH: !If
             - UseParameterPrefix
@@ -788,7 +783,7 @@ Resources:
           POWERTOOLS_SERVICE_NAME: !Sub "${CriIdentifier}-bank-list-updater"
           TOKEN_ROTATOR_DB_TABLE_NAME: !Ref TokenRotatorTable
           BANK_LIST_DB_TABLE_NAME: !Ref BankListTable
-          BANK_LIST_PROFILES: !FindInMap [ EnvironmentConfiguration, !Ref Environment, bankListUpdaterProfiles ]
+          ENDPOINT_PROFILES: !FindInMap [ EnvironmentConfiguration, !Ref Environment, endpointProfiles ]
       AutoPublishAlias: live
       AutoPublishAliasAllProperties: true
       EventInvokeConfig:
@@ -915,7 +910,9 @@ Resources:
       Name: !Sub "/${AWS::StackName}/bank-list/STUB/endpoint-url"
       Description: Banks endpoint for STUB
       Type: String
-      Value: !FindInMap [ ProfileEndpointMappings, !Ref Environment, StubBanksEndpointUrl ]
+      Value: !Sub
+        - ${BaseUrl}/api/v2.0/banks
+        - BaseUrl: !FindInMap [ ProfileEndpoints, !Ref Environment, StubEndpointUrl ]
 
   UatBanksEndpointParameter:
     Condition: IsDeployedFromPipeline
@@ -924,7 +921,9 @@ Resources:
       Name: !Sub "/${AWS::StackName}/bank-list/UAT/endpoint-url"
       Description: Banks endpoint for UAT
       Type: String
-      Value: !FindInMap [ ProfileEndpointMappings, !Ref Environment, UatBanksEndpointUrl ]
+      Value: !Sub
+        - ${BaseUrl}/api/v2.0/banks
+        - BaseUrl: !FindInMap [ ProfileEndpoints, !Ref Environment, UatEndpointUrl ]
 
   LiveBanksEndpointParameter:
     Condition: IsDeployedFromPipeline
@@ -933,7 +932,9 @@ Resources:
       Name: !Sub "/${AWS::StackName}/bank-list/LIVE/endpoint-url"
       Description: Banks endpoint for LIVE
       Type: String
-      Value: !FindInMap [ ProfileEndpointMappings, !Ref Environment, LiveBanksEndpointUrl ]
+      Value: !Sub
+        - ${BaseUrl}/api/v2.0/banks
+        - BaseUrl: !FindInMap [ ProfileEndpoints, !Ref Environment, LiveEndpointUrl ]
 
   ####################################################################
   #                                                                  #

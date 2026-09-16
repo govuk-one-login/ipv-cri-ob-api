@@ -1,20 +1,19 @@
-import type { TokenProfile } from '@lib/token-rotator/model/token-profile'
 import type { TokenRepository } from '@lib/token-rotator/model/token-repository'
 
 import { logger } from '@govuk-one-login/cri-logger'
 import { formatTokenExpiry, isTokenExpiredForRead } from '@lib/token-rotator/util/token-expiry'
 
-export interface TokenRetrievalService {
-  retrieveToken: (profile: TokenProfile) => Promise<string | undefined>
+export interface TokenRetrievalService<TProfile extends string> {
+  retrieveToken: (profile: TProfile) => Promise<string | undefined>
 }
 
 interface TokenRetrievalServiceCollaborators {
   tokenRepository: TokenRepository
 }
 
-export const createTokenRetrievalService = (
+export const createTokenRetrievalService = <TProfile extends string>(
   collaborators: TokenRetrievalServiceCollaborators
-): TokenRetrievalService => ({
+): TokenRetrievalService<TProfile> => ({
   retrieveToken: async (profile) => {
     const tokenEntity = await collaborators.tokenRepository.getToken(profile)
     if (!tokenEntity) {

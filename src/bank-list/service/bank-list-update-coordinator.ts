@@ -1,4 +1,4 @@
-import type { BanksEndpointProfile } from '@src/bank-list/model/bank-list'
+import type { EndpointProfile } from '@common/model/endpoint-profile'
 import type { BankListUpdateService } from '@src/bank-list/service/bank-list-update-service'
 
 import { logger } from '@govuk-one-login/cri-logger'
@@ -9,11 +9,11 @@ interface BankListUpdateCoordinatorCollaborators {
 }
 
 interface BankListUpdateCoordinatorConfig {
-  profiles: readonly BanksEndpointProfile[]
+  profiles: readonly EndpointProfile[]
 }
 
 interface BankListUpdateCoordinatorFailure {
-  profile: BanksEndpointProfile
+  profile: EndpointProfile
   reason: string
 }
 
