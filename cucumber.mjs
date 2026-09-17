@@ -1,3 +1,7 @@
+try {
+  process.loadEnvFile('.env')
+} catch {}
+
 const sharedOptions = {
   format: ['progress-bar'],
   paths: ['test/acceptance-tests/features/**/*.feature'],

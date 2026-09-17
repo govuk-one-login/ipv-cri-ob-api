@@ -42,10 +42,6 @@ When no `.env` file is present and `STACK_NAME` is not `local`, `run-tests.sh` f
 
 `STACK_NAME` is taken from `SAM_STACK_NAME`, falling back to `local`.
 
-### 3. Local sandbox (no config)
-
-If no `.env` file exists and `STACK_NAME` is `local`, tests run against `http://localhost:3000` with no authentication required.
-
 ### Environment Variable Reference
 
 | Variable                  | Required        | Default                 | Description                                                                                    |
@@ -61,13 +57,13 @@ If no `.env` file exists and `STACK_NAME` is `local`, tests run against `http://
 
 ```bash
 # From the repo root
-npm run test:api
+aws-vault exec <aws_account> npm run test:api
 ```
 
 Or directly via the run script from the `acceptance-tests/` directory:
 
 ```bash
-./run-tests.sh
+aws-vault exec <aws_account> ./run-tests.sh false
 ```
 
 ### In the pipeline
