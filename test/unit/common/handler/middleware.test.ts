@@ -25,7 +25,7 @@ const expectStartStateOnCall = (callIndex: number, expected: LambdaStartState): 
   expect(criMetrics.captureMetricWithDimensions).toHaveBeenNthCalledWith(
     callIndex,
     expect.anything(),
-    expect.objectContaining({ [LambdaMetricDimensions.StartState]: expected }),
+    expect.objectContaining({ [LambdaMetricDimensions.START_STATE]: expected }),
     expect.anything(),
     expect.anything()
   )
