@@ -32,8 +32,8 @@ export const latencyRecorder = (): MiddlewareObj<APIGatewayProxyEvent, APIGatewa
     captureMetricWithDimensions(
       LAMBDA_LATENCY_METRIC_NAME,
       {
-        [LambdaMetricDimensions.Lambda]: request.context.functionName,
-        [LambdaMetricDimensions.StartState]: startState
+        [LambdaMetricDimensions.LAMBDA]: request.context.functionName,
+        [LambdaMetricDimensions.START_STATE]: startState
       },
       performance.now() - start,
       MetricUnit.Milliseconds
@@ -55,8 +55,8 @@ export const resultRecorder = (): MiddlewareObj<APIGatewayProxyEvent, APIGateway
     captureMetricWithDimensions(
       LAMBDA_RESULT_METRIC_NAME,
       {
-        [LambdaMetricDimensions.Lambda]: request.context.functionName,
-        [LambdaMetricDimensions.Result]: result
+        [LambdaMetricDimensions.LAMBDA]: request.context.functionName,
+        [LambdaMetricDimensions.RESULT]: result
       },
       1,
       MetricUnit.Count
