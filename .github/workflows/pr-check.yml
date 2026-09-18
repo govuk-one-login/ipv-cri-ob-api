@@ -106,6 +106,9 @@ jobs:
           role-to-assume: ${{ secrets.DEV_GHA_PREVIEW_ROLE_ARN }}
           aws-region: ${{ needs.deploy-preview.outputs.aws-region }}
 
+      - name: Wait 2 mins for stack to stabilise (TODO - remove post LIME-2470)
+        run: sleep 120
+
       - name: Run tests
         env:
           SAM_STACK_NAME: ${{ needs.deploy-preview.outputs.stack-name }}
