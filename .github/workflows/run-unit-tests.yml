@@ -1,0 +1,32 @@
+name: Unit tests
+
+on:
+  workflow_call:
+
+concurrency:
+  group: unit-tests-${{ github.workflow }}-${{ github.ref }}
+  cancel-in-progress: true
+
+permissions: {}
+
+jobs:
+  unit-tests:
+    name: Run unit tests
+    runs-on: ubuntu-latest
+    permissions:
+      contents: read
+    steps:
+      - name: Setup Node
+        uses: govuk-one-login/github-actions/node/install-dependencies@3a8d0b3fdd010f27ed9cbb2b6c426cd56a23b3e4
+        with:
+          node-version-file: '.nvmrc'
+
+      - name: Unit tests
+        run: npm run test:coverage
+
+      - name: Upload coverage report
+        uses: actions/upload-artifact@v7
+        with:
+          name: coverage
+          path: coverage/
+          retention-days: 1

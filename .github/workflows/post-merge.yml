@@ -8,40 +8,14 @@ on:
 permissions: {}
 
 jobs:
-  unit-tests:
-    runs-on: ubuntu-latest
-    concurrency:
-      group: unit-tests-${{ github.ref }}
-      cancel-in-progress: true
-    permissions:
-      contents: read
-    steps:
-      - name: Setup Node
-        uses: govuk-one-login/github-actions/node/install-dependencies@4c76410195b5fcb1804fc7c183ed20704252830f
-        with:
-          node-version-file: '.nvmrc'
-
-      - name: Unit tests
-        run: npm run test:coverage
-
-      - name: Upload coverage report
-        uses: actions/upload-artifact@v7
-        with:
-          name: coverage
-          path: coverage/
-          retention-days: 1
-
   scan-repo:
     name: CodeQL and Sonar scans
     permissions:
+      contents: read
       security-events: write
-    needs: unit-tests
     uses: ./.github/workflows/scan-repo.yml
     secrets:
       sonar_token: ${{ secrets.SONAR_TOKEN }}
-    with:
-      coverage-artifact: coverage
-      coverage-run-id: ${{ github.run_id }}
 
   deploy-dev:
     uses: ./.github/workflows/_secure-pipeline-deploy.yml
