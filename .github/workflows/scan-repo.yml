@@ -36,6 +36,7 @@ jobs:
           sonar-token: ${{ secrets.sonar_token || secrets.SONAR_TOKEN }}
           coverage-artifact: coverage
           coverage-run-id: ${{ github.run_id }}
+          args: -Dsonar.qualitygate.wait=true
 
   codeql:
     name: CodeQL scan

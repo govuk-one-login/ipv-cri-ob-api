@@ -21,6 +21,7 @@ jobs:
     uses: ./.github/workflows/_secure-pipeline-deploy.yml
     concurrency:
       group: deploy-to-dev
+    needs: scan-repo
     permissions:
       id-token: write
       contents: read
@@ -38,6 +39,7 @@ jobs:
     uses: ./.github/workflows/_secure-pipeline-deploy.yml
     concurrency:
       group: deploy-to-build
+    needs: scan-repo
     permissions:
       id-token: write
       contents: read
