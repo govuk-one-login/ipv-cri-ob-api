@@ -18,6 +18,7 @@ export type OAuthClientId = (typeof OAuthClientId)[keyof typeof OAuthClientId]
 export const ClientIdToEndpointProfileMapping: Record<OAuthClientId, EndpointProfile> = {
   [OAuthClientId.IPV_CORE]: EndpointProfile.LIVE,
   [OAuthClientId.IPV_CORE_STUB]: EndpointProfile.STUB,
+  // TODO: HEADLESS should point to STUB once imposter stubs are aligned and working
   [OAuthClientId.IPV_CORE_STUB_AWS_HEADLESS]: EndpointProfile.UAT,
   [OAuthClientId.IPV_CORE_STUB_AWS_BUILD]: EndpointProfile.STUB,
   [OAuthClientId.IPV_CORE_STUB_AWS_BUILD_THIRD_PARTY]: EndpointProfile.UAT,
