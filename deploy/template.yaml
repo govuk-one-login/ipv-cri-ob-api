@@ -192,19 +192,19 @@ Mappings:
     dev:
       StubEndpointUrl: https://8nqpgft8mc.execute-api.eu-west-2.amazonaws.com/dev
       UatEndpointUrl: https://aisapi.sb.ecospend.com
-      LiveEndpointUrl: https://aisapi.ecospend.com
+      LiveEndpointUrl: https://aisapi.sb.ecospend.com
     build:
       StubEndpointUrl: https://babtt0cp72.execute-api.eu-west-2.amazonaws.com/build
       UatEndpointUrl: https://aisapi.sb.ecospend.com
-      LiveEndpointUrl: https://aisapi.ecospend.com
+      LiveEndpointUrl: https://aisapi.sb.ecospend.com
     staging:
       StubEndpointUrl: https://52wrvaocmk.execute-api.eu-west-2.amazonaws.com/staging
       UatEndpointUrl: https://aisapi.sb.ecospend.com
-      LiveEndpointUrl: https://aisapi.ecospend.com
+      LiveEndpointUrl: https://aisapi.sb.ecospend.com
     integration:
       StubEndpointUrl: https://aisapi.sb.ecospend.com
       UatEndpointUrl: https://aisapi.sb.ecospend.com
-      LiveEndpointUrl: https://aisapi.ecospend.com
+      LiveEndpointUrl: https://aisapi.sb.ecospend.com
     production:
       StubEndpointUrl: https://aisapi.ecospend.com
       UatEndpointUrl: https://aisapi.ecospend.com
