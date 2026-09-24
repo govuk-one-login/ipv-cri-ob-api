@@ -1,10 +1,10 @@
 import type { EndpointProfile } from '@common/model/endpoint-profile'
 
 export interface ConsentsProvider {
-  createConsent: (request: CreateConsentRequest) => Promise<CreatedConsent>
+  createConsent: (params: CreateConsentParams) => Promise<CreatedConsent>
 }
 
-export interface CreateConsentRequest {
+export interface CreateConsentParams {
   accessToken: string
   bankId: string
   endpointUrl: string

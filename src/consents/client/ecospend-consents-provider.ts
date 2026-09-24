@@ -11,12 +11,12 @@ interface EcospendConsentsClientCollaborators {
 export const createEcospendConsentsProvider = (
   collaborators: EcospendConsentsClientCollaborators
 ): ConsentsProvider => ({
-  createConsent: async (request) => {
+  createConsent: async (params) => {
     const responseBody = await collaborators.httpClient.postJson({
-      accessToken: request.accessToken,
-      body: toEcospendConsentsRequest(request),
-      profile: request.profile,
-      url: request.endpointUrl
+      accessToken: params.accessToken,
+      body: toEcospendConsentsRequest(params),
+      profile: params.profile,
+      url: params.endpointUrl
     })
 
     const parsedResponse = ecospendConsentsResponseSchema.safeParse(responseBody)

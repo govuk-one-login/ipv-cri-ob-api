@@ -1,5 +1,5 @@
 import type { BaseHttpClient } from '@common/client/base-http-client'
-import type { CreateConsentRequest, CreatedConsent } from '@src/consents/model/consents-provider'
+import type { CreateConsentParams, CreatedConsent } from '@src/consents/model/consents-provider'
 
 import { EndpointProfile } from '@common/model/endpoint-profile'
 import { createEcospendConsentsProvider } from '@src/consents/client/ecospend-consents-provider'
@@ -8,7 +8,7 @@ import { describe, expect, it, vi } from 'vitest'
 const ACCESS_TOKEN = 'test-access-token'
 const ENDPOINT_URL = 'https://ecospend.test/consents'
 
-const createConsentRequest: CreateConsentRequest = {
+const createConsentParams: CreateConsentParams = {
   accessToken: ACCESS_TOKEN,
   bankId: 'iron-bank',
   endpointUrl: ENDPOINT_URL,
@@ -40,7 +40,7 @@ describe('createEcospendConsentsProvider', () => {
   it('creates and sends a consent request', async () => {
     const { consentsProvider, postJson } = createTestContext()
 
-    await consentsProvider.createConsent(createConsentRequest)
+    await consentsProvider.createConsent(createConsentParams)
 
     expect(postJson).toHaveBeenCalledWith({
       accessToken: ACCESS_TOKEN,
@@ -64,7 +64,7 @@ describe('createEcospendConsentsProvider', () => {
   it('maps a valid response', async () => {
     const { consentsProvider } = createTestContext()
 
-    await expect(consentsProvider.createConsent(createConsentRequest)).resolves.toEqual(
+    await expect(consentsProvider.createConsent(createConsentParams)).resolves.toEqual(
       createdConsent
     )
   })
@@ -74,7 +74,7 @@ describe('createEcospendConsentsProvider', () => {
     const { bank_consent_url: _omitted, ...withoutConsentUrl } = ecospendResponse
     postJson.mockResolvedValue(withoutConsentUrl)
 
-    await expect(consentsProvider.createConsent(createConsentRequest)).rejects.toThrow(
+    await expect(consentsProvider.createConsent(createConsentParams)).rejects.toThrow(
       'Unexpected consents response'
     )
   })
@@ -83,7 +83,7 @@ describe('createEcospendConsentsProvider', () => {
     const { consentsProvider, postJson } = createTestContext()
     postJson.mockResolvedValue({ ...ecospendResponse, bank_consent_url: 'not-a-url' })
 
-    await expect(consentsProvider.createConsent(createConsentRequest)).rejects.toThrow(
+    await expect(consentsProvider.createConsent(createConsentParams)).rejects.toThrow(
       'Unexpected consents response'
     )
   })
@@ -92,7 +92,7 @@ describe('createEcospendConsentsProvider', () => {
     const { consentsProvider, postJson } = createTestContext()
     postJson.mockResolvedValue({ ...ecospendResponse, unknown_key: 'value' })
 
-    await expect(consentsProvider.createConsent(createConsentRequest)).resolves.toEqual(
+    await expect(consentsProvider.createConsent(createConsentParams)).resolves.toEqual(
       createdConsent
     )
   })
@@ -102,6 +102,6 @@ describe('createEcospendConsentsProvider', () => {
     const transportError = new Error('consents request returned 503')
     postJson.mockRejectedValue(transportError)
 
-    await expect(consentsProvider.createConsent(createConsentRequest)).rejects.toBe(transportError)
+    await expect(consentsProvider.createConsent(createConsentParams)).rejects.toBe(transportError)
   })
 })

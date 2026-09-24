@@ -4,13 +4,14 @@ import type { EndpointProfile } from '@common/model/endpoint-profile'
 import type { TokenRetrievalService } from '@lib/token-rotator/service/token-retrieval-service'
 import type { ConsentsRepository } from '@src/consents/client/consents-repository'
 import type { ConsentsProvider } from '@src/consents/model/consents-provider'
+import type { ConsentsRequest } from '@src/consents/model/consents-request'
 import type { ConsentsResponse } from '@src/consents/model/consents-response'
 
 import { BadRequestError } from '@common/error/bad-request-error'
 import { requireSessionContext } from '@common/service/session-context'
 import { nowSeconds } from '@common/util/time'
 import { logger } from '@govuk-one-login/cri-logger'
-import { consentsConfigSchema } from '@src/consents/model/consents-config'
+import { type ConsentsConfig, consentsConfigSchema } from '@src/consents/model/consents-config'
 import { consentsRequestSchema } from '@src/consents/model/consents-request'
 import { toConsentEntity } from '@src/consents/model/database/consent-entity'
 
@@ -41,14 +42,15 @@ export const createConsentsService = (
       request.sessionId
     )
 
-    const consentsRequest = consentsRequestSchema.safeParse(request.eventBody)
-    if (!consentsRequest.success) throw new BadRequestError(consentsRequest.error.message)
+    const parsedRequest = consentsRequestSchema.safeParse(request.eventBody)
+    if (!parsedRequest.success) throw new BadRequestError(parsedRequest.error.message)
+    const consentsRequest: ConsentsRequest = parsedRequest.data
 
     const existingConsent = await collaborators.consentsRepository.getConsent(session.sessionId)
 
     if (
       existingConsent &&
-      existingConsent.bankId === consentsRequest.data.bankId &&
+      existingConsent.bankId === consentsRequest.bankId &&
       existingConsent.bankConsentUrlExpirySeconds > nowSeconds()
     ) {
       logger.info('Found active consent for session')
@@ -60,23 +62,24 @@ export const createConsentsService = (
       }
     }
 
-    const rawRequestConfig = await collaborators.externalConfigProvider.get(
+    const rawConfig = await collaborators.externalConfigProvider.get(
       `${config.consentsConfigPathPrefix}/${profile}`
     )
-    const requestConfig = consentsConfigSchema.safeParse(rawRequestConfig)
-    if (!requestConfig.success) {
-      throw new Error(`Invalid consents request config: ${requestConfig.error.message}`)
+    const parsedConfig = consentsConfigSchema.safeParse(rawConfig)
+    if (!parsedConfig.success) {
+      throw new Error(`Invalid consents config: ${parsedConfig.error.message}`)
     }
+    const consentsConfig: ConsentsConfig = parsedConfig.data
 
     const accessToken = await collaborators.tokenRetrievalService.retrieveToken(profile)
     if (!accessToken) throw new Error(`No token is available`)
 
     const createdConsent = await collaborators.consentsProvider.createConsent({
       accessToken,
-      bankId: consentsRequest.data.bankId,
-      endpointUrl: requestConfig.data.endpointUrl,
+      bankId: consentsRequest.bankId,
+      endpointUrl: consentsConfig.endpointUrl,
       profile,
-      returnUrl: consentsRequest.data.returnUrl
+      returnUrl: consentsRequest.returnUrl
     })
     logger.appendKeys({ consent_id: createdConsent.consentId })
     logger.info('Consent created')

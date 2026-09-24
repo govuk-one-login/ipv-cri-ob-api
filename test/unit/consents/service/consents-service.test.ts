@@ -228,7 +228,7 @@ describe('createConsentsService', () => {
     getExternalConfig.mockResolvedValue({ 'some-other-key': 'value' })
 
     await expect(consentsService({ eventBody, sessionId: SESSION_ID })).rejects.toThrow(
-      'Invalid consents request config'
+      'Invalid consents config'
     )
 
     expect(createConsent).not.toHaveBeenCalled()

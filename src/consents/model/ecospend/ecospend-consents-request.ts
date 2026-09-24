@@ -1,4 +1,4 @@
-import type { CreateConsentRequest } from '@src/consents/model/consents-provider'
+import type { CreateConsentParams } from '@src/consents/model/consents-provider'
 
 const ECOSPEND_CONSENT_REQUEST_PERMISSIONS = [
   'Account',
@@ -21,9 +21,9 @@ export interface EcospendConsentsRequest {
 }
 
 export const toEcospendConsentsRequest = (
-  request: CreateConsentRequest
+  params: CreateConsentParams
 ): EcospendConsentsRequest => ({
-  bank_id: request.bankId,
+  bank_id: params.bankId,
   permissions: ECOSPEND_CONSENT_REQUEST_PERMISSIONS,
-  redirect_url: request.returnUrl
+  redirect_url: params.returnUrl
 })
