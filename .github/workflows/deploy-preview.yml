@@ -33,15 +33,15 @@ jobs:
         run: echo "sha-short=${GITHUB_SHA::7}" >> "$GITHUB_OUTPUT"
 
       - name: Checkout
-        uses: actions/checkout@v6
+        uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
 
       - name: Setup Node
-        uses: actions/setup-node@v6
+        uses: actions/setup-node@820762786026740c76f36085b0efc47a31fe5020 # v7.0.0
         with:
           node-version-file: '.nvmrc'
 
       - name: Build app
-        uses: govuk-one-login/github-actions/sam/build-application@4c76410195b5fcb1804fc7c183ed20704252830f
+        uses: govuk-one-login/github-actions/sam/build-application@3a8d0b3fdd010f27ed9cbb2b6c426cd56a23b3e4
         with:
           template: deploy/template.yaml
           cache-name: ipv-cri-ob-api-${{ steps.get-sha.outputs.sha-short }}
@@ -59,7 +59,7 @@ jobs:
       stack-name: ${{ steps.deploy.outputs.stack-name }}
     steps:
       - name: Deploy stack
-        uses: govuk-one-login/github-actions/sam/deploy-stack@4c76410195b5fcb1804fc7c183ed20704252830f
+        uses: govuk-one-login/github-actions/sam/deploy-stack@3a8d0b3fdd010f27ed9cbb2b6c426cd56a23b3e4
         id: deploy
         with:
           aws-role-arn: ${{ secrets.role_arn || secrets.DEV_GHA_PREVIEW_ROLE_ARN }}

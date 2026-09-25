@@ -1,3 +1,7 @@
+[![Security Rating](https://sonarcloud.io/api/project_badges/measure?project=govuk-one-login_ipv-cri-ob-api&metric=security_rating)](https://sonarcloud.io/summary/new_code?id=govuk-one-login_ipv-cri-ob-api)
+[![Quality Gate Status](https://sonarcloud.io/api/project_badges/measure?project=govuk-one-login_ipv-cri-ob-api&metric=alert_status)](https://sonarcloud.io/summary/new_code?id=govuk-one-login_ipv-cri-ob-api)
+[![Coverage](https://sonarcloud.io/api/project_badges/measure?project=govuk-one-login_ipv-cri-ob-api&metric=coverage)](https://sonarcloud.io/summary/new_code?id=govuk-one-login_ipv-cri-ob-api)
+
 # Open Banking Credential Issuer API
 
 A serverless AWS Lambda-based API service that provides Open Banking credential verification capabilities. This service enables secure integration with an Open Banking provider to verify user financial data for identity verification purposes.

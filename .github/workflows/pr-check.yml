@@ -12,7 +12,7 @@ jobs:
       cancel-in-progress: true
     steps:
       - name: Run pre-commit
-        uses: govuk-one-login/github-actions/code-quality/run-pre-commit@4c76410195b5fcb1804fc7c183ed20704252830f
+        uses: govuk-one-login/github-actions/code-quality/run-pre-commit@3a8d0b3fdd010f27ed9cbb2b6c426cd56a23b3e4
         with:
           all-files: true
           install-dependencies: 'true'
@@ -20,39 +20,20 @@ jobs:
 
   unit-tests:
     name: Run unit tests
-    runs-on: ubuntu-latest
-    concurrency:
-      group: unit-tests-${{ github.event.pull_request.number }}
-      cancel-in-progress: true
     permissions:
       contents: read
-    steps:
-      - name: Setup Node
-        uses: govuk-one-login/github-actions/node/install-dependencies@4c76410195b5fcb1804fc7c183ed20704252830f
-        with:
-          node-version-file: '.nvmrc'
-
-      - name: Unit tests
-        run: npm run test:coverage
-
-      - name: Upload coverage report
-        uses: actions/upload-artifact@v7
-        with:
-          name: coverage
-          path: coverage/
-          retention-days: 1
+    uses: ./.github/workflows/run-unit-tests.yml
 
   scan-repo:
     name: CodeQL and Sonar scans
     permissions:
+      contents: read
       security-events: write
+    if: ${{ github.actor != 'dependabot[bot]' }}
     needs: unit-tests
     uses: ./.github/workflows/scan-repo.yml
     secrets:
       sonar_token: ${{ secrets.SONAR_TOKEN }}
-    with:
-      coverage-artifact: coverage
-      coverage-run-id: ${{ github.run_id }}
 
   # pact test placeholder
 
@@ -66,7 +47,7 @@ jobs:
       cancel-in-progress: true
     steps:
       - name: Setup Node
-        uses: govuk-one-login/github-actions/node/install-dependencies@4c76410195b5fcb1804fc7c183ed20704252830f
+        uses: govuk-one-login/github-actions/node/install-dependencies@3a8d0b3fdd010f27ed9cbb2b6c426cd56a23b3e4
         with:
           node-version-file: '.nvmrc'
 
@@ -96,12 +77,12 @@ jobs:
 
     steps:
       - name: Setup Node
-        uses: govuk-one-login/github-actions/node/install-dependencies@4c76410195b5fcb1804fc7c183ed20704252830f
+        uses: govuk-one-login/github-actions/node/install-dependencies@3a8d0b3fdd010f27ed9cbb2b6c426cd56a23b3e4
         with:
           node-version-file: '.nvmrc'
 
       - name: Assume AWS Role
-        uses: aws-actions/configure-aws-credentials@8df5847569e6427dd6c4fb1cf565c83acfa8afa7 # v6.0.0
+        uses: aws-actions/configure-aws-credentials@e1253824e5c10ff9df46874f81ed3ec929e19cfd # v6.3.0
         with:
           role-to-assume: ${{ secrets.DEV_GHA_PREVIEW_ROLE_ARN }}
           aws-region: ${{ needs.deploy-preview.outputs.aws-region }}
