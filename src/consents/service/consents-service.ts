@@ -10,6 +10,7 @@ import type { ConsentsResponse } from '@src/consents/model/consents-response'
 import { BadRequestError } from '@common/error/bad-request-error'
 import { requireSessionContext } from '@common/service/session-context'
 import { nowSeconds } from '@common/util/time'
+import { describeZodIssues } from '@common/util/zod'
 import { logger } from '@govuk-one-login/cri-logger'
 import { type ConsentsConfig, consentsConfigSchema } from '@src/consents/model/consents-config'
 import { consentsRequestSchema } from '@src/consents/model/consents-request'
@@ -43,7 +44,7 @@ export const createConsentsService = (
     )
 
     const parsedRequest = consentsRequestSchema.safeParse(request.eventBody)
-    if (!parsedRequest.success) throw new BadRequestError(parsedRequest.error.message)
+    if (!parsedRequest.success) throw new BadRequestError(describeZodIssues(parsedRequest.error))
     const consentsRequest: ConsentsRequest = parsedRequest.data
 
     const existingConsent = await collaborators.consentsRepository.getConsent(session.sessionId)
@@ -67,7 +68,7 @@ export const createConsentsService = (
     )
     const parsedConfig = consentsConfigSchema.safeParse(rawConfig)
     if (!parsedConfig.success) {
-      throw new Error(`Invalid consents config: ${parsedConfig.error.message}`)
+      throw new Error(`Invalid consents config: ${describeZodIssues(parsedConfig.error)}`)
     }
     const consentsConfig: ConsentsConfig = parsedConfig.data
 

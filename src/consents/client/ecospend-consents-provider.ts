@@ -1,6 +1,7 @@
 import type { BaseHttpClient } from '@common/client/base-http-client'
 import type { ConsentsProvider } from '@src/consents/model/consents-provider'
 
+import { describeZodIssues } from '@common/util/zod'
 import { toEcospendConsentsRequest } from '@src/consents/model/ecospend/ecospend-consents-request'
 import { ecospendConsentsResponseSchema } from '@src/consents/model/ecospend/ecospend-consents-response'
 
@@ -21,7 +22,7 @@ export const createEcospendConsentsProvider = (
 
     const parsedResponse = ecospendConsentsResponseSchema.safeParse(responseBody)
     if (!parsedResponse.success) {
-      throw new Error(`Unexpected consents response: ${parsedResponse.error.message}`)
+      throw new Error(`Unexpected consents response: ${describeZodIssues(parsedResponse.error)}`)
     }
 
     return parsedResponse.data

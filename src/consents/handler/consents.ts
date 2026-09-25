@@ -47,7 +47,7 @@ const tokenRetrievalService = createTokenRetrievalService<EndpointProfile>({
 })
 
 const consentsProvider = createEcospendConsentsProvider({
-  httpClient: createBaseHttpClient({ endpoint: 'consents' })
+  httpClient: createBaseHttpClient({ endpoint: 'ecospend-consents' })
 })
 
 const consentService = createConsentsService(
