@@ -25,9 +25,11 @@ export default defineConfig({
             AUDIT_EVENT_NAME_PREFIX: 'OB_CRI_TEST',
             AUDIT_QUEUE_URL: 'https://sqs.example.test/audit',
             BANK_LIST_DB_TABLE_NAME: 'test-bank-list-table',
+            CONSENTS_DB_TABLE_NAME: 'test-consents-table',
             IDENTITY_SCORE_DB_TABLE_NAME: 'test-identity-score-table',
             JWT_TTL_SECONDS: '7200',
             KMS_SIGNING_KEY_ID: 'test-kms-key-id',
+            PARAMETER_PREFIX: 'test-prefix',
             PERSON_IDENTITY_DB_TABLE_NAME: 'test-person-identity-table',
             POWERTOOLS_METRICS_NAMESPACE: 'ob-api',
             POWERTOOLS_SERVICE_NAME: 'ob-api',
@@ -36,7 +38,8 @@ export default defineConfig({
             VC_DOMAIN: 'review-ob.unit-test.account.gov.uk'
           },
           include: ['test/unit/**/*.test.ts'],
-          name: 'unit'
+          name: 'unit',
+          setupFiles: ['test/unit/setup.ts']
         }
       },
       {

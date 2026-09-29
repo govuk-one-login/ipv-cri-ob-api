@@ -347,7 +347,7 @@ describe('template.yaml APIGW5XXErrors alarm', () => {
     expect(props['OKActions']).toBeDefined()
   })
 
-  it('aggregates metrics across PublicAPI and PrivateAPI', () => {
+  it('aggregates metrics across public and private APIs', () => {
     const metrics = props['Metrics'] as Record<string, unknown>[]
     const metricIds = metrics.map((m) => m['Id'])
     expect(metricIds).toContain('m1')
@@ -365,8 +365,8 @@ describe('template.yaml APIGW5XXErrors alarm', () => {
       .filter((d) => d['Name'] === 'ApiName')
       .map((d) => d['Value'])
       .filter((v): v is string => v !== undefined)
-    expect(names.some((n) => n.includes('PublicAPI'))).toBe(true)
-    expect(names.some((n) => n.includes('PrivateAPI'))).toBe(true)
+    expect(names.some((n) => n.includes('PublicOpenBankingAPI'))).toBe(true)
+    expect(names.some((n) => n.includes('PrivateOpenBankingAPI'))).toBe(true)
   })
 })
 
