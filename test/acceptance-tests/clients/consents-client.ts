@@ -1,30 +1,23 @@
 import { apiFetch, type ApiResponse, mergeHeaders } from '../utils/api-client.js'
 
 export class ConsentsClient {
-  private readonly bearerToken: string
   private readonly endpoint: string
+  private readonly sessionId: string
 
-  constructor(baseUrl: string, bearerToken: string) {
+  constructor(baseUrl: string, sessionId: string) {
     this.endpoint = `${baseUrl}/consents`
-    this.bearerToken = bearerToken
+    this.sessionId = sessionId
   }
 
-  async createConsent(body: Record<string, unknown>, options?: RequestInit): Promise<ApiResponse> {
+  async createConsent(body: string, options?: RequestInit): Promise<ApiResponse> {
     return apiFetch(this.endpoint, {
       ...options,
-      body: JSON.stringify(body),
+      body,
       headers: mergeHeaders(
-        { Authorization: `Bearer ${this.bearerToken}`, 'Content-Type': 'application/json' },
+        { 'Content-Type': 'application/json', 'session-id': this.sessionId },
         options?.headers
       ),
       method: 'POST'
-    })
-  }
-
-  async getConsent(id: string, options?: RequestInit): Promise<ApiResponse> {
-    return apiFetch(`${this.endpoint}/${id}`, {
-      ...options,
-      headers: mergeHeaders({ Authorization: `Bearer ${this.bearerToken}` }, options?.headers)
     })
   }
 }

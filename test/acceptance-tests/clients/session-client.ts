@@ -1,5 +1,11 @@
 import { apiFetch, type ApiResponse, mergeHeaders } from '../utils/api-client.js'
 
+export interface SessionResponse {
+  redirect_uri: string
+  session_id: string
+  state: string
+}
+
 export class SessionClient {
   private readonly endpoint: string
 

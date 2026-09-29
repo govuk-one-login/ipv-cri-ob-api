@@ -1,19 +1,8 @@
-export const validConsentsRequest = {
-  additional_params: 'foo=bar,baz=qux',
-  bank_id: 'iron-bank',
-  permissions: ['Account'],
-  redirect_url: 'https://review-ob.dev.account.gov.uk/return',
-  user_info: {
-    name: 'Kenneth',
-    surname: 'Decerqueira'
-  }
+const returnUrl = (): string => {
+  const environment = process.env['ENVIRONMENT']
+  if (!environment) throw new Error('ENVIRONMENT is not set')
+  return `https://review-ob.${environment}.account.gov.uk/confirm-details-bank`
 }
 
-export const missingFieldsConsentsRequest = {
-  bank_id: 'iron-bank'
-}
-
-export const invalidConsentsRequest = {
-  ...validConsentsRequest,
-  bank_id: 'invalid-bank-id'
-}
+export const consentsRequestBody = (bankId: string): string =>
+  JSON.stringify({ bank_id: bankId, return_url: returnUrl() })

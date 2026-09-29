@@ -1,87 +1,76 @@
-import type { ConsentResponse } from '../../../src/types/consents.js'
+import type { BankListEntity } from '../../../src/bank-list/model/bank-list.js'
+import type { ConsentsResponse } from '../../../src/consents/model/consents-response.js'
 import type { OBWorld } from '../world.js'
 
-import {
-  invalidConsentsRequest,
-  missingFieldsConsentsRequest,
-  validConsentsRequest
-} from '../data/consents.js'
-import { Given, When } from '@cucumber/cucumber'
+import { consentsRequestBody } from '../data/consents.js'
+import { Given, Then, When } from '@cucumber/cucumber'
 
 import assert from 'node:assert/strict'
 
-const consentFixtures: Record<string, Record<string, unknown>> = {
-  'invalid body': invalidConsentsRequest,
-  'missing fields': missingFieldsConsentsRequest
+const onlineBankId = async (world: OBWorld): Promise<string> => {
+  const response = await world.banks.getBanks()
+  if (response.status() !== 200)
+    throw new Error(`Could not list banks: ${response.status()} ${response.text()}`)
+
+  const [bank] = response.json<BankListEntity>().banks.filter((bank) => bank.serviceStatus)
+  if (!bank) throw new Error('This environment has no online banks to create a consent for')
+  return bank.bankId
+}
+
+const createConsent = async (world: OBWorld): Promise<void> => {
+  const bankId = await onlineBankId(world)
+  world.lastResponse = await world.consents.createConsent(consentsRequestBody(bankId))
 }
 
 Given('I have created a consent', async function (this: OBWorld) {
-  this.lastResponse = await this.consents.createConsent(validConsentsRequest)
-  assert.equal(this.lastResponse.status(), 200)
-  const body = this.lastResponse.json<ConsentResponse>()
-  this.consentId = body.id
+  await createConsent(this)
+  assert.equal(this.lastResponse.status(), 201)
+  this.consentId = this.lastResponse.json<ConsentsResponse>().id
 })
 
-When('I create a consent with valid details', async function (this: OBWorld) {
-  this.lastResponse = await this.consents.createConsent(validConsentsRequest)
-  const body = this.lastResponse.json<ConsentResponse>()
-  this.consentId = body.id
+When('I create a consent for an online bank', async function (this: OBWorld) {
+  await createConsent(this)
 })
 
-When('I retrieve the consent by its id', async function (this: OBWorld) {
-  this.lastResponse = await this.consents.getConsent(this.consentId)
+When('I create a consent for the same bank', async function (this: OBWorld) {
+  await createConsent(this)
 })
 
-When('I retrieve a consent with id {string}', async function (this: OBWorld, id: string) {
-  this.lastResponse = await this.consents.getConsent(id)
+When('I create a consent for an unknown bank', async function (this: OBWorld) {
+  this.lastResponse = await this.consents.createConsent(consentsRequestBody('roflcopter-bank'))
 })
 
-When('I create a consent with {string}', async function (this: OBWorld, fixture: string) {
-  const body = consentFixtures[fixture]
-  if (!body) throw new Error(`Unknown consent fixture: "${fixture}"`)
+When('I create a consent with body {string}', async function (this: OBWorld, body: string) {
   this.lastResponse = await this.consents.createConsent(body)
 })
 
-When('I create a consent without a token', async function (this: OBWorld) {
-  this.lastResponse = await this.consents.createConsent(validConsentsRequest, { headers: {} })
-})
-
-When('I create a consent with an invalid token', async function (this: OBWorld) {
-  this.lastResponse = await this.consents.createConsent(validConsentsRequest, {
-    headers: { Authorization: 'Bearer invalid_token' }
-  })
-})
-
-When('I create a consent with an expired token', async function (this: OBWorld) {
-  this.lastResponse = await this.consents.createConsent(validConsentsRequest, {
-    headers: { Authorization: 'Bearer expired_token' }
-  })
-})
-
-When('I create a consent with an invalid scope token', async function (this: OBWorld) {
-  this.lastResponse = await this.consents.createConsent(validConsentsRequest, {
-    headers: { Authorization: 'Bearer invalid_scope_token' }
-  })
-})
-
-When('I create a consent with an empty body', async function (this: OBWorld) {
-  this.lastResponse = await this.consents.createConsent({})
+When('I create a consent with no body', async function (this: OBWorld) {
+  this.lastResponse = await this.consents.createConsent('')
 })
 
 When(
-  'I create a consent without the {string} field',
-  async function (this: OBWorld, field: string) {
-    const body = Object.fromEntries(
-      Object.entries(validConsentsRequest as Record<string, unknown>).filter(([k]) => k !== field)
-    )
-    this.lastResponse = await this.consents.createConsent(body)
+  'I create a valid consent request with session-id header {string}',
+  async function (this: OBWorld, sessionId: string) {
+    this.lastResponse = await this.consents.createConsent(consentsRequestBody('any-bank'), {
+      headers: { 'session-id': sessionId }
+    })
   }
 )
 
-When('I create a consent with surname {string}', async function (this: OBWorld, surname: string) {
-  const body = {
-    ...validConsentsRequest,
-    user_info: { ...validConsentsRequest.user_info, surname }
-  }
-  this.lastResponse = await this.consents.createConsent(body)
+Then('the consent url should be an https url', function (this: OBWorld) {
+  const { url } = this.lastResponse.json<ConsentsResponse>()
+  assert.equal(new URL(url).protocol, 'https:')
+})
+
+Then('the consent url should expire in about 4 minutes', function (this: OBWorld) {
+  const { urlExpiresAtSeconds } = this.lastResponse.json<ConsentsResponse>()
+  const expectedExpiry = Math.floor(Date.now() / 1000) + 240
+  assert.ok(
+    Math.abs(urlExpiresAtSeconds - expectedExpiry) <= 30,
+    `Expected urlExpiresAtSeconds (${urlExpiresAtSeconds}) to be within 30s of ${expectedExpiry}`
+  )
+})
+
+Then('the consent should be the one created earlier', function (this: OBWorld) {
+  assert.equal(this.lastResponse.json<ConsentsResponse>().id, this.consentId)
 })

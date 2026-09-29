@@ -1,5 +1,12 @@
 import { apiFetch, type ApiResponse, mergeHeaders } from '../utils/api-client.js'
 
+export interface TokenResponse {
+  access_token: string
+  expires_in: number
+  scope: string
+  token_type: string
+}
+
 export class TokenClient {
   private readonly endpoint: string
 

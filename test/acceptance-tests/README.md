@@ -24,7 +24,7 @@ Create a `.env` file in the `acceptance-tests/` directory:
 ```bash
 PUBLIC_API_BASE_URL=https://<public-api-id>.execute-api.eu-west-2.amazonaws.com/<env>/
 PRIVATE_API_BASE_URL=https://<private-api-id>.execute-api.eu-west-2.amazonaws.com/<env>/
-CORE_STUB_URL=https://test-resources.review-ob.<env>.account.gov.uk
+TEST_HARNESS_URL=https://test-resources.review-ob.<env>.account.gov.uk
 AWS_REGION=eu-west-2
 ```
 
@@ -34,22 +34,23 @@ AWS_REGION=eu-west-2
 
 When no `.env` file is present and `STACK_NAME` is not `local`, `run-tests.sh` fetches configuration from the deployed stack:
 
-| Variable                            | Source                                                     |
-|-------------------------------------|------------------------------------------------------------|
-| `PUBLIC_API_BASE_URL`               | `PublicApiBaseUrl` output of the api stack                 |
-| `PRIVATE_API_BASE_URL`              | `PrivateApiBaseUrl` output of the api stack                |
-| `CORE_STUB_URL`                     | `TestHarnessExecuteUrl` output of the test-resources stack |
+| Variable               | Source                                                     |
+|------------------------|------------------------------------------------------------|
+| `PUBLIC_API_BASE_URL`  | `PublicApiBaseUrl` output of the api stack                 |
+| `PRIVATE_API_BASE_URL` | `PrivateApiBaseUrl` output of the api stack                |
+| `TEST_HARNESS_URL`     | `TestHarnessExecuteUrl` output of the test-resources stack |
 
 `STACK_NAME` is taken from `SAM_STACK_NAME`, falling back to `local`.
 
 ### Environment Variable Reference
 
-| Variable                  | Required        | Default                 | Description                                                                                    |
-|---------------------------|-----------------|-------------------------|------------------------------------------------------------------------------------------------|
-| `PUBLIC_API_BASE_URL`     | No              | `http://localhost:3000` | Public base URL for the Open Banking API (`/token`,`/consents`, `/credential/issue`, `/banks`) |
-| `PRIVATE_API_BASE_URL`    | Yes (non-local) | —                       | Base URL for OAuth endpoints (`/session`, `/authorization`)                                    |
-| `CORE_STUB_URL`           | Yes (non-local) | —                       | URL of the headless core stub used to create sessions                                          |
-| `AWS_REGION`              | No              | `eu-west-2`             | AWS region used for SigV4 signing of core stub requests                                        |
+| Variable               | Required        | Default                 | Description                                                                                    |
+|------------------------|-----------------|-------------------------|------------------------------------------------------------------------------------------------|
+| `PUBLIC_API_BASE_URL`  | No              | `http://localhost:3000` | Public base URL for the Open Banking API (`/token`,`/consents`, `/credential/issue`, `/banks`) |
+| `PRIVATE_API_BASE_URL` | Yes (non-local) | —                       | Base URL for OAuth endpoints (`/session`, `/authorization`)                                    |
+| `TEST_HARNESS_URL`     | Yes (non-local) | —                       | URL of the headless core stub used to create sessions                                          |
+| `AWS_REGION`           | No              | `eu-west-2`             | AWS region used for SigV4 signing of core stub requests                                        |
+| `ENVIRONMENT`          | Yes             | —                       | Value of the 'Environment' parameter for deployed API stack. Builds the consent `return_url`   |
 
 ## Running Tests
 

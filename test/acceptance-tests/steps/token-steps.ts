@@ -1,4 +1,4 @@
-import type { TokenResponse } from '../../../src/types/token.js'
+import type { TokenResponse } from '../clients/token-client.js'
 import type { OBWorld } from '../world.js'
 
 import { validTokenRequest } from '../data/token.js'
