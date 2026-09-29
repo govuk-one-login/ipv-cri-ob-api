@@ -37,7 +37,7 @@
     "@cucumber/html-formatter": "23.1.0",
     "@smithy/signature-v4": "4.2.4",
     "@types/aws-lambda": "8.10.162",
-    "@types/node": "25.9.3",
+    "@types/node": "26.2.0",
     "@vitest/coverage-v8": "4.1.9",
     "eslint-plugin-perfectionist": "5.9.1",
     "oxfmt": "0.61.0",
