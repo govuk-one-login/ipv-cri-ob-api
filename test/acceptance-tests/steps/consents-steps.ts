@@ -12,32 +12,33 @@ const onlineBankId = async (world: OBWorld): Promise<string> => {
   if (response.status() !== 200)
     throw new Error(`Could not list banks: ${response.status()} ${response.text()}`)
 
-  const [bank] = response.json<BankListEntity>().banks.filter((bank) => bank.serviceStatus)
+  const bank = response.json<BankListEntity>().banks.find((bank) => bank.serviceStatus)
   if (!bank) throw new Error('This environment has no online banks to create a consent for')
   return bank.bankId
 }
 
-const createConsent = async (world: OBWorld): Promise<void> => {
-  const bankId = await onlineBankId(world)
+const createConsent = async (world: OBWorld, bankId: string): Promise<void> => {
   world.lastResponse = await world.consents.createConsent(consentsRequestBody(bankId))
 }
 
 Given('I have created a consent', async function (this: OBWorld) {
-  await createConsent(this)
+  this.bankId = await onlineBankId(this)
+  await createConsent(this, this.bankId)
   assert.equal(this.lastResponse.status(), 201)
   this.consentId = this.lastResponse.json<ConsentsResponse>().id
 })
 
 When('I create a consent for an online bank', async function (this: OBWorld) {
-  await createConsent(this)
+  this.bankId = await onlineBankId(this)
+  await createConsent(this, this.bankId)
 })
 
 When('I create a consent for the same bank', async function (this: OBWorld) {
-  await createConsent(this)
+  await createConsent(this, this.bankId)
 })
 
 When('I create a consent for an unknown bank', async function (this: OBWorld) {
-  this.lastResponse = await this.consents.createConsent(consentsRequestBody('roflcopter-bank'))
+  await createConsent(this, 'roflcopter-bank')
 })
 
 When('I create a consent with body {string}', async function (this: OBWorld, body: string) {

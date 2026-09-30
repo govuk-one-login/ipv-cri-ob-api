@@ -33,6 +33,14 @@ export class OBWorld extends World {
   set authCode(value: string) {
     this._authCode = value
   }
+  get bankId(): string {
+    if (!this._bankId) throw new Error('bankId not set — did a Given step run first?')
+    return this._bankId
+  }
+  set bankId(value: string) {
+    this._bankId = value
+  }
+
   get banks(): BanksClient {
     return this._banks
   }
@@ -105,6 +113,7 @@ export class OBWorld extends World {
 
   private _accessToken: string | undefined
   private _authCode: string | undefined
+  private _bankId: string | undefined
   private _banks: BanksClient
   private _consentId: string | undefined
   private _consents: ConsentsClient
