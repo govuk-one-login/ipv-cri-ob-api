@@ -25,7 +25,7 @@ Create a `.env` file in the `acceptance-tests/` directory:
 PUBLIC_API_BASE_URL=https://<public-api-id>.execute-api.eu-west-2.amazonaws.com/<env>/
 PRIVATE_API_BASE_URL=https://<private-api-id>.execute-api.eu-west-2.amazonaws.com/<env>/
 TEST_HARNESS_URL=https://test-resources.review-ob.<env>.account.gov.uk
-AWS_REGION=eu-west-2
+ENVIRONMENT=<env>
 ```
 
 `run-tests.sh` will automatically source this file if it exists.
@@ -39,6 +39,7 @@ When no `.env` file is present and `STACK_NAME` is not `local`, `run-tests.sh` f
 | `PUBLIC_API_BASE_URL`  | `PublicApiBaseUrl` output of the api stack                 |
 | `PRIVATE_API_BASE_URL` | `PrivateApiBaseUrl` output of the api stack                |
 | `TEST_HARNESS_URL`     | `TestHarnessExecuteUrl` output of the test-resources stack |
+| `ENVIRONMENT`          | `Environment` parameter of the api stack                   |
 
 `STACK_NAME` is taken from `SAM_STACK_NAME`, falling back to `local`.
 
@@ -50,7 +51,7 @@ When no `.env` file is present and `STACK_NAME` is not `local`, `run-tests.sh` f
 | `PRIVATE_API_BASE_URL` | Yes (non-local) | —                       | Base URL for OAuth endpoints (`/session`, `/authorization`)                                    |
 | `TEST_HARNESS_URL`     | Yes (non-local) | —                       | URL of the headless core stub used to create sessions                                          |
 | `AWS_REGION`           | No              | `eu-west-2`             | AWS region used for SigV4 signing of core stub requests                                        |
-| `ENVIRONMENT`          | Yes             | —                       | Value of the 'Environment' parameter for deployed API stack. Builds the consent `return_url`   |
+| `ENVIRONMENT`          | Yes             | —                       | Value of the 'Environment' parameter for deployed API stack.                                   |
 
 ## Running Tests
 
@@ -83,19 +84,3 @@ All scenarios must be tagged appropriately. Tags control which tests run in each
 | `@QualityGateNewFeatureTest`  | In-development features not yet live                          |
 
 When a feature goes live, `@QualityGateNewFeatureTest` must be updated to `@QualityGateRegressionTest`. To make this easy, place in-development tests in their own feature file so the tag can be updated at the `Feature` level. Add a TODO comment referencing the clean-up ticket.
-
-## Shared Steps
-
-Common assertion steps are defined in `steps/common-steps.ts` and can be reused across all feature files:
-
-| Step                                                                            | Description                                   |
-|---------------------------------------------------------------------------------|-----------------------------------------------|
-| `the response status should be {int}`                                           | Assert HTTP status code                       |
-| `the response body should have field {string}`                                  | Assert a top-level field exists               |
-| `the response body should have all consent fields`                              | Assert all consent response fields            |
-| `the response body field {string} should be {string}`                           | Assert a field equals a string value          |
-| `the response body field {string} should be {int}`                              | Assert a field equals a numeric value         |
-| `the response body field {string} should have key {string}`                     | Assert a nested key exists                    |
-| `the response body field {string} should have key {string} with value {string}` | Assert a nested key contains a value          |
-| `the response body should be empty`                                             | Assert empty response body                    |
-| `the response body should be a valid JWT`                                       | Assert response is a 3-part JWT               |
