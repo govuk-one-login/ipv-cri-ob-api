@@ -5,7 +5,6 @@ import path from 'node:path'
 export default defineConfig({
   test: {
     coverage: {
-      exclude: ['src/types/**'],
       provider: 'v8',
       reporter: ['lcov'],
       reportsDirectory: 'coverage'

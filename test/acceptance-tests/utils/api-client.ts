@@ -1,6 +1,5 @@
-import type { TokenResponse } from '../../../src/types/token.js'
+import type { TokenResponse } from '../clients/token-client.js'
 
-import { ConsentsClient } from '../clients/consents-client.js'
 import { IdentityVerificationClient } from '../clients/identity-verification-client.js'
 import { IssueCredentialClient } from '../clients/issue-credential-client.js'
 
@@ -11,7 +10,6 @@ export interface ApiResponse {
 }
 
 export interface AuthenticatedClients {
-  consents: ConsentsClient
   identityVerification: IdentityVerificationClient
   issueCredential: IssueCredentialClient
 }
@@ -57,7 +55,6 @@ export function createAuthenticatedClients(
 ): AuthenticatedClients {
   const { access_token } = tokenResponse
   return {
-    consents: new ConsentsClient(baseUrl, access_token),
     identityVerification: new IdentityVerificationClient(baseUrl, access_token),
     issueCredential: new IssueCredentialClient(baseUrl, access_token)
   }

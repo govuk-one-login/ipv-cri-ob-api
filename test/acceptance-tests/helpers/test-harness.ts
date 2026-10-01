@@ -4,21 +4,21 @@ import { SignatureV4 } from '@smithy/signature-v4'
 
 const REGION = process.env['AWS_REGION'] ?? 'eu-west-2'
 
-const getCoreStubUrl = (): string => {
-  const url = process.env['CORE_STUB_URL']
-  if (!url) throw new Error('CORE_STUB_URL is not set')
+const getTestHarnessExecuteUrl = (): string => {
+  const url = process.env['TEST_HARNESS_URL']
+  if (!url) throw new Error('TEST_HARNESS_URL is not set')
   return url
 }
 
-export interface CoreStubOverrides {
+export interface TestHarnessOverrides {
   evidence_requested?: Record<string, unknown>
   shared_claims?: Record<string, unknown>
 }
 
 export const getJwt = async (
-  overrides?: CoreStubOverrides
+  overrides?: TestHarnessOverrides
 ): Promise<{ client_id: string; request: string }> => {
-  const url = new URL(`${getCoreStubUrl()}start`)
+  const startFunctionUrl = new URL('start', getTestHarnessExecuteUrl())
   const body = JSON.stringify(overrides ?? {})
 
   const signer = new SignatureV4({
@@ -32,22 +32,22 @@ export const getJwt = async (
     body,
     headers: {
       'Content-Type': 'application/json',
-      host: url.hostname
+      host: startFunctionUrl.hostname
     },
-    hostname: url.hostname,
+    hostname: startFunctionUrl.hostname,
     method: 'POST',
-    path: url.pathname,
-    protocol: url.protocol
+    path: startFunctionUrl.pathname,
+    protocol: startFunctionUrl.protocol
   })
 
-  console.log(`→ POST ${url.toString()}`)
-  const res = await fetch(url.toString(), {
+  console.log(`→ POST ${startFunctionUrl.toString()}`)
+  const res = await fetch(startFunctionUrl.toString(), {
     body,
     headers: signed.headers as Record<string, string>,
     method: 'POST'
   })
-  console.log(`← ${res.status} POST ${url.toString()}`)
+  console.log(`← ${res.status} POST ${startFunctionUrl.toString()}`)
 
-  if (!res.ok) throw new Error(`Headless stub /start failed: ${res.status}`)
+  if (!res.ok) throw new Error(`TestHarnessExecute /start failed: ${res.status}`)
   return res.json() as Promise<{ client_id: string; request: string }>
 }

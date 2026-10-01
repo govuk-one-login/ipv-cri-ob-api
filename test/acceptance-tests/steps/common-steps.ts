@@ -42,6 +42,11 @@ Then('the response body should have field {string}', function (this: OBWorld, fi
   assert.ok(Object.hasOwn(body, field), `Response should have field: ${field}`)
 })
 
+Then('the response body should not have field {string}', function (this: OBWorld, field: string) {
+  const body = this.lastResponse.json<Record<string, unknown>>()
+  assert.ok(!Object.hasOwn(body, field), `Response should not have field: ${field}`)
+})
+
 Then(
   'the response body field {string} should have key {string}',
   function (this: OBWorld, field: string, key: string) {
@@ -65,22 +70,3 @@ Then(
     )
   }
 )
-
-const CONSENT_FIELDS = [
-  'id',
-  'bank_reference_id',
-  'bank_consent_url',
-  'bank_id',
-  'redirect_url',
-  'consent_end_date',
-  'consent_expiry_date',
-  'permissions',
-  'user_info'
-] as const
-
-Then('the response body should have all consent fields', function (this: OBWorld) {
-  const body = this.lastResponse.json<Record<string, unknown>>()
-  for (const field of CONSENT_FIELDS) {
-    assert.ok(Object.hasOwn(body, field), `Response should have field: ${field}`)
-  }
-})

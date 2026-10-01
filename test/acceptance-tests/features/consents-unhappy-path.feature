@@ -1,68 +1,42 @@
-@QualityGateIntegrationTest
+@QualityGateIntegrationTest @api-test
 Feature: Consents Endpoint - Unhappy Path Scenarios
 
-  Scenario: Reject request with no token
-    When I create a consent without a token
+  Scenario: Reject a consent request for a session that does not exist
+    When I create a valid consent request with session-id header "not-a-real-session"
     Then the response status should be 401
+    And the response body should be '{"message":"Session not found"}'
 
-  Scenario: Reject request with invalid token
-    When I create a consent with an invalid token
-    Then the response status should be 401
-
-  Scenario: Reject request with expired token
-    When I create a consent with an expired token
-    Then the response status should be 401
-
-  Scenario: Reject request with invalid scope token
-    When I create a consent with an invalid scope token
-    Then the response status should be 403
-
-  Scenario: Reject request with empty body
-    When I create a consent with an empty body
+  Scenario: Reject a consent request with a blank session-id header
+    When I create a valid consent request with session-id header ""
     Then the response status should be 400
-    And the response body field "error" should be "InvalidRequest"
-    And the response body field "description" should be "One or more required fields are missing."
-    And the response body field "details" should have key "bank_id"
-    And the response body field "details" should have key "redirect_url"
-    And the response body field "details" should have key "permissions"
+    And the response body field "message" should be "Missing required request parameters: [session-id]"
 
-  Scenario Outline: Reject request with missing mandatory field
-    When I create a consent without the "<field>" field
+  Scenario: Reject a consent request with no body
+    When I create a consent with no body
     Then the response status should be 400
-    And the response body field "error" should be "InvalidRequest"
-    And the response body field "description" should be "One or more required fields are missing."
-    And the response body field "details" should have key "<field>"
+    And the response body field "message" should be "Invalid request body"
 
-    Examples:
-      | field        |
-      | bank_id      |
-      | redirect_url |
-      | permissions  |
-
-  Scenario Outline: Return error for specific surname triggers
-    When I create a consent with surname "<surname>"
-    Then the response status should be <status>
-    And the response body field "error" should be "<error>"
-    And the response body field "description" should be "<description>"
-
-    Examples:
-      | surname                            | status | error               | description                                                                          |
-      | CONSENT_ERROR_INTERNAL             | 500    | InternalServerError | An unexpected error occurred while processing the consent request.                   |
-      | CONSENT_ERROR_EXTERNAL             | 502    | ExternalServerError | An error was received from an upstream service while processing the consent request. |
-      | CONSENT_ERROR_BANK_NOT_FOUND       | 404    | BankNotFoundError   | The specified bank could not be found or is not supported.                           |
-      | CONSENT_ERROR_INVALID_BANK_REQUEST | 502    | InvalidBankRequest  | The request sent to the bank was rejected as invalid.                                |
-      | CONSENT_ERROR_BANK_UNAVAILABLE     | 502    | BankServiceError    | Bank is temporarily unavailable.                                                     |
-      | CONSENT_ERROR_BANK_TIMED_OUT       | 503    | TimedOutBankError   | The bank did not respond within the expected time limit.                             |
-
-  Scenario: Return 404 for a non-existent consent
-    When I retrieve a consent with id "non-existent-consent-id"
-    Then the response status should be 404
-
-  Scenario Outline: Reject invalid consent requests
-    When I create a consent with "<fixture>"
+  Scenario Outline: Reject a consent request with an invalid body
+    When I create a consent with body '<body>'
     Then the response status should be 400
+    And the response body field "message" should be "<message>"
 
-    Examples:
-      | fixture        |
-      | missing fields |
-      | invalid body   |
+    Examples: rejected by the api gateway schema
+      | body                                                        | message              |
+      | not-json                                                    | Invalid request body |
+      | {}                                                          | Invalid request body |
+      | {"return_url":"https://return.test/callback"}               | Invalid request body |
+      | {"bank_id":"iron-bank"}                                     | Invalid request body |
+      | {"bank_id":"","return_url":"https://example.test/callback"} | Invalid request body |
+
+    @needs-session
+    Examples: rejected by the lambda schema
+      | body                                                               | message                 |
+      | {"bank_id":"iron-bank","return_url":"not-a-url"}                   | return_url: Invalid URL |
+      | {"bank_id":"iron-bank","return_url":"ftp://example.test/callback"} | return_url: Invalid URL |
+
+  @needs-session
+  Scenario: An unknown bank id returns as an internal server error
+    When I create a consent for an unknown bank
+    Then the response status should be 500
+    And the response body should be '{"message":"Internal server error"}'

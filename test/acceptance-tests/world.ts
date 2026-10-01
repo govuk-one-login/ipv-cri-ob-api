@@ -1,13 +1,17 @@
-import type { ConsentsClient } from './clients/consents-client.js'
 import type { IdentityVerificationClient } from './clients/identity-verification-client.js'
 import type { IssueCredentialClient } from './clients/issue-credential-client.js'
 import type { IWorldOptions } from '@cucumber/cucumber'
 
 import { BanksClient } from './clients/banks-client.js'
+import { ConsentsClient } from './clients/consents-client.js'
 import { SessionClient } from './clients/session-client.js'
 import { TokenClient } from './clients/token-client.js'
 import { type ApiResponse, getPrivateBaseUrl, getPublicBaseUrl } from './utils/api-client.js'
 import { setWorldConstructor, World } from '@cucumber/cucumber'
+
+// apigw will reject any request without a 'present' session-id so we set a placeholder value
+// @needs-session overwrites this with a real session id
+const NO_SESSION_ID = 'no-session'
 
 export class OBWorld extends World {
   readonly session: SessionClient
@@ -29,8 +33,15 @@ export class OBWorld extends World {
   set authCode(value: string) {
     this._authCode = value
   }
+  get bankId(): string {
+    if (!this._bankId) throw new Error('bankId not set — did a Given step run first?')
+    return this._bankId
+  }
+  set bankId(value: string) {
+    this._bankId = value
+  }
+
   get banks(): BanksClient {
-    if (!this._banks) throw new Error('banks not initialised — did the Before hook run?')
     return this._banks
   }
 
@@ -43,11 +54,7 @@ export class OBWorld extends World {
   }
 
   get consents(): ConsentsClient {
-    if (!this._consents) throw new Error('consents not initialised — did the Before hook run?')
     return this._consents
-  }
-  set consents(value: ConsentsClient) {
-    this._consents = value
   }
 
   get identityVerification(): IdentityVerificationClient {
@@ -82,7 +89,9 @@ export class OBWorld extends World {
   }
   set sessionId(value: string) {
     this._sessionId = value
-    this._banks = new BanksClient(getPrivateBaseUrl(), value)
+    const privateBaseUrl = getPrivateBaseUrl()
+    this._banks = new BanksClient(privateBaseUrl, value)
+    this._consents = new ConsentsClient(privateBaseUrl, value)
   }
 
   get sessionRedirectUri(): string {
@@ -104,9 +113,10 @@ export class OBWorld extends World {
 
   private _accessToken: string | undefined
   private _authCode: string | undefined
-  private _banks: BanksClient | undefined
+  private _bankId: string | undefined
+  private _banks: BanksClient
   private _consentId: string | undefined
-  private _consents: ConsentsClient | undefined
+  private _consents: ConsentsClient
   private _identityVerification: IdentityVerificationClient | undefined
   private _issueCredential: IssueCredentialClient | undefined
   private _lastResponse: ApiResponse | undefined
@@ -120,6 +130,8 @@ export class OBWorld extends World {
     const privateBaseUrl = getPrivateBaseUrl()
     this.session = new SessionClient(privateBaseUrl)
     this.token = new TokenClient(publicBaseUrl)
+    this._banks = new BanksClient(privateBaseUrl, NO_SESSION_ID)
+    this._consents = new ConsentsClient(privateBaseUrl, NO_SESSION_ID)
   }
 }
 

@@ -1,17 +1,16 @@
-@QualityGateIntegrationTest @QualityGateSmokeTest
+@QualityGateIntegrationTest @QualityGateSmokeTest @needs-session
 Feature: Open Banking Verification Journey
 
   Scenario: Complete the full open banking verification journey
-    Given a session has been created via the core stub
     When I request the list of banks
     Then the response status should be 200
     And the response body should have field "banks"
     And the response body should have field "profile"
 
-    When I create a consent with valid details
-    Then the response status should be 200
+    Given I have created a consent
+    Then the response status should be 201
     And the response body should have field "id"
-    And the response body should have field "status"
+    And the response body should have field "url"
 
     When I post identity verification for the created consent
     Then the response status should be 200

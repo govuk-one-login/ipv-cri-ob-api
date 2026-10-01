@@ -27,6 +27,12 @@ paths:
                 $ref: "#/components/schemas/BankList"
         "204":
           description: "204 response"
+        "400":
+          description: "400 response"
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/Error"
         "401":
           description: "401 response"
           content:
@@ -39,6 +45,7 @@ paths:
             application/json:
               schema:
                 $ref: "#/components/schemas/Error"
+      x-amazon-apigateway-request-validator: "Validate both"
       x-amazon-apigateway-integration:
         httpMethod: "POST"
         uri:
