@@ -1,7 +1,7 @@
-import type { TokenResponse } from '../clients/token-client.js'
-import type { OBWorld } from '../world.js'
+import type { TokenResponse } from '../clients/token-client'
+import type { OBWorld } from '../world'
 
-import { validTokenRequest } from '../data/token.js'
+import { validTokenRequest } from '../data/token'
 import { Then, When } from '@cucumber/cucumber'
 
 import assert from 'node:assert/strict'

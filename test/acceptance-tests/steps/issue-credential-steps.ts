@@ -1,4 +1,4 @@
-import type { OBWorld } from '../world.js'
+import type { OBWorld } from '../world'
 import type { IdentityCheckCredentialJWTClass } from '@govuk-one-login/data-vocab/credentials'
 
 import { Then, When } from '@cucumber/cucumber'

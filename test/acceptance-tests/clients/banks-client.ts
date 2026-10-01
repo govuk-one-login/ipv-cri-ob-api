@@ -1,4 +1,16 @@
-import { apiFetch, type ApiResponse, mergeHeaders } from '../utils/api-client.js'
+import { apiFetch, type ApiResponse, mergeHeaders } from '../utils/api-client'
+
+export interface Bank {
+  bankId: string
+  friendlyName: string
+  serviceStatus: boolean
+}
+
+export interface BankListResponse {
+  banks: Bank[]
+  profile: string
+  refreshedAtSeconds: number
+}
 
 export class BanksClient {
   private readonly endpoint: string

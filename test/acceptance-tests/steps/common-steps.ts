@@ -1,4 +1,4 @@
-import type { OBWorld } from '../world.js'
+import type { OBWorld } from '../world'
 
 import { Then } from '@cucumber/cucumber'
 

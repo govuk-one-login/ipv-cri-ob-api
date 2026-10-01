@@ -1,9 +1,9 @@
-import type { TokenResponse } from '../clients/token-client.js'
-import type { OBWorld } from '../world.js'
+import type { TokenResponse } from '../clients/token-client'
+import type { OBWorld } from '../world'
 
-import { validTokenRequest } from '../data/token.js'
-import { createSession } from '../helpers/session.js'
-import { createAuthenticatedClients, getPublicBaseUrl } from '../utils/api-client.js'
+import { validTokenRequest } from '../data/token'
+import { createSession } from '../helpers/session'
+import { createAuthenticatedClients, getPublicBaseUrl } from '../utils/api-client'
 import { Before } from '@cucumber/cucumber'
 
 Before({ tags: '@needs-session', timeout: 30000 }, async function (this: OBWorld) {

@@ -1,5 +1,5 @@
-import type { BankListEntity } from '../../../src/bank-list/model/bank-list.js'
-import type { OBWorld } from '../world.js'
+import type { BankListResponse } from '../clients/banks-client'
+import type { OBWorld } from '../world'
 
 import { Given, Then, When } from '@cucumber/cucumber'
 
@@ -17,7 +17,7 @@ When(
 )
 
 Then('the response should contain a valid banks list', function (this: OBWorld) {
-  const body = this.lastResponse.json<BankListEntity>()
+  const body = this.lastResponse.json<BankListResponse>()
   assert.ok(Array.isArray(body.banks))
   assert.ok(body.banks.length > 0)
   const bank = body.banks[0]

@@ -94,7 +94,7 @@ jobs:
         env:
           SAM_STACK_NAME: ${{ needs.deploy-preview.outputs.stack-name }}
           AWS_REGION: ${{ needs.deploy-preview.outputs.aws-region }}
-        run: bash test/acceptance-tests/run-tests.sh false
+        run: bash test/acceptance-tests/run-tests.sh
 
       - name: Delete preview test stack
         if: always()
