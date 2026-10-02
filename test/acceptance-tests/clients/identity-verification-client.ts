@@ -1,4 +1,4 @@
-import { apiFetch, type ApiResponse, mergeHeaders } from '../utils/api-client.js'
+import { apiFetch, type ApiResponse, mergeHeaders } from '../utils/api-client'
 
 export class IdentityVerificationClient {
   private readonly bearerToken: string

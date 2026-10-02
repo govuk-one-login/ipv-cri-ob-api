@@ -102,6 +102,22 @@ export default defineConfig({
         'no-unsafe-optional-chaining': 'warn',
         'no-restricted-imports': 'off'
       }
+    },
+    {
+      files: ['test/acceptance-tests/**/*'],
+      rules: {
+        'no-restricted-imports': [
+          'error',
+          {
+            patterns: [
+              {
+                regex: '^(@common|@src|@lib)/|/src/',
+                message: 'test.Dockerfile does not copy src/'
+              }
+            ]
+          }
+        ]
+      }
     }
   ]
 })

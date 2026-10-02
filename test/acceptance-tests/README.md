@@ -4,35 +4,42 @@ End-to-end API acceptance tests for the Open Banking Credential Issuer API. Test
 
 ## Tooling
 
-| Tool                                                                              | Purpose                                                       |
-|-----------------------------------------------------------------------------------|---------------------------------------------------------------|
-| [Cucumber.js](https://github.com/cucumber/cucumber-js)                            | BDD test runner — feature files drive test execution          |
-| [TypeScript](https://www.typescriptlang.org/)                                     | All step definitions and clients are written in TypeScript    |
-| [AWS SDK v3](https://docs.aws.amazon.com/AWSJavaScriptSDK/v3/latest/)             | Signs requests to the headless core stub via SigV4            |
-| [Node.js `fetch`](https://nodejs.org/en/blog/announcements/v21-release-announce)  | HTTP client used by all API clients                           |
-| Docker                                                                            | `test.Dockerfile` packages the tests for pipeline execution   |
+| Tool                                                                             | Purpose                                                     |
+|----------------------------------------------------------------------------------|-------------------------------------------------------------|
+| [Cucumber.js](https://github.com/cucumber/cucumber-js)                           | BDD test runner — feature files drive test execution        |
+| [TypeScript](https://www.typescriptlang.org/)                                    | All step definitions and clients are written in TypeScript  |
+| [AWS SDK v3](https://docs.aws.amazon.com/AWSJavaScriptSDK/v3/latest/)            | Signs requests to the test harness via SigV4                |
+| [Node.js `fetch`](https://nodejs.org/en/blog/announcements/v21-release-announce) | HTTP client used by all API clients                         |
+| Docker                                                                           | `test.Dockerfile` packages the tests for pipeline execution |
 
 
 ## Configuration
 
-Tests are configured via environment variables. There are three ways to provide them:
+Tests run against a deployed CloudFormation stack and require some configuration from your environment:
 
-### 1. Local `.env` file (recommended for local runs)
+### Environment Variable Reference
 
-Create a `.env` file in the `acceptance-tests/` directory:
+| Variable               | Required | Default     | Description                                                                                    |
+|------------------------|----------|-------------|------------------------------------------------------------------------------------------------|
+| `PUBLIC_API_BASE_URL`  | Yes      | —           | Public base URL for the Open Banking API (`/token`,`/consents`, `/credential/issue`, `/banks`) |
+| `PRIVATE_API_BASE_URL` | Yes      | —           | Base URL for OAuth endpoints (`/session`, `/authorization`)                                    |
+| `TEST_HARNESS_URL`     | Yes      | —           | URL of the test harness `/start` endpoint used to create session JWTs                          |
+| `AWS_REGION`           | No       | `eu-west-2` | AWS region to use                                                                              |
+| `ENVIRONMENT`          | Yes      | —           | Value of the 'Environment' parameter for deployed API stack. Builds the consent `return_url`   |
+
+You can provide this configuration in a number of ways:
+
+### Option 1. Local `.env` file
+
+Copy `.env.example` to `.env` in this directory and fill in the blanks with the stack you want to run the tests against
 
 ```bash
-PUBLIC_API_BASE_URL=https://<public-api-id>.execute-api.eu-west-2.amazonaws.com/<env>/
-PRIVATE_API_BASE_URL=https://<private-api-id>.execute-api.eu-west-2.amazonaws.com/<env>/
-TEST_HARNESS_URL=https://test-resources.review-ob.<env>.account.gov.uk
-ENVIRONMENT=<env>
+cp test/acceptance-tests/.env.example test/acceptance-tests/.env
 ```
 
-`run-tests.sh` will automatically source this file if it exists.
+### Option 2. CloudFormation stack outputs
 
-### 2. CloudFormation stack outputs (for pipeline runs / deployed environments)
-
-When no `.env` file is present and `STACK_NAME` is not `local`, `run-tests.sh` fetches configuration from the deployed stack:
+The `run-tests.sh` script fetches the configuration directly from a deployed stack (`SAM_STACK_NAME`)
 
 | Variable               | Source                                                     |
 |------------------------|------------------------------------------------------------|
@@ -41,36 +48,27 @@ When no `.env` file is present and `STACK_NAME` is not `local`, `run-tests.sh` f
 | `TEST_HARNESS_URL`     | `TestHarnessExecuteUrl` output of the test-resources stack |
 | `ENVIRONMENT`          | `Environment` parameter of the api stack                   |
 
-`STACK_NAME` is taken from `SAM_STACK_NAME`, falling back to `local`.
-
-### Environment Variable Reference
-
-| Variable               | Required        | Default                 | Description                                                                                    |
-|------------------------|-----------------|-------------------------|------------------------------------------------------------------------------------------------|
-| `PUBLIC_API_BASE_URL`  | No              | `http://localhost:3000` | Public base URL for the Open Banking API (`/token`,`/consents`, `/credential/issue`, `/banks`) |
-| `PRIVATE_API_BASE_URL` | Yes (non-local) | —                       | Base URL for OAuth endpoints (`/session`, `/authorization`)                                    |
-| `TEST_HARNESS_URL`     | Yes (non-local) | —                       | URL of the headless core stub used to create sessions                                          |
-| `AWS_REGION`           | No              | `eu-west-2`             | AWS region used for SigV4 signing of core stub requests                                        |
-| `ENVIRONMENT`          | Yes             | —                       | Value of the 'Environment' parameter for deployed API stack.                                   |
-
 ## Running Tests
 
 ### Locally
 
-```bash
-# From the repo root
-aws-vault exec <aws_account> npm run test:api
-```
-
-Or directly via the run script from the `acceptance-tests/` directory:
+With a `.env` in this directory (or the variables exported some other way):
 
 ```bash
-aws-vault exec <aws_account> ./run-tests.sh false
+aws sso login --profile <profile>
+AWS_PROFILE=<profile> npm run test:api
 ```
 
-### In the pipeline
+Or let the `run-tests.sh` script resolve everything from a deployed stack for you:
 
-Tests are packaged using `test.Dockerfile` and executed automatically as part of the deployment pipeline. The Docker image installs dependencies and runs `run-tests.sh` as its entrypoint.
+```bash
+aws sso login --profile <profile>
+AWS_PROFILE=<profile> SAM_STACK_NAME=<stack-name> ./test/acceptance-tests/run-tests.sh
+```
+
+### In CodePipeline
+
+Tests are packaged using `test.Dockerfile` and executed automatically as part of the deployment pipeline.
 
 ## Quality Gate Tags
 

@@ -1,7 +1,7 @@
-import type { SessionResponse } from '../clients/session-client.js'
-import type { OBWorld } from '../world.js'
+import type { SessionResponse } from '../clients/session-client'
+import type { OBWorld } from '../world'
 
-import { getJwt, type TestHarnessOverrides } from './test-harness.js'
+import { getJwt, type TestHarnessOverrides } from './test-harness'
 
 export const createSession = async (
   world: OBWorld,

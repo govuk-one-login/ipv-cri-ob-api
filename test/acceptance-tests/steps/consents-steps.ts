@@ -1,8 +1,8 @@
-import type { BankListEntity } from '../../../src/bank-list/model/bank-list.js'
-import type { ConsentsResponse } from '../../../src/consents/model/consents-response.js'
-import type { OBWorld } from '../world.js'
+import type { BankListResponse } from '../clients/banks-client'
+import type { ConsentsResponse } from '../clients/consents-client'
+import type { OBWorld } from '../world'
 
-import { consentsRequestBody } from '../data/consents.js'
+import { consentsRequestBody } from '../data/consents'
 import { Given, Then, When } from '@cucumber/cucumber'
 
 import assert from 'node:assert/strict'
@@ -12,7 +12,7 @@ const onlineBankId = async (world: OBWorld): Promise<string> => {
   if (response.status() !== 200)
     throw new Error(`Could not list banks: ${response.status()} ${response.text()}`)
 
-  const bank = response.json<BankListEntity>().banks.find((bank) => bank.serviceStatus)
+  const bank = response.json<BankListResponse>().banks.find((bank) => bank.serviceStatus)
   if (!bank) throw new Error('This environment has no online banks to create a consent for')
   return bank.bankId
 }

@@ -1,7 +1,7 @@
-import type { TokenResponse } from '../clients/token-client.js'
+import type { TokenResponse } from '../clients/token-client'
 
-import { IdentityVerificationClient } from '../clients/identity-verification-client.js'
-import { IssueCredentialClient } from '../clients/issue-credential-client.js'
+import { IdentityVerificationClient } from '../clients/identity-verification-client'
+import { IssueCredentialClient } from '../clients/issue-credential-client'
 
 export interface ApiResponse {
   json: <T = unknown>() => T
@@ -60,16 +60,10 @@ export function createAuthenticatedClients(
   }
 }
 
-const LOCAL_BASE_URL = 'http://localhost:3000'
-
-function isLocalRun(): boolean {
-  return !process.env['PUBLIC_API_BASE_URL'] && !process.env['PRIVATE_API_BASE_URL']
-}
-
 function resolveBaseUrl(name: 'PRIVATE_API_BASE_URL' | 'PUBLIC_API_BASE_URL'): string {
   const value = process.env[name]
-  if (!value && !isLocalRun()) throw new Error(`${name} is not set`)
-  return value || LOCAL_BASE_URL
+  if (!value) throw new Error(`${name} is not set`)
+  return value
 }
 
 export const getPrivateBaseUrl = (): string => resolveBaseUrl('PRIVATE_API_BASE_URL')

@@ -1,4 +1,11 @@
-import { apiFetch, type ApiResponse, mergeHeaders } from '../utils/api-client.js'
+import { apiFetch, type ApiResponse, mergeHeaders } from '../utils/api-client'
+
+export interface ConsentsResponse {
+  cached?: boolean
+  id: string
+  url: string
+  urlExpiresAtSeconds: number
+}
 
 export class ConsentsClient {
   private readonly endpoint: string

@@ -1,12 +1,12 @@
-import type { IdentityVerificationClient } from './clients/identity-verification-client.js'
-import type { IssueCredentialClient } from './clients/issue-credential-client.js'
+import type { IdentityVerificationClient } from './clients/identity-verification-client'
+import type { IssueCredentialClient } from './clients/issue-credential-client'
 import type { IWorldOptions } from '@cucumber/cucumber'
 
-import { BanksClient } from './clients/banks-client.js'
-import { ConsentsClient } from './clients/consents-client.js'
-import { SessionClient } from './clients/session-client.js'
-import { TokenClient } from './clients/token-client.js'
-import { type ApiResponse, getPrivateBaseUrl, getPublicBaseUrl } from './utils/api-client.js'
+import { BanksClient } from './clients/banks-client'
+import { ConsentsClient } from './clients/consents-client'
+import { SessionClient } from './clients/session-client'
+import { TokenClient } from './clients/token-client'
+import { type ApiResponse, getPrivateBaseUrl, getPublicBaseUrl } from './utils/api-client'
 import { setWorldConstructor, World } from '@cucumber/cucumber'
 
 // apigw will reject any request without a 'present' session-id so we set a placeholder value

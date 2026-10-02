@@ -1,9 +1,9 @@
-import type { OBWorld } from '../world.js'
+import type { OBWorld } from '../world'
 
 import {
   identityVerificationRequestWithSurname,
   validIdentityVerificationRequest
-} from '../data/identity-verification.js'
+} from '../data/identity-verification'
 import { When } from '@cucumber/cucumber'
 
 When('I post identity verification for the created consent', async function (this: OBWorld) {

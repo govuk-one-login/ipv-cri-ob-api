@@ -1,14 +1,14 @@
-import type { TokenResponse } from '../clients/token-client.js'
-import type { OBWorld } from '../world.js'
+import type { TokenResponse } from '../clients/token-client'
+import type { OBWorld } from '../world'
 
-import { createSession } from '../helpers/session.js'
-import { type TestHarnessOverrides } from '../helpers/test-harness.js'
+import { createSession } from '../helpers/session'
+import { type TestHarnessOverrides } from '../helpers/test-harness'
 import {
   apiFetch,
   createAuthenticatedClients,
   getPrivateBaseUrl,
   getPublicBaseUrl
-} from '../utils/api-client.js'
+} from '../utils/api-client'
 import { Given, When } from '@cucumber/cucumber'
 
 import lowConfidenceOverride from '../data/overrides/low-confidence.json' with { type: 'json' }
