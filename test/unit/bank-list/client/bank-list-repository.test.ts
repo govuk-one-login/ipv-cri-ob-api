@@ -1,5 +1,5 @@
 import type { DynamoDBDocumentClient } from '@aws-sdk/lib-dynamodb'
-import type { BankListEntity, StoredBank } from '@src/bank-list/model/bank-list'
+import type { BankListEntity, StoredBank } from '@src/bank-list/model/database/bank-list-entity'
 
 import { EndpointProfile } from '@common/model/endpoint-profile'
 import { createBankListRepository } from '@src/bank-list/client/bank-list-repository'

@@ -30,7 +30,7 @@ const ecospendResponse = {
 
 const createTestContext = () => {
   const postJson = vi.fn().mockResolvedValue(ecospendResponse)
-  const httpClient: BaseHttpClient = { postJson }
+  const httpClient: BaseHttpClient = { get: vi.fn(), postJson }
   const consentsProvider = createEcospendConsentsProvider({ httpClient })
 
   return { consentsProvider, postJson }
