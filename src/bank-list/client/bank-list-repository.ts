@@ -1,6 +1,6 @@
 import type { DynamoDBDocumentClient } from '@aws-sdk/lib-dynamodb'
 import type { EndpointProfile } from '@common/model/endpoint-profile'
-import type { BankListEntity } from '@src/bank-list/model/bank-list'
+import type { BankListEntity } from '@src/bank-list/model/database/bank-list-entity'
 
 import { GetCommand, PutCommand } from '@aws-sdk/lib-dynamodb'
 

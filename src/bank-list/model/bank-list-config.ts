@@ -1,13 +1,13 @@
 import { z } from 'zod'
 
-export const banksRequestConfigSchema = z
+export const bankListConfigSchema = z
   .object({
     'custom-list': z.string().optional(),
-    'endpoint-url': z.string().min(1)
+    'endpoint-url': z.url({ protocol: /^https?$/ })
   })
   .transform((o) => ({
     endpointUrl: o['endpoint-url'],
     ...(o['custom-list'] ? { customList: o['custom-list'] } : {})
   }))
 
-export type BanksRequestConfig = z.infer<typeof banksRequestConfigSchema>
+export type BankListConfig = z.infer<typeof bankListConfigSchema>
