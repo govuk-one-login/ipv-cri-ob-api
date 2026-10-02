@@ -1,19 +1,21 @@
 import type { SSMConfigProvider } from '@common/client/ssm-config-provider'
+import type { TokenRetrievalService } from '@lib/token-rotator/service/token-retrieval-service'
 import type { BankListRepository } from '@src/bank-list/client/bank-list-repository'
-import type { BankListEntity, StoredBank } from '@src/bank-list/model/bank-list'
-import type { BankListProvider } from '@src/bank-list/model/bank-list-provider'
+import type { BankListProvider, GetBanksParams } from '@src/bank-list/model/bank-list-provider'
+import type { BankListEntity, StoredBank } from '@src/bank-list/model/database/bank-list-entity'
 
 import { EndpointProfile } from '@common/model/endpoint-profile'
 import { createBankListUpdateService } from '@src/bank-list/service/bank-list-update-service'
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest'
 
+const ACCESS_TOKEN = 'test-access-token'
 const NOW_EPOCH_SECONDS = 1_800_000_000
 const REFRESH_AFTER_SECONDS = 55 * 60
 const CONFIG_PATH_PREFIX = '/test/bank-list'
 const ENDPOINT_URL = 'https://provider.test/banks'
 const CUSTOM_LIST = 'stub-banks'
 
-const rawRequestConfig = {
+const rawBankListConfig = {
   'custom-list': CUSTOM_LIST,
   'endpoint-url': ENDPOINT_URL
 }
@@ -36,7 +38,8 @@ const buildBankListEntity = (overrides: Partial<BankListEntity> = {}): BankListE
 describe('createBankListUpdateService', () => {
   let bankListProvider: BankListProvider
   let bankListRepository: BankListRepository
-  let ssmConfigProvider: SSMConfigProvider
+  let externalConfigProvider: SSMConfigProvider
+  let tokenRetrievalService: TokenRetrievalService<EndpointProfile>
 
   beforeEach(() => {
     vi.useFakeTimers()
@@ -51,8 +54,12 @@ describe('createBankListUpdateService', () => {
       replaceList: vi.fn().mockResolvedValue(undefined)
     }
 
-    ssmConfigProvider = {
-      get: vi.fn().mockResolvedValue(rawRequestConfig)
+    externalConfigProvider = {
+      get: vi.fn().mockResolvedValue(rawBankListConfig)
+    }
+
+    tokenRetrievalService = {
+      retrieveToken: vi.fn().mockResolvedValue(ACCESS_TOKEN)
     }
   })
 
@@ -63,13 +70,14 @@ describe('createBankListUpdateService', () => {
   const createService = () =>
     createBankListUpdateService(
       {
-        banksRequestConfigPathPrefix: CONFIG_PATH_PREFIX,
+        bankListConfigPathPrefix: CONFIG_PATH_PREFIX,
         refreshAfterSeconds: REFRESH_AFTER_SECONDS
       },
       {
         bankListProvider,
         bankListRepository,
-        ssmConfigProvider
+        externalConfigProvider,
+        tokenRetrievalService
       }
     )
 
@@ -79,14 +87,40 @@ describe('createBankListUpdateService', () => {
     const result = await createService()(EndpointProfile.STUB)
 
     expect(bankListRepository.getList).toHaveBeenCalledWith(EndpointProfile.STUB)
-    expect(ssmConfigProvider.get).toHaveBeenCalledWith(`${CONFIG_PATH_PREFIX}/STUB`)
-    expect(bankListProvider.getBanks).toHaveBeenCalledWith(EndpointProfile.STUB, rawRequestConfig)
+    expect(externalConfigProvider.get).toHaveBeenCalledWith(`${CONFIG_PATH_PREFIX}/STUB`)
     expect(bankListRepository.replaceList).toHaveBeenCalledWith({
       banks: oneBank,
       refreshedAtSeconds: NOW_EPOCH_SECONDS,
       profile: EndpointProfile.STUB
     })
     expect(result).toEqual({ updated: true })
+  })
+
+  it('resolves the profile, config and token before calling the provider', async () => {
+    vi.mocked(bankListRepository.getList).mockResolvedValue(undefined)
+
+    await createService()(EndpointProfile.STUB)
+
+    expect(tokenRetrievalService.retrieveToken).toHaveBeenCalledWith(EndpointProfile.STUB)
+    expect(bankListProvider.getBanks).toHaveBeenCalledWith({
+      accessToken: ACCESS_TOKEN,
+      customList: CUSTOM_LIST,
+      endpointUrl: ENDPOINT_URL,
+      profile: EndpointProfile.STUB
+    } satisfies GetBanksParams)
+  })
+
+  it('omits the custom list when the config does not set one', async () => {
+    vi.mocked(bankListRepository.getList).mockResolvedValue(undefined)
+    vi.mocked(externalConfigProvider.get).mockResolvedValue({ 'endpoint-url': ENDPOINT_URL })
+
+    await createService()(EndpointProfile.STUB)
+
+    expect(bankListProvider.getBanks).toHaveBeenCalledWith({
+      accessToken: ACCESS_TOKEN,
+      endpointUrl: ENDPOINT_URL,
+      profile: EndpointProfile.STUB
+    } satisfies GetBanksParams)
   })
 
   it('skips a list younger than the refresh threshold', async () => {
@@ -98,7 +132,7 @@ describe('createBankListUpdateService', () => {
 
     const result = await createService()(EndpointProfile.STUB)
 
-    expect(ssmConfigProvider.get).not.toHaveBeenCalled()
+    expect(externalConfigProvider.get).not.toHaveBeenCalled()
     expect(bankListProvider.getBanks).not.toHaveBeenCalled()
     expect(bankListRepository.replaceList).not.toHaveBeenCalled()
     expect(result).toEqual({ updated: false })
@@ -113,7 +147,6 @@ describe('createBankListUpdateService', () => {
 
     const result = await createService()(EndpointProfile.STUB)
 
-    expect(bankListProvider.getBanks).toHaveBeenCalledWith(EndpointProfile.STUB, rawRequestConfig)
     expect(bankListRepository.replaceList).toHaveBeenCalledWith({
       banks: oneBank,
       refreshedAtSeconds: NOW_EPOCH_SECONDS,
@@ -131,7 +164,6 @@ describe('createBankListUpdateService', () => {
 
     const result = await createService()(EndpointProfile.STUB)
 
-    expect(bankListProvider.getBanks).toHaveBeenCalledWith(EndpointProfile.STUB, rawRequestConfig)
     expect(bankListRepository.replaceList).toHaveBeenCalledWith({
       banks: oneBank,
       refreshedAtSeconds: NOW_EPOCH_SECONDS,
@@ -140,18 +172,18 @@ describe('createBankListUpdateService', () => {
     expect(result).toEqual({ updated: true })
   })
 
-  it('does not replace the list and preserves an exisitng list when retrieval fails', async () => {
+  it('does not replace the list and preserves an existing list when retrieval fails', async () => {
     const existingList = buildBankListEntity({
       refreshedAtSeconds: NOW_EPOCH_SECONDS - REFRESH_AFTER_SECONDS
     })
 
     vi.mocked(bankListRepository.getList).mockResolvedValue(existingList)
     vi.mocked(bankListProvider.getBanks).mockRejectedValue(
-      new Error('Unexpected banks response for STUB')
+      new Error('Unexpected ecospend bank list response body')
     )
 
     await expect(createService()(EndpointProfile.STUB)).rejects.toThrow(
-      'Unexpected banks response for STUB'
+      'Unexpected ecospend bank list response body'
     )
 
     expect(bankListRepository.getList).toHaveBeenCalledWith(EndpointProfile.STUB)
@@ -169,11 +201,41 @@ describe('createBankListUpdateService', () => {
     )
   })
 
-  it('propagates ssm config provider failures', async () => {
+  it('propagates external config provider failures', async () => {
     vi.mocked(bankListRepository.getList).mockResolvedValue(undefined)
-    vi.mocked(ssmConfigProvider.get).mockRejectedValue(new Error('SSM unavailable'))
+    vi.mocked(externalConfigProvider.get).mockRejectedValue(new Error('SSM unavailable'))
 
     await expect(createService()(EndpointProfile.STUB)).rejects.toThrow('SSM unavailable')
+    expect(bankListProvider.getBanks).not.toHaveBeenCalled()
+    expect(bankListRepository.replaceList).not.toHaveBeenCalled()
+  })
+
+  describe('rejects external config', () => {
+    it.each([
+      ['the endpoint URL is missing', { 'custom-list': CUSTOM_LIST }],
+      ['the endpoint URL is empty', { 'endpoint-url': '' }],
+      ['the endpoint URL is not a URL', { 'endpoint-url': 'provider.test/banks' }],
+      ['the endpoint URL has no host', { 'endpoint-url': 'https://' }],
+      ['the endpoint URL is not http or https', { 'endpoint-url': 'ftp://provider.test/banks' }]
+    ])('when %s', async (_description, externalConfig) => {
+      vi.mocked(bankListRepository.getList).mockResolvedValue(undefined)
+      vi.mocked(externalConfigProvider.get).mockResolvedValue(externalConfig)
+
+      await expect(createService()(EndpointProfile.STUB)).rejects.toThrow(
+        'Invalid bank list config: endpoint-url'
+      )
+
+      expect(bankListProvider.getBanks).not.toHaveBeenCalled()
+      expect(bankListRepository.replaceList).not.toHaveBeenCalled()
+    })
+  })
+
+  it('rejects when no token is available for the profile', async () => {
+    vi.mocked(bankListRepository.getList).mockResolvedValue(undefined)
+    vi.mocked(tokenRetrievalService.retrieveToken).mockResolvedValue(undefined)
+
+    await expect(createService()(EndpointProfile.STUB)).rejects.toThrow('No token is available')
+
     expect(bankListProvider.getBanks).not.toHaveBeenCalled()
     expect(bankListRepository.replaceList).not.toHaveBeenCalled()
   })

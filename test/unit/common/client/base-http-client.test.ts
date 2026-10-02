@@ -27,6 +27,12 @@ const buildJsonResponse = (status: number, body: unknown): Response =>
     status
   })
 
+const getRequest = {
+  accessToken: ACCESS_TOKEN,
+  profile: EndpointProfile.STUB,
+  url: ENDPOINT_URL
+}
+
 const postJsonRequest = {
   accessToken: ACCESS_TOKEN,
   body: REQUEST_BODY,
@@ -40,41 +46,107 @@ describe('createBaseHttpClient', () => {
     vi.clearAllMocks()
   })
 
-  it('posts JSON request with required headers and returns the parsed body', async () => {
-    const fetchMock = stubFetch(vi.fn().mockResolvedValue(buildJsonResponse(201, RESPONSE_BODY)))
-    const httpClient = createBaseHttpClient({ endpointName: ENDPOINT })
+  describe('get', () => {
+    it('sends a GET request with required headers and returns the parsed body', async () => {
+      const fetchMock = stubFetch(vi.fn().mockResolvedValue(buildJsonResponse(200, RESPONSE_BODY)))
+      const httpClient = createBaseHttpClient({ endpointName: ENDPOINT })
 
-    await expect(httpClient.postJson(postJsonRequest)).resolves.toEqual(RESPONSE_BODY)
+      await expect(httpClient.get(getRequest)).resolves.toEqual(RESPONSE_BODY)
 
-    expect(fetchMock).toHaveBeenCalledOnce()
-    expect(fetchMock).toHaveBeenCalledWith(
-      ENDPOINT_URL,
-      expect.objectContaining({
-        body: JSON.stringify(REQUEST_BODY),
+      expect(fetchMock).toHaveBeenCalledOnce()
+      expect(fetchMock).toHaveBeenCalledWith(ENDPOINT_URL, {
         headers: {
           accept: 'application/json',
-          authorization: `Bearer ${ACCESS_TOKEN}`,
-          'content-type': 'application/json'
+          authorization: `Bearer ${ACCESS_TOKEN}`
         },
-        method: 'POST'
+        method: 'GET',
+        signal: expect.any(AbortSignal)
       })
-    )
+    })
+
+    it('throws for an unsuccessful status', async () => {
+      stubFetch(vi.fn().mockResolvedValue(buildJsonResponse(503, { error: 'unavailable' })))
+      const httpClient = createBaseHttpClient({ endpointName: ENDPOINT })
+
+      await expect(httpClient.get(getRequest)).rejects.toThrow(
+        'widgets response was not OK [HTTP code: 503] [endpoint profile: STUB]'
+      )
+    })
+
+    it('throws for a response body that is not valid JSON', async () => {
+      stubFetch(
+        vi.fn().mockResolvedValue(
+          new Response('not json', {
+            headers: { 'content-type': 'application/json' },
+            status: 200
+          })
+        )
+      )
+      const httpClient = createBaseHttpClient({ endpointName: ENDPOINT })
+
+      await expect(httpClient.get(getRequest)).rejects.toThrow(SyntaxError)
+    })
+
+    it('propagates transport failures', async () => {
+      const networkError = new TypeError('fetch failed')
+      stubFetch(vi.fn().mockRejectedValue(networkError))
+      const httpClient = createBaseHttpClient({ endpointName: ENDPOINT })
+
+      await expect(httpClient.get(getRequest)).rejects.toBe(networkError)
+    })
   })
 
-  it('throws for an unsuccessful status', async () => {
-    stubFetch(vi.fn().mockResolvedValue(buildJsonResponse(503, { error: 'unavailable' })))
-    const httpClient = createBaseHttpClient({ endpointName: ENDPOINT })
+  describe('postJson', () => {
+    it('sends a POST request with required headers and returns the parsed body', async () => {
+      const fetchMock = stubFetch(vi.fn().mockResolvedValue(buildJsonResponse(201, RESPONSE_BODY)))
+      const httpClient = createBaseHttpClient({ endpointName: ENDPOINT })
 
-    await expect(httpClient.postJson(postJsonRequest)).rejects.toThrow(
-      'widgets response was not OK [HTTP code: 503] [endpoint profile: STUB]'
-    )
-  })
+      await expect(httpClient.postJson(postJsonRequest)).resolves.toEqual(RESPONSE_BODY)
 
-  it('propagates transport failures', async () => {
-    const networkError = new TypeError('fetch failed')
-    stubFetch(vi.fn().mockRejectedValue(networkError))
-    const httpClient = createBaseHttpClient({ endpointName: ENDPOINT })
+      expect(fetchMock).toHaveBeenCalledOnce()
+      expect(fetchMock).toHaveBeenCalledWith(
+        ENDPOINT_URL,
+        expect.objectContaining({
+          body: JSON.stringify(REQUEST_BODY),
+          headers: {
+            accept: 'application/json',
+            authorization: `Bearer ${ACCESS_TOKEN}`,
+            'content-type': 'application/json'
+          },
+          method: 'POST'
+        })
+      )
+    })
 
-    await expect(httpClient.postJson(postJsonRequest)).rejects.toBe(networkError)
+    it('throws for an unsuccessful status', async () => {
+      stubFetch(vi.fn().mockResolvedValue(buildJsonResponse(503, { error: 'unavailable' })))
+      const httpClient = createBaseHttpClient({ endpointName: ENDPOINT })
+
+      await expect(httpClient.postJson(postJsonRequest)).rejects.toThrow(
+        'widgets response was not OK [HTTP code: 503] [endpoint profile: STUB]'
+      )
+    })
+
+    it('throws for a response body that is not valid JSON', async () => {
+      stubFetch(
+        vi.fn().mockResolvedValue(
+          new Response('not json', {
+            headers: { 'content-type': 'application/json' },
+            status: 200
+          })
+        )
+      )
+      const httpClient = createBaseHttpClient({ endpointName: ENDPOINT })
+
+      await expect(httpClient.postJson(postJsonRequest)).rejects.toThrow(SyntaxError)
+    })
+
+    it('propagates transport failures', async () => {
+      const networkError = new TypeError('fetch failed')
+      stubFetch(vi.fn().mockRejectedValue(networkError))
+      const httpClient = createBaseHttpClient({ endpointName: ENDPOINT })
+
+      await expect(httpClient.postJson(postJsonRequest)).rejects.toBe(networkError)
+    })
   })
 })

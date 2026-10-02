@@ -1,4 +1,4 @@
-import type { BankListEntity } from '@src/bank-list/model/bank-list'
+import type { BankListEntity } from '@src/bank-list/model/database/bank-list-entity'
 import type { BankListRetrievalService } from '@src/bank-list/service/bank-list-retrieval-service'
 import type { APIGatewayProxyEvent, Context } from 'aws-lambda'
 

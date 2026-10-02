@@ -4,11 +4,18 @@ import { UpstreamResponseError } from '@common/error/upstream-response-error'
 import { instrumentedFetch } from '@common/util/instrumented-fetch'
 
 export interface BaseHttpClient {
+  get: (request: GetRequest) => Promise<unknown>
   postJson: (request: PostJsonRequest) => Promise<unknown>
 }
 
 interface BaseHttpClientConfig {
   endpointName: string
+}
+
+interface GetRequest {
+  accessToken: string
+  profile: EndpointProfile
+  url: string
 }
 
 interface PostJsonRequest {
@@ -30,6 +37,30 @@ export const createBaseHttpClient = (config: BaseHttpClientConfig): BaseHttpClie
           'content-type': 'application/json'
         },
         method: 'POST'
+      },
+      { endpoint: config.endpointName, profile: request.profile }
+    )
+
+    if (!response.ok) {
+      throw new UpstreamResponseError(
+        `${config.endpointName} response was not OK`,
+        response.status,
+        request.profile
+      )
+    }
+
+    return await response.json()
+  },
+
+  get: async (request) => {
+    const response = await instrumentedFetch(
+      request.url,
+      {
+        headers: {
+          accept: 'application/json',
+          authorization: `Bearer ${request.accessToken}`
+        },
+        method: 'GET'
       },
       { endpoint: config.endpointName, profile: request.profile }
     )
