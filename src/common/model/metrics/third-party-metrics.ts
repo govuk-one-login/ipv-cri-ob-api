@@ -15,13 +15,22 @@ export const ThirdPartyRequestState = {
 export type ThirdPartyRequestState =
   (typeof ThirdPartyRequestState)[keyof typeof ThirdPartyRequestState]
 
+export const ThirdPartyResponseBodyState = {
+  RESPONSE_BODY_INVALID: 'response_body_invalid'
+} as const
+
+export type ThirdPartyResponseBodyState =
+  (typeof ThirdPartyResponseBodyState)[keyof typeof ThirdPartyResponseBodyState]
+
 export const ThirdPartyMetricDimensions = {
-  ENDPOINT: 'endpoint',
-  STATE: 'state',
+  ENDPOINT: 'endpoint_name',
   PROFILE: 'profile',
+  RESPONSE_BODY_STATE: 'response_body_state',
+  STATE: 'state',
   STATUS: 'status'
 } as const
 
 export const THIRD_PARTY_REQUEST_METRIC_NAME = 'third_party_request'
 export const THIRD_PARTY_RESPONSE_METRIC_NAME = 'third_party_response'
+export const THIRD_PARTY_RESPONSE_BODY_METRIC_NAME = 'third_party_response_body'
 export const THIRD_PARTY_LATENCY_METRIC_NAME = 'third_party_latency_ms'

@@ -2,8 +2,20 @@ import type { BaseHttpClient } from '@common/client/base-http-client'
 import type { CreateConsentParams, CreatedConsent } from '@src/consents/model/consents-provider'
 
 import { EndpointProfile } from '@common/model/endpoint-profile'
+import {
+  THIRD_PARTY_RESPONSE_BODY_METRIC_NAME,
+  ThirdPartyMetricDimensions,
+  ThirdPartyResponseBodyState
+} from '@common/model/metrics/third-party-metrics'
 import { createEcospendConsentsProvider } from '@src/consents/client/ecospend-consents-provider'
 import { describe, expect, it, vi } from 'vitest'
+
+import * as criMetrics from '@govuk-one-login/cri-metrics'
+
+vi.mock('@govuk-one-login/cri-metrics', async (importOriginal) => ({
+  ...(await importOriginal<typeof criMetrics>()),
+  captureMetricWithDimensions: vi.fn()
+}))
 
 const ACCESS_TOKEN = 'test-access-token'
 const ENDPOINT_URL = 'https://ecospend.test/consents'
@@ -103,5 +115,25 @@ describe('createEcospendConsentsProvider', () => {
     postJson.mockRejectedValue(transportError)
 
     await expect(consentsProvider.createConsent(createConsentParams)).rejects.toBe(transportError)
+  })
+
+  it('emits a response body invalid metric when the response fails to parse', async () => {
+    const { consentsProvider, postJson } = createTestContext()
+    const { bank_consent_url: _omitted, ...withoutConsentUrl } = ecospendResponse
+    postJson.mockResolvedValue(withoutConsentUrl)
+
+    await expect(consentsProvider.createConsent(createConsentParams)).rejects.toThrow()
+
+    expect(criMetrics.captureMetricWithDimensions).toHaveBeenCalledWith(
+      THIRD_PARTY_RESPONSE_BODY_METRIC_NAME,
+      {
+        [ThirdPartyMetricDimensions.ENDPOINT]: 'ecospend-consents',
+        [ThirdPartyMetricDimensions.PROFILE]: EndpointProfile.STUB,
+        [ThirdPartyMetricDimensions.RESPONSE_BODY_STATE]:
+          ThirdPartyResponseBodyState.RESPONSE_BODY_INVALID
+      },
+      1,
+      criMetrics.MetricUnit.Count
+    )
   })
 })
