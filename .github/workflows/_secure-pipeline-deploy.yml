@@ -74,7 +74,7 @@ jobs:
           aws-role-arn: ${{ secrets.role_arn }}
 
       - name: SAM package and upload to S3
-        uses: govuk-one-login/devplatform-upload-action/sam@9320b8e71484f79c1b48139a86d214473d0f2709 # v4.3.0
+        uses: govuk-one-login/devplatform-upload-action/sam@7076683de6e38a0ecdfbcd273b510a47c7b9489c # v4.4.0
         with:
           aws-role-arn: ${{ secrets.role_arn}}
           artifact-bucket-name: ${{ secrets.artifact_bucket }}
