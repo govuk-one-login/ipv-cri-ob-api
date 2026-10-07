@@ -10,9 +10,6 @@ const ACCESS_TOKEN = 'test-access-token'
 const CUSTOM_LIST = 'stub-banks'
 const ENDPOINT_URL = 'https://provider.test/banks'
 
-const SANDBOX_QUERY_STRING =
-  'country_iso_code=GB&division=Personal&fetchAllBanks=true&standard=OBIE&is_sandbox=true'
-
 const getBanksParams: GetBanksParams = {
   accessToken: ACCESS_TOKEN,
   customList: CUSTOM_LIST,
@@ -44,24 +41,40 @@ const storedBanks: StoredBank[] = [
   }
 ]
 
+const expectedSearchParams = {
+  country_iso_code: 'GB',
+  division: 'Personal',
+  fetchAllBanks: 'true',
+  is_sandbox: 'true',
+  standard: 'OBIE'
+}
+
 const createTestContext = () => {
   const get = vi.fn().mockResolvedValue(ecospendResponse)
   const httpClient: BaseHttpClient = { get, postJson: vi.fn() }
   const bankListProvider = createEcospendBankListProvider({ httpClient })
 
-  return { bankListProvider, get }
+  const requestedUrl = () => {
+    const [{ url }] = get.mock.lastCall!
+    const { origin, pathname, searchParams } = new URL(url)
+    return { endpoint: `${origin}${pathname}`, searchParams: Object.fromEntries(searchParams) }
+  }
+
+  return { bankListProvider, get, requestedUrl }
 }
 
 describe('createEcospendBankListProvider', () => {
   it('requests the bank list for the configured endpoint', async () => {
-    const { bankListProvider, get } = createTestContext()
+    const { bankListProvider, get, requestedUrl } = createTestContext()
 
     await bankListProvider.getBanks(getBanksParams)
 
-    expect(get).toHaveBeenCalledWith({
-      accessToken: ACCESS_TOKEN,
-      profile: EndpointProfile.STUB,
-      url: `${ENDPOINT_URL}?${SANDBOX_QUERY_STRING}&custom_list=${CUSTOM_LIST}`
+    expect(get).toHaveBeenCalledWith(
+      expect.objectContaining({ accessToken: ACCESS_TOKEN, profile: EndpointProfile.STUB })
+    )
+    expect(requestedUrl()).toEqual({
+      endpoint: ENDPOINT_URL,
+      searchParams: { ...expectedSearchParams, custom_list: CUSTOM_LIST }
     })
   })
 
@@ -89,31 +102,26 @@ describe('createEcospendBankListProvider', () => {
   })
 
   it('omits custom_list when one is not configured', async () => {
-    const { bankListProvider, get } = createTestContext()
+    const { bankListProvider, requestedUrl } = createTestContext()
     const { customList: _omitted, ...withoutCustomList } = getBanksParams
 
     await bankListProvider.getBanks(withoutCustomList)
 
-    expect(get).toHaveBeenCalledWith({
-      accessToken: ACCESS_TOKEN,
-      profile: EndpointProfile.STUB,
-      url: `${ENDPOINT_URL}?${SANDBOX_QUERY_STRING}`
-    })
+    expect(requestedUrl()).toEqual({ endpoint: ENDPOINT_URL, searchParams: expectedSearchParams })
   })
 
   it('preserves query params already on the configured endpoint', async () => {
-    const { bankListProvider, get } = createTestContext()
+    const { bankListProvider, requestedUrl } = createTestContext()
 
     await bankListProvider.getBanks({
       ...getBanksParams,
       endpointUrl: `${ENDPOINT_URL}?tenant=gds`
     })
 
-    expect(get).toHaveBeenCalledWith(
-      expect.objectContaining({
-        url: `${ENDPOINT_URL}?tenant=gds&${SANDBOX_QUERY_STRING}&custom_list=${CUSTOM_LIST}`
-      })
-    )
+    expect(requestedUrl()).toEqual({
+      endpoint: ENDPOINT_URL,
+      searchParams: { tenant: 'gds', ...expectedSearchParams, custom_list: CUSTOM_LIST }
+    })
   })
 
   it('ignores unknown fields in the response', async () => {
@@ -173,7 +181,10 @@ describe('createEcospendBankListProvider', () => {
 
   it('resolves an empty list when Ecospend returns no banks', async () => {
     const { bankListProvider, get } = createTestContext()
-    get.mockResolvedValue({ data: [], meta: { current_page: 1, total_count: 0, total_pages: 1 } })
+    get.mockResolvedValue({
+      data: [],
+      meta: { current_page: 1, total_count: 0, total_pages: 1 }
+    })
 
     await expect(bankListProvider.getBanks(getBanksParams)).resolves.toEqual([])
   })

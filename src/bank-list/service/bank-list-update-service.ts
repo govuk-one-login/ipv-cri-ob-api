@@ -4,6 +4,7 @@ import type { TokenRetrievalService } from '@lib/token-rotator/service/token-ret
 import type { BankListRepository } from '@src/bank-list/client/bank-list-repository'
 import type { BankListProvider } from '@src/bank-list/model/bank-list-provider'
 
+import { NoUsableTokenError } from '@common/error'
 import { nowSeconds } from '@common/util/time'
 import { describeZodIssues } from '@common/util/zod'
 import { type BankListConfig, bankListConfigSchema } from '@src/bank-list/model/bank-list-config'
@@ -51,7 +52,7 @@ export const createBankListUpdateService = (
     const bankListConfig: BankListConfig = parsedConfig.data
 
     const accessToken = await collaborators.tokenRetrievalService.retrieveToken(profile)
-    if (!accessToken) throw new Error(`No token is available`)
+    if (!accessToken) throw new NoUsableTokenError(profile)
 
     const banks = await collaborators.bankListProvider.getBanks({
       accessToken,

@@ -4,6 +4,7 @@ import type { BankListRepository } from '@src/bank-list/client/bank-list-reposit
 import type { BankListProvider, GetBanksParams } from '@src/bank-list/model/bank-list-provider'
 import type { BankListEntity, StoredBank } from '@src/bank-list/model/database/bank-list-entity'
 
+import { NoUsableTokenError } from '@common/error'
 import { EndpointProfile } from '@common/model/endpoint-profile'
 import { createBankListUpdateService } from '@src/bank-list/service/bank-list-update-service'
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest'
@@ -234,7 +235,7 @@ describe('createBankListUpdateService', () => {
     vi.mocked(bankListRepository.getList).mockResolvedValue(undefined)
     vi.mocked(tokenRetrievalService.retrieveToken).mockResolvedValue(undefined)
 
-    await expect(createService()(EndpointProfile.STUB)).rejects.toThrow('No token is available')
+    await expect(createService()(EndpointProfile.STUB)).rejects.toThrow(NoUsableTokenError)
 
     expect(bankListProvider.getBanks).not.toHaveBeenCalled()
     expect(bankListRepository.replaceList).not.toHaveBeenCalled()

@@ -7,7 +7,7 @@ import type { ConsentsProvider } from '@src/consents/model/consents-provider'
 import type { ConsentsRequest } from '@src/consents/model/consents-request'
 import type { ConsentsResponse } from '@src/consents/model/consents-response'
 
-import { BadRequestError } from '@common/error/bad-request-error'
+import { BadRequestError, NoUsableTokenError } from '@common/error'
 import { requireSessionContext } from '@common/service/session-context'
 import { nowSeconds } from '@common/util/time'
 import { describeZodIssues } from '@common/util/zod'
@@ -73,7 +73,7 @@ export const createConsentsService = (
     const consentsConfig: ConsentsConfig = parsedConfig.data
 
     const accessToken = await collaborators.tokenRetrievalService.retrieveToken(profile)
-    if (!accessToken) throw new Error(`No token is available`)
+    if (!accessToken) throw new NoUsableTokenError(profile)
 
     const createdConsent = await collaborators.consentsProvider.createConsent({
       accessToken,

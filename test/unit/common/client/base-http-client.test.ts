@@ -1,9 +1,10 @@
 import type * as CriMetricsModule from '@govuk-one-login/cri-metrics'
-import type { Mock } from 'vitest'
+import type { Mock, MockInstance } from 'vitest'
 
 import { createBaseHttpClient } from '@common/client/base-http-client'
 import { EndpointProfile } from '@common/model/endpoint-profile'
-import { afterEach, describe, expect, it, vi } from 'vitest'
+import { logger } from '@govuk-one-login/cri-logger'
+import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest'
 
 vi.mock('@govuk-one-login/cri-metrics', async (importOriginal) => ({
   ...(await importOriginal<typeof CriMetricsModule>()),
@@ -12,7 +13,8 @@ vi.mock('@govuk-one-login/cri-metrics', async (importOriginal) => ({
 
 const ACCESS_TOKEN = 'test-access-token'
 const ENDPOINT = 'widgets'
-const ENDPOINT_URL = 'https://third-party.test/widgets'
+const ENDPOINT_ORIGIN = 'https://third-party.test'
+const ENDPOINT_URL = `${ENDPOINT_ORIGIN}/widgets`
 const REQUEST_BODY = { widget_id: 'a-widget' }
 const RESPONSE_BODY = { id: 'widget-1' }
 
@@ -41,9 +43,16 @@ const postJsonRequest = {
 }
 
 describe('createBaseHttpClient', () => {
+  let infoSpy: MockInstance<typeof logger.info>
+
+  beforeEach(() => {
+    infoSpy = vi.spyOn(logger, 'info').mockImplementation(() => {})
+  })
+
   afterEach(() => {
     vi.unstubAllGlobals()
     vi.clearAllMocks()
+    vi.restoreAllMocks()
   })
 
   describe('get', () => {
@@ -62,6 +71,16 @@ describe('createBaseHttpClient', () => {
         method: 'GET',
         signal: expect.any(AbortSignal)
       })
+      expect(infoSpy).toHaveBeenCalledWith(`GET to ${ENDPOINT_ORIGIN} response status 200`)
+    })
+
+    it('logs only the origin of the url', async () => {
+      stubFetch(vi.fn().mockResolvedValue(buildJsonResponse(200, RESPONSE_BODY)))
+      const httpClient = createBaseHttpClient({ endpointName: ENDPOINT })
+
+      await httpClient.get({ ...getRequest, url: `${ENDPOINT_URL}?sensitive=value` })
+
+      expect(infoSpy).toHaveBeenCalledWith(`GET to ${ENDPOINT_ORIGIN} response status 200`)
     })
 
     it('throws for an unsuccessful status', async () => {
@@ -116,6 +135,7 @@ describe('createBaseHttpClient', () => {
           method: 'POST'
         })
       )
+      expect(infoSpy).toHaveBeenCalledWith(`POST to ${ENDPOINT_ORIGIN} response status 201`)
     })
 
     it('throws for an unsuccessful status', async () => {
