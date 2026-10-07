@@ -22,7 +22,7 @@ export interface TokenRotationServiceConfig<TProfile extends string> {
 interface TokenRotationServiceCollaborators<TProfile extends string> {
   credentialsProvider: CredentialsProvider<TProfile>
   tokenRepository: TokenRepository
-  tokenRotationStrategy: TokenRotationStrategy
+  tokenRotationStrategy: TokenRotationStrategy<TProfile>
 }
 
 export const createTokenRotationService = <TProfile extends string>(
@@ -30,8 +30,10 @@ export const createTokenRotationService = <TProfile extends string>(
   collaborators: TokenRotationServiceCollaborators<TProfile>
 ): TokenRotationService => {
   const doRotate = async (profile: TProfile, credentials: TokenCredentials): Promise<void> => {
-    const { expiresAtSeconds, tokenValue } =
-      await collaborators.tokenRotationStrategy.rotate(credentials)
+    const { expiresAtSeconds, tokenValue } = await collaborators.tokenRotationStrategy.rotate(
+      profile,
+      credentials
+    )
     await collaborators.tokenRepository.putToken({
       id: profile,
       tokenValue,

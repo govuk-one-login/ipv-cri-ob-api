@@ -23,7 +23,7 @@ const buildTokenRepository = (): TokenRepository => ({
   putToken: vi.fn().mockResolvedValue(undefined)
 })
 
-const buildStrategy = (): TokenRotationStrategy => ({
+const buildStrategy = (): TokenRotationStrategy<TestProfile> => ({
   rotate: vi.fn().mockResolvedValue({
     expiresAtSeconds: Math.floor(Date.now() / 1000) + 3600,
     tokenValue: 'fresh-token'
