@@ -1,14 +1,11 @@
 import type { SessionRepository } from '@common/client/session-repository'
 import type { BankListRepository } from '@src/bank-list/client/bank-list-repository'
-import type { BankListRetrievalResponse } from '@src/bank-list/model/bank-list-retrieval-response'
+import type { BankListResponse } from '@src/bank-list/model/bank-list-response'
 
-import { SessionNotFoundError } from '@common/error/session-not-found-error'
-import { getEndpointProfileForClientId } from '@common/model/oauth-client-id'
+import { requireSessionContext } from '@common/service/session-context'
 import { logger } from '@govuk-one-login/cri-logger'
 
-export type BankListRetrievalService = (request: {
-  sessionId: string
-}) => Promise<BankListRetrievalResponse>
+export type BankListRetrievalService = (request: { sessionId: string }) => Promise<BankListResponse>
 
 interface BankListRetrievalServiceCollaborators {
   bankListRepository: BankListRepository
@@ -19,16 +16,10 @@ export const createBankListRetrievalService = (
   collaborators: BankListRetrievalServiceCollaborators
 ): BankListRetrievalService => {
   return async (request) => {
-    const session = await collaborators.sessionRepository.findBySessionId(request.sessionId)
-    if (!session) throw new SessionNotFoundError()
-    logger.appendKeys({
-      cri_session_id: session.sessionId,
-      govuk_signin_journey_id: session.clientSessionId
-    })
-    logger.info('Session retrieved')
-
-    const profile = getEndpointProfileForClientId(session.clientId)
-    logger.appendKeys({ profile })
+    const { profile } = await requireSessionContext(
+      collaborators.sessionRepository,
+      request.sessionId
+    )
 
     logger.info('Querying bank list')
     const bankList = await collaborators.bankListRepository.getList(profile)

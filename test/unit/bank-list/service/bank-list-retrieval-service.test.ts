@@ -1,7 +1,7 @@
 import type { SessionRepository } from '@common/client/session-repository'
 import type { SessionItem } from '@govuk-one-login/cri-types'
 import type { BankListRepository } from '@src/bank-list/client/bank-list-repository'
-import type { BankListEntity } from '@src/bank-list/model/bank-list'
+import type { BankListEntity } from '@src/bank-list/model/database/bank-list-entity'
 import type { MockInstance } from 'vitest'
 
 import { SessionNotFoundError } from '@common/error/session-not-found-error'

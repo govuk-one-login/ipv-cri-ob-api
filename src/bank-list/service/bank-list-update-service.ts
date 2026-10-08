@@ -1,7 +1,13 @@
 import type { SSMConfigProvider } from '@common/client/ssm-config-provider'
 import type { EndpointProfile } from '@common/model/endpoint-profile'
+import type { TokenRetrievalService } from '@lib/token-rotator/service/token-retrieval-service'
 import type { BankListRepository } from '@src/bank-list/client/bank-list-repository'
 import type { BankListProvider } from '@src/bank-list/model/bank-list-provider'
+
+import { NoUsableTokenError } from '@common/error'
+import { nowSeconds } from '@common/util/time'
+import { describeZodIssues } from '@common/util/zod'
+import { type BankListConfig, bankListConfigSchema } from '@src/bank-list/model/bank-list-config'
 
 export interface BankListUpdateResponse {
   updated: boolean
@@ -12,11 +18,12 @@ export type BankListUpdateService = (profile: EndpointProfile) => Promise<BankLi
 interface BankListUpdateCollaborators {
   bankListProvider: BankListProvider
   bankListRepository: BankListRepository
-  ssmConfigProvider: SSMConfigProvider
+  externalConfigProvider: SSMConfigProvider
+  tokenRetrievalService: TokenRetrievalService<EndpointProfile>
 }
 
 interface BankListUpdateConfig {
-  banksRequestConfigPathPrefix: string
+  bankListConfigPathPrefix: string
   refreshAfterSeconds: number
 }
 
@@ -26,27 +33,38 @@ export const createBankListUpdateService = (
 ): BankListUpdateService => {
   return async (profile) => {
     const existingList = await collaborators.bankListRepository.getList(profile)
-    const nowSeconds = Math.floor(Date.now() / 1000)
+    const now = nowSeconds()
 
     if (existingList) {
-      const ageSeconds = nowSeconds - existingList.refreshedAtSeconds
+      const ageSeconds = now - existingList.refreshedAtSeconds
       if (ageSeconds < config.refreshAfterSeconds) {
         return { updated: false }
       }
     }
 
-    const requestConfig = await collaborators.ssmConfigProvider.get(
-      `${config.banksRequestConfigPathPrefix}/${profile}`
+    const rawConfig = await collaborators.externalConfigProvider.get(
+      `${config.bankListConfigPathPrefix}/${profile}`
     )
+    const parsedConfig = bankListConfigSchema.safeParse(rawConfig)
+    if (!parsedConfig.success) {
+      throw new Error(`Invalid bank list config: ${describeZodIssues(parsedConfig.error)}`)
+    }
+    const bankListConfig: BankListConfig = parsedConfig.data
 
-    const banks = await collaborators.bankListProvider.getBanks(profile, requestConfig)
+    const accessToken = await collaborators.tokenRetrievalService.retrieveToken(profile)
+    if (!accessToken) throw new NoUsableTokenError(profile)
+
+    const banks = await collaborators.bankListProvider.getBanks({
+      accessToken,
+      profile,
+      ...bankListConfig
+    })
 
     // Note: open question on if an empty list is a valid response to be saved or if we should reject this
-
     await collaborators.bankListRepository.replaceList({
       profile,
       banks,
-      refreshedAtSeconds: nowSeconds
+      refreshedAtSeconds: now
     })
 
     return { updated: true }

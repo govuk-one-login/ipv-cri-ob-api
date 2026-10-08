@@ -7,8 +7,7 @@ import type { ConsentsProvider, CreateConsentParams } from '@src/consents/model/
 import type { ConsentsResponse } from '@src/consents/model/consents-response'
 import type { ConsentEntity } from '@src/consents/model/database/consent-entity'
 
-import { BadRequestError } from '@common/error/bad-request-error'
-import { SessionNotFoundError } from '@common/error/session-not-found-error'
+import { BadRequestError, NoUsableTokenError, SessionNotFoundError } from '@common/error'
 import { EndpointProfile } from '@common/model/endpoint-profile'
 import { OAuthClientId } from '@common/model/oauth-client-id'
 import { createConsentsService } from '@src/consents/service/consents-service'
@@ -262,7 +261,7 @@ describe('createConsentsService', () => {
     retrieveToken.mockResolvedValue(undefined)
 
     await expect(consentsService({ eventBody, sessionId: SESSION_ID })).rejects.toThrow(
-      'No token is available'
+      NoUsableTokenError
     )
 
     expect(createConsent).not.toHaveBeenCalled()

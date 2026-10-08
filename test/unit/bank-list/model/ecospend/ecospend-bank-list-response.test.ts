@@ -1,4 +1,4 @@
-import { ecospendBankListResponseSchema } from '@src/bank-list/model/ecospend-banks-response'
+import { ecospendBankListResponseSchema } from '@src/bank-list/model/ecospend/ecospend-bank-list-response'
 import { describe, expect, it } from 'vitest'
 
 const validBank = {

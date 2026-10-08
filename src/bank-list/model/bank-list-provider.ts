@@ -1,9 +1,13 @@
 import type { EndpointProfile } from '@common/model/endpoint-profile'
-import type { StoredBank } from '@src/bank-list/model/bank-list'
+import type { StoredBank } from '@src/bank-list/model/database/bank-list-entity'
 
 export interface BankListProvider {
-  getBanks: (
-    profile: EndpointProfile,
-    rawRequestConfig: Record<string, string>
-  ) => Promise<StoredBank[]>
+  getBanks: (params: GetBanksParams) => Promise<StoredBank[]>
+}
+
+export interface GetBanksParams {
+  accessToken: string
+  customList?: string
+  endpointUrl: string
+  profile: EndpointProfile
 }
