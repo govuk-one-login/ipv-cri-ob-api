@@ -4,7 +4,7 @@ import type { ScheduledEvent } from 'aws-lambda'
 
 import { dynamoDBDocumentClient } from '@common/client/dynamodb-client'
 import { ssmConfigProvider } from '@common/client/ssm-config-provider'
-import { injectLambdaContext } from '@common/handler/middleware'
+import { injectLambdaContext, latencyRecorder, resultRecorder } from '@common/handler/middleware'
 import { requireEnv } from '@common/util/env'
 import { logger } from '@govuk-one-login/cri-logger'
 import { logMetrics, metrics } from '@govuk-one-login/cri-metrics'
@@ -33,6 +33,8 @@ const tokenRotator = createTokenRotator(loadTokenRotatorConfigFromEnv(), {
 })
 
 export const handler = middy<ScheduledEvent, void>()
+  .use(latencyRecorder()) // latencyRecorder is first
+  .use(resultRecorder())
   .use(injectLambdaContext(logger, { resetKeys: true }))
   .use(logMetrics(metrics, { captureColdStartMetric: true }))
   .handler(tokenRotator)

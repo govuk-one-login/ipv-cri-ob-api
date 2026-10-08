@@ -9,7 +9,7 @@ import { createTokenRotationService } from '@lib/token-rotator/service/token-rot
 interface TokenRotatorCollaborators<TProfile extends string> {
   credentialsProvider: CredentialsProvider<TProfile>
   tokenRepository: TokenRepository
-  tokenRotationStrategy: TokenRotationStrategy
+  tokenRotationStrategy: TokenRotationStrategy<TProfile>
 }
 
 /**

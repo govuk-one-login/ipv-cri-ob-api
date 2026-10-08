@@ -1,13 +1,15 @@
+import type { EndpointProfile } from '@common/model/endpoint-profile'
 import type { TokenRotationStrategy } from '@lib/token-rotator/model/token-rotation-strategy'
 
+import { instrumentedFetch } from '@common/util/instrumented-fetch'
 import { TokenRotationError } from '@lib/token-rotator/error/token-rotation-errors'
 import { ecospendTokenCredentialsSchema } from '@src/ecospend-token/model/ecospend-token-credentials'
 import { ecospendTokenResponseSchema } from '@src/ecospend-token/model/ecospend-token-response'
 
 const FETCH_TIMEOUT_MS = 10_000
 
-export const ecospendTokenStrategy: TokenRotationStrategy = {
-  rotate: async (credentials) => {
+export const ecospendTokenStrategy: TokenRotationStrategy<EndpointProfile> = {
+  rotate: async (profile, credentials) => {
     const parsedCredentials = ecospendTokenCredentialsSchema.safeParse(credentials)
 
     if (!parsedCredentials.success) {
@@ -18,15 +20,19 @@ export const ecospendTokenStrategy: TokenRotationStrategy = {
 
     const { endpointUrl, formParams } = parsedCredentials.data
     const body = new URLSearchParams(formParams).toString()
-    const response = await fetch(endpointUrl, {
-      body,
-      headers: {
-        accept: 'application/json',
-        'content-type': 'application/x-www-form-urlencoded'
+    const response = await instrumentedFetch(
+      endpointUrl,
+      {
+        body,
+        headers: {
+          accept: 'application/json',
+          'content-type': 'application/x-www-form-urlencoded'
+        },
+        method: 'POST',
+        signal: AbortSignal.timeout(FETCH_TIMEOUT_MS)
       },
-      method: 'POST',
-      signal: AbortSignal.timeout(FETCH_TIMEOUT_MS)
-    }).catch((error: unknown) => {
+      { endpoint: 'ecospend-token', profile: profile }
+    ).catch((error: unknown) => {
       const message = error instanceof Error ? error.message : 'Unknown error'
       throw new TokenRotationError(`Ecospend token request failed: ${message}`)
     })

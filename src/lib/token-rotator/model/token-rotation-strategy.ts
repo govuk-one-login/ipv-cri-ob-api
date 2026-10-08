@@ -5,6 +5,6 @@ export interface TokenRotationOutput {
   tokenValue: string
 }
 
-export interface TokenRotationStrategy {
-  rotate: (credentials: TokenCredentials) => Promise<TokenRotationOutput>
+export interface TokenRotationStrategy<TProfile extends string> {
+  rotate: (profile: TProfile, credentials: TokenCredentials) => Promise<TokenRotationOutput>
 }
