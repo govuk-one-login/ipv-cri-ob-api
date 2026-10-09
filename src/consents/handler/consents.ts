@@ -1,4 +1,3 @@
-import type { EndpointProfile } from '@common/model/endpoint-profile'
 import type { APIGatewayProxyEvent, APIGatewayProxyResult } from 'aws-lambda'
 
 import { createBaseHttpClient } from '@common/client/base-http-client'
@@ -13,12 +12,13 @@ import {
   logMetrics,
   resultRecorder
 } from '@common/handler/middleware'
+import { EndpointProfile } from '@common/model/endpoint-profile'
 import { requireEnv } from '@common/util/env'
 import { requireSessionId } from '@common/util/headers'
 import { logger } from '@govuk-one-login/cri-logger'
 import { metrics } from '@govuk-one-login/cri-metrics'
-import { createDynamoTokenRepository } from '@lib/token-rotator/client/dynamo-token-repository'
-import { createTokenRetrievalService } from '@lib/token-rotator/service/token-retrieval-service'
+import { createTokenRetrievalService } from '@govuk-one-login/cri-token-rotator'
+import { createDynamoTokenRepository } from '@govuk-one-login/cri-token-rotator/dynamodb'
 import { createConsentsRepository } from '@src/consents/client/consents-repository'
 import { createEcospendConsentsProvider } from '@src/consents/client/ecospend-consents-provider'
 import { createConsentsService } from '@src/consents/service/consents-service'
@@ -42,9 +42,10 @@ const consentsRepository = createConsentsRepository(
   dynamoDBDocumentClient
 )
 
-const tokenRetrievalService = createTokenRetrievalService<EndpointProfile>({
-  tokenRepository: dynamoTokenRepository
-})
+const tokenRetrievalService = createTokenRetrievalService(
+  { profiles: Object.values(EndpointProfile) },
+  { tokenRepository: dynamoTokenRepository }
+)
 
 const consentsProvider = createEcospendConsentsProvider({
   httpClient: createBaseHttpClient({ endpointName: 'ecospend-consents' })

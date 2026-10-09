@@ -1,6 +1,6 @@
 import type { SSMConfigProvider } from '@common/client/ssm-config-provider'
 import type { EndpointProfile } from '@common/model/endpoint-profile'
-import type { TokenRetrievalService } from '@lib/token-rotator/service/token-retrieval-service'
+import type { TokenRetrievalService } from '@govuk-one-login/cri-token-rotator'
 import type { BankListRepository } from '@src/bank-list/client/bank-list-repository'
 import type { BankListProvider } from '@src/bank-list/model/bank-list-provider'
 

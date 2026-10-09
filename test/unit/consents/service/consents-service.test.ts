@@ -1,7 +1,7 @@
 import type { SessionRepository } from '@common/client/session-repository'
 import type { SSMConfigProvider } from '@common/client/ssm-config-provider'
+import type { TokenRetrievalService } from '@govuk-one-login/cri-token-rotator'
 import type { SessionItem } from '@govuk-one-login/cri-types'
-import type { TokenRetrievalService } from '@lib/token-rotator/service/token-retrieval-service'
 import type { ConsentsRepository } from '@src/consents/client/consents-repository'
 import type { ConsentsProvider, CreateConsentParams } from '@src/consents/model/consents-provider'
 import type { ConsentsResponse } from '@src/consents/model/consents-response'
