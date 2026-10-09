@@ -3,7 +3,7 @@ import type { TokenCredentials } from '@govuk-one-login/cri-token-rotator'
 import type { Mock } from 'vitest'
 
 import { EndpointProfile } from '@common/model/endpoint-profile'
-import { EcospendIamError } from '@src/ecospend-token/error/ecospend-iam-error'
+import { EcospendTokenError } from '@src/ecospend-token/error/ecospend-token-error'
 import { ecospendTokenStrategy } from '@src/ecospend-token/service/ecospend-token-strategy'
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest'
 
@@ -77,46 +77,49 @@ describe('ecospendTokenStrategy', () => {
     )
   })
 
-  it('throws when credentials fail validation', async () => {
+  it('throws EcospendTokenError when credentials fail validation', async () => {
     const fetch = stubFetch()
     const { 'client-id': _clientId, ...credentialsWithoutClientId } = CREDENTIALS
 
-    await expect(ecospendTokenStrategy.rotate(PROFILE, credentialsWithoutClientId)).rejects.toThrow(
-      'Invalid Ecospend IAM credentials: client-id: Invalid input: expected string, received undefined'
+    const rotation = ecospendTokenStrategy.rotate(PROFILE, credentialsWithoutClientId)
+
+    await expect(rotation).rejects.toBeInstanceOf(EcospendTokenError)
+    await expect(rotation).rejects.toThrow(
+      'ecospend-token error: problem parsing credentials: client-id: Invalid input: expected string, received undefined [endpoint profile: STUB]'
     )
     expect(fetch).not.toHaveBeenCalled()
   })
 
-  it('throws EcospendIamError when the response is not OK', async () => {
+  it('throws EcospendTokenError when the response is not OK', async () => {
     stubFetch(vi.fn().mockResolvedValue(jsonResponse(502, {})))
 
     const rotation = ecospendTokenStrategy.rotate(PROFILE, CREDENTIALS)
 
-    await expect(rotation).rejects.toBeInstanceOf(EcospendIamError)
+    await expect(rotation).rejects.toBeInstanceOf(EcospendTokenError)
     await expect(rotation).rejects.toThrow(
-      'Ecospend IAM error: response was not OK [status: 502] [endpoint profile: STUB]'
+      'ecospend-token error: response was not OK [status: 502] [endpoint profile: STUB]'
     )
   })
 
-  it('throws EcospendIamError when the response is not valid JSON', async () => {
+  it('throws EcospendTokenError when the response is not valid JSON', async () => {
     stubFetch(vi.fn().mockResolvedValue(new Response('<html>', { status: 200 })))
 
     const rotation = ecospendTokenStrategy.rotate(PROFILE, CREDENTIALS)
 
-    await expect(rotation).rejects.toBeInstanceOf(EcospendIamError)
+    await expect(rotation).rejects.toBeInstanceOf(EcospendTokenError)
     await expect(rotation).rejects.toThrow(
-      'Ecospend IAM error: response was not valid JSON [endpoint profile: STUB]'
+      'ecospend-token error: response was not valid JSON [endpoint profile: STUB]'
     )
   })
 
-  it('throws EcospendIamError when the response cannot be parsed', async () => {
+  it('throws EcospendTokenError when the response cannot be parsed', async () => {
     stubFetch(vi.fn().mockResolvedValue(jsonResponse(200, { cool: 'beans' })))
 
     const rotation = ecospendTokenStrategy.rotate(PROFILE, CREDENTIALS)
 
-    await expect(rotation).rejects.toBeInstanceOf(EcospendIamError)
+    await expect(rotation).rejects.toBeInstanceOf(EcospendTokenError)
     await expect(rotation).rejects.toThrow(
-      /^Ecospend IAM error: access_token: .+; expires_in: .+ \[endpoint profile: STUB]$/
+      /^ecospend-token error: problem parsing response: access_token: .+; expires_in: .+ \[endpoint profile: STUB]$/
     )
   })
 
@@ -125,7 +128,9 @@ describe('ecospendTokenStrategy', () => {
 
     const rotation = ecospendTokenStrategy.rotate(PROFILE, CREDENTIALS)
 
-    await expect(rotation).rejects.toBeInstanceOf(EcospendIamError)
-    await expect(rotation).rejects.toThrow(/^Ecospend IAM error: crumbs \[endpoint profile: STUB]$/)
+    await expect(rotation).rejects.toBeInstanceOf(EcospendTokenError)
+    await expect(rotation).rejects.toThrow(
+      /^ecospend-token error: crumbs \[endpoint profile: STUB]$/
+    )
   })
 })
