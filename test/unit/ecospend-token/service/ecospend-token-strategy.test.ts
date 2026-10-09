@@ -3,7 +3,7 @@ import type { TokenCredentials } from '@govuk-one-login/cri-token-rotator'
 import type { Mock } from 'vitest'
 
 import { EndpointProfile } from '@common/model/endpoint-profile'
-import { EcospendIamError } from '@src/ecospend-token/error/ecospend-iam-error'
+import { EcospendTokenError } from '@src/ecospend-token/error/ecospend-token-error'
 import { ecospendTokenStrategy } from '@src/ecospend-token/service/ecospend-token-strategy'
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest'
 
@@ -81,8 +81,11 @@ describe('ecospendTokenStrategy', () => {
     const fetch = stubFetch()
     const { 'client-id': _clientId, ...credentialsWithoutClientId } = CREDENTIALS
 
-    await expect(ecospendTokenStrategy.rotate(PROFILE, credentialsWithoutClientId)).rejects.toThrow(
-      'Invalid Ecospend IAM credentials: client-id: Invalid input: expected string, received undefined'
+    const rotation = ecospendTokenStrategy.rotate(PROFILE, credentialsWithoutClientId)
+
+    await expect(rotation).rejects.toBeInstanceOf(EcospendTokenError)
+    await expect(rotation).rejects.toThrow(
+      'Ecospend token error: problem parsing credentials: client-id: Invalid input: expected string, received undefined [endpoint profile: STUB]'
     )
     expect(fetch).not.toHaveBeenCalled()
   })
@@ -92,9 +95,9 @@ describe('ecospendTokenStrategy', () => {
 
     const rotation = ecospendTokenStrategy.rotate(PROFILE, CREDENTIALS)
 
-    await expect(rotation).rejects.toBeInstanceOf(EcospendIamError)
+    await expect(rotation).rejects.toBeInstanceOf(EcospendTokenError)
     await expect(rotation).rejects.toThrow(
-      'Ecospend IAM error: response was not OK [status: 502] [endpoint profile: STUB]'
+      'Ecospend token error: response was not OK [status: 502] [endpoint profile: STUB]'
     )
   })
 
@@ -103,9 +106,9 @@ describe('ecospendTokenStrategy', () => {
 
     const rotation = ecospendTokenStrategy.rotate(PROFILE, CREDENTIALS)
 
-    await expect(rotation).rejects.toBeInstanceOf(EcospendIamError)
+    await expect(rotation).rejects.toBeInstanceOf(EcospendTokenError)
     await expect(rotation).rejects.toThrow(
-      'Ecospend IAM error: response was not valid JSON [endpoint profile: STUB]'
+      'Ecospend token error: response was not valid JSON [endpoint profile: STUB]'
     )
   })
 
@@ -114,9 +117,9 @@ describe('ecospendTokenStrategy', () => {
 
     const rotation = ecospendTokenStrategy.rotate(PROFILE, CREDENTIALS)
 
-    await expect(rotation).rejects.toBeInstanceOf(EcospendIamError)
+    await expect(rotation).rejects.toBeInstanceOf(EcospendTokenError)
     await expect(rotation).rejects.toThrow(
-      /^Ecospend IAM error: access_token: .+; expires_in: .+ \[endpoint profile: STUB]$/
+      /^Ecospend token error: problem parsing response: access_token: .+; expires_in: .+ \[endpoint profile: STUB]$/
     )
   })
 
@@ -125,7 +128,9 @@ describe('ecospendTokenStrategy', () => {
 
     const rotation = ecospendTokenStrategy.rotate(PROFILE, CREDENTIALS)
 
-    await expect(rotation).rejects.toBeInstanceOf(EcospendIamError)
-    await expect(rotation).rejects.toThrow(/^Ecospend IAM error: crumbs \[endpoint profile: STUB]$/)
+    await expect(rotation).rejects.toBeInstanceOf(EcospendTokenError)
+    await expect(rotation).rejects.toThrow(
+      /^Ecospend token error: crumbs \[endpoint profile: STUB]$/
+    )
   })
 })
