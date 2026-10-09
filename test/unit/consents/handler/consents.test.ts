@@ -15,7 +15,7 @@ vi.mock('@common/client/session-repository', () => ({
   createSessionRepository: () => ({ findByAccessToken: vi.fn(), findBySessionId: vi.fn() })
 }))
 
-vi.mock('@lib/token-rotator/client/dynamo-token-repository', () => ({
+vi.mock('@govuk-one-login/cri-token-rotator/dynamodb', () => ({
   createDynamoTokenRepository: () => ({ getToken: vi.fn(), putToken: vi.fn() })
 }))
 

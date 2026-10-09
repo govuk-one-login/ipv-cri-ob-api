@@ -1,16 +1,16 @@
-import type { EndpointProfile } from '@common/model/endpoint-profile'
 import type { ScheduledEvent } from 'aws-lambda'
 
 import { createBaseHttpClient } from '@common/client/base-http-client'
 import { dynamoDBDocumentClient } from '@common/client/dynamodb-client'
 import { ssmConfigProvider } from '@common/client/ssm-config-provider'
 import { injectLambdaContext, logMetrics } from '@common/handler/middleware'
+import { EndpointProfile } from '@common/model/endpoint-profile'
 import { requireEnv } from '@common/util/env'
 import { parseProfiles } from '@common/util/parse-profiles'
 import { logger } from '@govuk-one-login/cri-logger'
 import { metrics } from '@govuk-one-login/cri-metrics'
-import { createDynamoTokenRepository } from '@lib/token-rotator/client/dynamo-token-repository'
-import { createTokenRetrievalService } from '@lib/token-rotator/service/token-retrieval-service'
+import { createTokenRetrievalService } from '@govuk-one-login/cri-token-rotator'
+import { createDynamoTokenRepository } from '@govuk-one-login/cri-token-rotator/dynamodb'
 import { createBankListRepository } from '@src/bank-list/client/bank-list-repository'
 import { createEcospendBankListProvider } from '@src/bank-list/client/ecospend-bank-list-provider'
 import { createBankListUpdateCoordinator } from '@src/bank-list/service/bank-list-update-coordinator'
@@ -33,9 +33,10 @@ const bankListRepository = createBankListRepository(
   dynamoDBDocumentClient
 )
 
-const tokenRetrievalService = createTokenRetrievalService<EndpointProfile>({
-  tokenRepository: dynamoTokenRepository
-})
+const tokenRetrievalService = createTokenRetrievalService(
+  { profiles: Object.values(EndpointProfile) },
+  { tokenRepository: dynamoTokenRepository }
+)
 
 const bankListProvider = createEcospendBankListProvider({
   httpClient: createBaseHttpClient({ endpointName: 'ecospend-bank-list' })

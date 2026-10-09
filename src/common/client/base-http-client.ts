@@ -40,7 +40,7 @@ export const createBaseHttpClient = (config: BaseHttpClientConfig): BaseHttpClie
         },
         method
       },
-      { endpoint: config.endpointName, profile: request.profile }
+      { endpointName: config.endpointName, endpointProfile: request.profile }
     )
 
     if (!response.ok) {
@@ -66,7 +66,7 @@ export const createBaseHttpClient = (config: BaseHttpClientConfig): BaseHttpClie
         },
         method
       },
-      { endpoint: config.endpointName, profile: request.profile }
+      { endpointName: config.endpointName, endpointProfile: request.profile }
     )
 
     if (!response.ok) {

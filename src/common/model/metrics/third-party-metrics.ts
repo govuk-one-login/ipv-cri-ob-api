@@ -16,9 +16,9 @@ export type ThirdPartyRequestState =
   (typeof ThirdPartyRequestState)[keyof typeof ThirdPartyRequestState]
 
 export const ThirdPartyMetricDimensions = {
-  ENDPOINT: 'endpoint',
+  ENDPOINT_NAME: 'endpoint_name',
   STATE: 'state',
-  PROFILE: 'profile',
+  ENDPOINT_PROFILE: 'endpoint_profile',
   STATUS: 'status'
 } as const
 

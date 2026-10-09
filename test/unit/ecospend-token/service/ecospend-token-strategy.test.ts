@@ -1,15 +1,19 @@
-import type { EndpointProfile } from '@common/model/endpoint-profile'
-import type { TokenCredentials } from '@lib/token-rotator/model/token-credentials'
+import type * as CriMetricsModule from '@govuk-one-login/cri-metrics'
+import type { TokenCredentials } from '@govuk-one-login/cri-token-rotator'
+import type { Mock } from 'vitest'
 
-import { instrumentedFetch } from '@common/util/instrumented-fetch'
-import { TokenRotationError } from '@lib/token-rotator/error/token-rotation-errors'
+import { EndpointProfile } from '@common/model/endpoint-profile'
+import { EcospendTokenError } from '@src/ecospend-token/error/ecospend-token-error'
 import { ecospendTokenStrategy } from '@src/ecospend-token/service/ecospend-token-strategy'
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest'
 
+vi.mock('@govuk-one-login/cri-metrics', async (importOriginal) => ({
+  ...(await importOriginal<typeof CriMetricsModule>()),
+  captureMetricWithDimensions: vi.fn()
+}))
+
 const NOW_SECONDS = 690_768_000 // 1991-11-22T00:00:00Z
 const EXPIRES_IN_SECONDS = 3600
-
-const TEST_PROFILE: EndpointProfile = 'STUB'
 
 const CREDENTIALS: TokenCredentials = {
   'client-id': 'test-client-id',
@@ -19,14 +23,18 @@ const CREDENTIALS: TokenCredentials = {
   scope: 'accounts'
 }
 
-const okResponse = (body: unknown) =>
-  ({ json: vi.fn().mockResolvedValue(body), status: 200 }) as unknown as Response
+const PROFILE = EndpointProfile.STUB
 
-const errorResponse = (status: number) => ({ status }) as unknown as Response
+const jsonResponse = (status: number, body: unknown): Response =>
+  new Response(JSON.stringify(body), {
+    headers: { 'content-type': 'application/json' },
+    status
+  })
 
-vi.mock('@common/util/instrumented-fetch', () => ({
-  instrumentedFetch: vi.fn()
-}))
+const stubFetch = (mock: Mock = vi.fn()): Mock => {
+  vi.stubGlobal('fetch', mock)
+  return mock
+}
 
 beforeEach(() => {
   vi.useFakeTimers()
@@ -35,23 +43,27 @@ beforeEach(() => {
 
 afterEach(() => {
   vi.useRealTimers()
-  vi.mocked(instrumentedFetch).mockReset()
+  vi.unstubAllGlobals()
 })
 
 describe('ecospendTokenStrategy', () => {
   it('POSTs body and returns the token value with expires at', async () => {
-    vi.mocked(instrumentedFetch).mockResolvedValue(
-      okResponse({ access_token: 'fresh-token', expires_in: EXPIRES_IN_SECONDS })
+    const fetch = stubFetch(
+      vi
+        .fn()
+        .mockResolvedValue(
+          jsonResponse(200, { access_token: 'fresh-token', expires_in: EXPIRES_IN_SECONDS })
+        )
     )
 
-    const result = await ecospendTokenStrategy.rotate(TEST_PROFILE, CREDENTIALS)
+    const result = await ecospendTokenStrategy.rotate(PROFILE, CREDENTIALS)
 
     expect(result).toEqual({
       expiresAtSeconds: NOW_SECONDS + EXPIRES_IN_SECONDS,
       tokenValue: 'fresh-token'
     })
-    expect(instrumentedFetch).toHaveBeenCalledOnce()
-    expect(instrumentedFetch).toHaveBeenCalledWith(
+    expect(fetch).toHaveBeenCalledOnce()
+    expect(fetch).toHaveBeenCalledWith(
       CREDENTIALS['endpoint-url'],
       expect.objectContaining({
         body: 'client_id=test-client-id&client_secret=top-secret&grant_type=client_credentials&scope=accounts',
@@ -61,50 +73,64 @@ describe('ecospendTokenStrategy', () => {
         },
         method: 'POST',
         signal: expect.any(AbortSignal) as AbortSignal
-      }),
-      { endpoint: 'ecospend-token', profile: TEST_PROFILE }
+      })
     )
   })
 
-  it('throws TokenRotationError when credentials fail validation', async () => {
-    await expect(
-      ecospendTokenStrategy.rotate(TEST_PROFILE, { ...CREDENTIALS, 'client-id': '' })
-    ).rejects.toThrow(/Invalid Ecospend credentials:/)
-    expect(instrumentedFetch).not.toHaveBeenCalled()
+  it('throws when credentials fail validation', async () => {
+    const fetch = stubFetch()
+    const { 'client-id': _clientId, ...credentialsWithoutClientId } = CREDENTIALS
+
+    const rotation = ecospendTokenStrategy.rotate(PROFILE, credentialsWithoutClientId)
+
+    await expect(rotation).rejects.toBeInstanceOf(EcospendTokenError)
+    await expect(rotation).rejects.toThrow(
+      'Ecospend token error: problem parsing credentials: client-id: Invalid input: expected string, received undefined [endpoint profile: STUB]'
+    )
+    expect(fetch).not.toHaveBeenCalled()
   })
 
-  it('throws TokenRotationError when the server returns a non-200', async () => {
-    vi.mocked(instrumentedFetch).mockResolvedValue(errorResponse(502))
+  it('throws EcospendIamError when the response is not OK', async () => {
+    stubFetch(vi.fn().mockResolvedValue(jsonResponse(502, {})))
 
-    await expect(ecospendTokenStrategy.rotate(TEST_PROFILE, CREDENTIALS)).rejects.toThrow(
-      new TokenRotationError('Ecospend returned 502')
+    const rotation = ecospendTokenStrategy.rotate(PROFILE, CREDENTIALS)
+
+    await expect(rotation).rejects.toBeInstanceOf(EcospendTokenError)
+    await expect(rotation).rejects.toThrow(
+      'Ecospend token error: response was not OK [status: 502] [endpoint profile: STUB]'
     )
   })
 
-  it('wraps fetch rejections as TokenRotationError', async () => {
-    vi.mocked(instrumentedFetch).mockRejectedValue(new Error('crumbs'))
+  it('throws EcospendIamError when the response is not valid JSON', async () => {
+    stubFetch(vi.fn().mockResolvedValue(new Response('<html>', { status: 200 })))
 
-    await expect(ecospendTokenStrategy.rotate(TEST_PROFILE, CREDENTIALS)).rejects.toThrow(
-      new TokenRotationError('Ecospend token request failed: crumbs')
+    const rotation = ecospendTokenStrategy.rotate(PROFILE, CREDENTIALS)
+
+    await expect(rotation).rejects.toBeInstanceOf(EcospendTokenError)
+    await expect(rotation).rejects.toThrow(
+      'Ecospend token error: response was not valid JSON [endpoint profile: STUB]'
     )
   })
 
-  it('wraps non-JSON responses as TokenRotationError', async () => {
-    vi.mocked(instrumentedFetch).mockResolvedValue({
-      json: vi.fn().mockRejectedValue(new Error('Unexpected token <')),
-      status: 200
-    } as unknown as Response)
+  it('throws EcospendIamError when the response cannot be parsed', async () => {
+    stubFetch(vi.fn().mockResolvedValue(jsonResponse(200, { cool: 'beans' })))
 
-    await expect(ecospendTokenStrategy.rotate(TEST_PROFILE, CREDENTIALS)).rejects.toThrow(
-      /Ecospend response was not valid JSON: Unexpected token </
+    const rotation = ecospendTokenStrategy.rotate(PROFILE, CREDENTIALS)
+
+    await expect(rotation).rejects.toBeInstanceOf(EcospendTokenError)
+    await expect(rotation).rejects.toThrow(
+      /^Ecospend token error: problem parsing response: access_token: .+; expires_in: .+ \[endpoint profile: STUB]$/
     )
   })
 
-  it('throws TokenRotationError when the response fails validation', async () => {
-    vi.mocked(instrumentedFetch).mockResolvedValue(okResponse({ cool: 'beans' }))
+  it('propagates fetch rejections', async () => {
+    stubFetch(vi.fn().mockRejectedValue(new Error('crumbs')))
 
-    await expect(ecospendTokenStrategy.rotate(TEST_PROFILE, CREDENTIALS)).rejects.toThrow(
-      /Unexpected Ecospend response:/
+    const rotation = ecospendTokenStrategy.rotate(PROFILE, CREDENTIALS)
+
+    await expect(rotation).rejects.toBeInstanceOf(EcospendTokenError)
+    await expect(rotation).rejects.toThrow(
+      /^Ecospend token error: crumbs \[endpoint profile: STUB]$/
     )
   })
 })

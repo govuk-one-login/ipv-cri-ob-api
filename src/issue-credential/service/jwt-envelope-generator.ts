@@ -1,6 +1,7 @@
 import type { JWTClass } from '@govuk-one-login/data-vocab/credentials'
 
 import { requireEnv } from '@common/util/env'
+import { nowSeconds } from '@common/util/time'
 import { parseUrl } from '@common/util/url'
 import { randomUUID } from 'node:crypto'
 
@@ -17,12 +18,12 @@ interface JwtEnvelopeGeneratorConfig {
 
 const createJwtEnvelopeGenerator = (config: JwtEnvelopeGeneratorConfig): JwtEnvelopeGenerator => ({
   generate: (subject) => {
-    const nowSeconds = Math.floor(Date.now() / 1000)
+    const now = nowSeconds()
     return {
-      exp: nowSeconds + config.ttlSeconds,
+      exp: now + config.ttlSeconds,
       iss: parseUrl(config.issuer).href,
       jti: `urn:uuid:${randomUUID()}`, // TODO: confirm jti strategy, using a random uuid based on check-hmrc but is this correct for OB
-      nbf: nowSeconds,
+      nbf: now,
       sub: subject
     }
   }

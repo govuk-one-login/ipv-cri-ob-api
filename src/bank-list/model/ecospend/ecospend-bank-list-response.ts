@@ -8,13 +8,11 @@ const ecospendBankSchema = z
     friendly_name: z.string().min(1),
     service_status: z.boolean()
   })
-  .transform(
-    (bank): StoredBank => ({
-      bankId: bank.bank_id,
-      friendlyName: bank.friendly_name,
-      serviceStatus: bank.service_status
-    })
-  )
+  .transform((bank): StoredBank => ({
+    bankId: bank.bank_id,
+    friendlyName: bank.friendly_name,
+    serviceStatus: bank.service_status
+  }))
 
 export const ecospendBankListResponseSchema = z.object({
   data: z.array(ecospendBankSchema),

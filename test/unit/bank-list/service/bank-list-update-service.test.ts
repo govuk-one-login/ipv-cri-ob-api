@@ -1,5 +1,5 @@
 import type { SSMConfigProvider } from '@common/client/ssm-config-provider'
-import type { TokenRetrievalService } from '@lib/token-rotator/service/token-retrieval-service'
+import type { TokenRetrievalService } from '@govuk-one-login/cri-token-rotator'
 import type { BankListRepository } from '@src/bank-list/client/bank-list-repository'
 import type { BankListProvider, GetBanksParams } from '@src/bank-list/model/bank-list-provider'
 import type { BankListEntity, StoredBank } from '@src/bank-list/model/database/bank-list-entity'
