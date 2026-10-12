@@ -8,10 +8,8 @@ export const ecospendConsentsResponseSchema = z
     bank_id: z.string().min(1),
     id: z.string().min(1)
   })
-  .transform(
-    (response): CreatedConsent => ({
-      bankConsentUrl: response.bank_consent_url,
-      bankId: response.bank_id,
-      consentId: response.id
-    })
-  )
+  .transform((response): CreatedConsent => ({
+    bankConsentUrl: response.bank_consent_url,
+    bankId: response.bank_id,
+    consentId: response.id
+  }))

@@ -17,11 +17,11 @@ type ThirdPartyState = ThirdPartyRequestState | ThirdPartyResponseState
 const instrumentedFetch = async (
   url: string,
   fetchOptions: RequestInit,
-  metricContext: { endpoint: string; profile: EndpointProfile }
+  metricContext: { endpointName: string; endpointProfile: EndpointProfile }
 ) => {
   const baseDimensions = {
-    [ThirdPartyMetricDimensions.ENDPOINT]: metricContext.endpoint,
-    [ThirdPartyMetricDimensions.PROFILE]: metricContext.profile
+    [ThirdPartyMetricDimensions.ENDPOINT_NAME]: metricContext.endpointName,
+    [ThirdPartyMetricDimensions.ENDPOINT_PROFILE]: metricContext.endpointProfile
   }
   const captureCount = (
     name: string,

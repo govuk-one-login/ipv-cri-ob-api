@@ -2,14 +2,6 @@ import type * as CriMetricsModule from '@govuk-one-login/cri-metrics'
 import type { Mock } from 'vitest'
 
 import { EndpointProfile } from '@common/model/endpoint-profile'
-import {
-  THIRD_PARTY_LATENCY_METRIC_NAME,
-  THIRD_PARTY_REQUEST_METRIC_NAME,
-  THIRD_PARTY_RESPONSE_METRIC_NAME,
-  ThirdPartyMetricDimensions,
-  ThirdPartyRequestState,
-  ThirdPartyResponseState
-} from '@common/model/metrics/third-party-metrics'
 import { instrumentedFetch } from '@common/util/instrumented-fetch'
 import { MetricUnit } from '@govuk-one-login/cri-metrics'
 import { afterEach, describe, expect, it, vi } from 'vitest'
@@ -21,10 +13,10 @@ vi.mock('@govuk-one-login/cri-metrics', async (importOriginal) => ({
   captureMetricWithDimensions: vi.fn()
 }))
 
-const ENDPOINT = 'widgets'
+const ENDPOINT_NAME = 'widgets'
 const ENDPOINT_URL = 'https://third-party.test/widgets'
 
-const METRIC_CONTEXT = { endpoint: ENDPOINT, profile: EndpointProfile.LIVE }
+const METRIC_CONTEXT = { endpointName: ENDPOINT_NAME, endpointProfile: EndpointProfile.LIVE }
 
 const buildResponse = (status: number): Response => new Response('{}', { status })
 
@@ -37,8 +29,8 @@ const expectCount = (metricName: string, dimensions: Record<string, string>): vo
   expect(criMetrics.captureMetricWithDimensions).toHaveBeenCalledWith(
     metricName,
     expect.objectContaining({
-      [ThirdPartyMetricDimensions.ENDPOINT]: ENDPOINT,
-      [ThirdPartyMetricDimensions.PROFILE]: EndpointProfile.LIVE,
+      endpoint_name: ENDPOINT_NAME,
+      endpoint_profile: EndpointProfile.LIVE,
       ...dimensions
     }),
     1,
@@ -48,11 +40,11 @@ const expectCount = (metricName: string, dimensions: Record<string, string>): vo
 
 const expectLatency = (state: string): void => {
   expect(criMetrics.captureMetricWithDimensions).toHaveBeenCalledWith(
-    THIRD_PARTY_LATENCY_METRIC_NAME,
+    'third_party_latency_ms',
     expect.objectContaining({
-      [ThirdPartyMetricDimensions.ENDPOINT]: ENDPOINT,
-      [ThirdPartyMetricDimensions.PROFILE]: EndpointProfile.LIVE,
-      [ThirdPartyMetricDimensions.STATE]: state
+      endpoint_name: ENDPOINT_NAME,
+      endpoint_profile: EndpointProfile.LIVE,
+      state: state
     }),
     expect.any(Number),
     MetricUnit.Milliseconds
@@ -74,14 +66,14 @@ describe('instrumentedFetch', () => {
       response
     )
 
-    expectCount(THIRD_PARTY_REQUEST_METRIC_NAME, {
-      [ThirdPartyMetricDimensions.STATE]: ThirdPartyRequestState.SEND_OK
+    expectCount('third_party_request', {
+      state: 'send_ok'
     })
-    expectCount(THIRD_PARTY_RESPONSE_METRIC_NAME, {
-      [ThirdPartyMetricDimensions.STATE]: ThirdPartyResponseState.RESPONSE_CODE_EXPECTED,
-      [ThirdPartyMetricDimensions.STATUS]: '200'
+    expectCount('third_party_response', {
+      state: 'response_code_expected',
+      status: '200'
     })
-    expectLatency(ThirdPartyResponseState.RESPONSE_CODE_EXPECTED)
+    expectLatency('response_code_expected')
   })
 
   it('records an unexpected response code', async () => {
@@ -92,14 +84,14 @@ describe('instrumentedFetch', () => {
       response
     )
 
-    expectCount(THIRD_PARTY_REQUEST_METRIC_NAME, {
-      [ThirdPartyMetricDimensions.STATE]: ThirdPartyRequestState.SEND_OK
+    expectCount('third_party_request', {
+      state: 'send_ok'
     })
-    expectCount(THIRD_PARTY_RESPONSE_METRIC_NAME, {
-      [ThirdPartyMetricDimensions.STATE]: ThirdPartyResponseState.RESPONSE_CODE_UNEXPECTED,
-      [ThirdPartyMetricDimensions.STATUS]: '503'
+    expectCount('third_party_response', {
+      state: 'response_code_unexpected',
+      status: '503'
     })
-    expectLatency(ThirdPartyResponseState.RESPONSE_CODE_UNEXPECTED)
+    expectLatency('response_code_unexpected')
   })
 
   it('records a timeout and throws', async () => {
@@ -110,12 +102,12 @@ describe('instrumentedFetch', () => {
       timeout
     )
 
-    expectCount(THIRD_PARTY_REQUEST_METRIC_NAME, {
-      [ThirdPartyMetricDimensions.STATE]: ThirdPartyRequestState.SEND_TIMEOUT
+    expectCount('third_party_request', {
+      state: 'send_timeout'
     })
-    expectLatency(ThirdPartyRequestState.SEND_TIMEOUT)
+    expectLatency('send_timeout')
     expect(criMetrics.captureMetricWithDimensions).not.toHaveBeenCalledWith(
-      THIRD_PARTY_RESPONSE_METRIC_NAME,
+      'third_party_response',
       expect.anything(),
       expect.anything(),
       expect.anything()
@@ -130,10 +122,10 @@ describe('instrumentedFetch', () => {
       networkError
     )
 
-    expectCount(THIRD_PARTY_REQUEST_METRIC_NAME, {
-      [ThirdPartyMetricDimensions.STATE]: ThirdPartyRequestState.SEND_ERROR
+    expectCount('third_party_request', {
+      state: 'send_error'
     })
-    expectLatency(ThirdPartyRequestState.SEND_ERROR)
+    expectLatency('send_error')
   })
 
   it('applies a ten second timeout signal when signal is omitted from options', async () => {

@@ -1,23 +1,25 @@
 import type { EndpointProfile } from '@common/model/endpoint-profile'
-import type { CredentialsProvider } from '@lib/token-rotator/model/credentials-provider'
 import type { ScheduledEvent } from 'aws-lambda'
 
 import { dynamoDBDocumentClient } from '@common/client/dynamodb-client'
 import { ssmConfigProvider } from '@common/client/ssm-config-provider'
 import { injectLambdaContext, latencyRecorder, resultRecorder } from '@common/handler/middleware'
 import { requireEnv } from '@common/util/env'
+import { parseProfiles } from '@common/util/parse-profiles'
 import { logger } from '@govuk-one-login/cri-logger'
 import { logMetrics, metrics } from '@govuk-one-login/cri-metrics'
-import { createDynamoTokenRepository } from '@lib/token-rotator/client/dynamo-token-repository'
-import { createTokenRotator } from '@lib/token-rotator/handler/token-rotator'
+import {
+  createTokenRotationService,
+  type TokenCredentialsProvider
+} from '@govuk-one-login/cri-token-rotator'
+import { createDynamoTokenRepository } from '@govuk-one-login/cri-token-rotator/dynamodb'
 import { ecospendTokenStrategy } from '@src/ecospend-token/service/ecospend-token-strategy'
-import { loadTokenRotatorConfigFromEnv } from '@src/ecospend-token/util/load-config-from-env'
 
 import middy from '@middy/core'
 
 const tokenCredentialsPathPrefix = requireEnv('TOKEN_ROTATOR_CREDENTIALS_PATH')
 
-const ssmCredentialsProvider: CredentialsProvider<EndpointProfile> = {
+const ssmCredentialsProvider: TokenCredentialsProvider<EndpointProfile> = {
   getCredentials: (profile) => ssmConfigProvider.get(`${tokenCredentialsPathPrefix}/${profile}`)
 }
 
@@ -26,15 +28,27 @@ const dynamoTokenRepository = createDynamoTokenRepository(
   dynamoDBDocumentClient
 )
 
-const tokenRotator = createTokenRotator(loadTokenRotatorConfigFromEnv(), {
-  credentialsProvider: ssmCredentialsProvider,
-  tokenRepository: dynamoTokenRepository,
-  tokenRotationStrategy: ecospendTokenStrategy
-})
+const ecospendTokenRotationService = createTokenRotationService<EndpointProfile>(
+  {
+    profiles: parseProfiles(requireEnv('ENDPOINT_PROFILES')),
+    refreshWindowSeconds: requireEnv('TOKEN_ROTATOR_REFRESH_WINDOW_SECONDS')
+  },
+  {
+    tokenRepository: dynamoTokenRepository,
+    tokenRotationStrategy: ecospendTokenStrategy,
+    credentialsProvider: ssmCredentialsProvider
+  }
+)
+
+const lambdaHandler = async (_event: ScheduledEvent) => {
+  logger.info('Lambda invoked')
+
+  await ecospendTokenRotationService.rotateAll()
+}
 
 export const handler = middy<ScheduledEvent, void>()
   .use(latencyRecorder()) // latencyRecorder is first
   .use(resultRecorder())
   .use(injectLambdaContext(logger, { resetKeys: true }))
   .use(logMetrics(metrics, { captureColdStartMetric: true }))
-  .handler(tokenRotator)
+  .handler(lambdaHandler)
