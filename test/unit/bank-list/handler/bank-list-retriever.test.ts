@@ -1,10 +1,19 @@
+import type * as CriMetricsModule from '@govuk-one-login/cri-metrics'
 import type { BankListEntity } from '@src/bank-list/model/database/bank-list-entity'
 import type { BankListRetrievalService } from '@src/bank-list/service/bank-list-retrieval-service'
 import type { APIGatewayProxyEvent, Context } from 'aws-lambda'
 
 import { EndpointProfile } from '@common/model/endpoint-profile'
+import { MetricUnit } from '@govuk-one-login/cri-metrics'
 import { handler } from '@src/bank-list/handler/bank-list-retriever'
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest'
+
+import * as criMetrics from '@govuk-one-login/cri-metrics'
+
+vi.mock('@govuk-one-login/cri-metrics', async (importOriginal) => ({
+  ...(await importOriginal<typeof CriMetricsModule>()),
+  captureMetricWithDimensions: vi.fn()
+}))
 
 const { bankListRetrievalService } = vi.hoisted(() => ({
   bankListRetrievalService: vi.fn<BankListRetrievalService>()
@@ -86,5 +95,48 @@ describe('bank-list-retriever handler', () => {
     const result = await handler(buildEvent(), buildContext())
 
     expect(result.statusCode).toBe(500)
+  })
+
+  describe('metrics', () => {
+    it('emits lambda_result=success and lambda_latency_ms on the happy path', async () => {
+      bankListRetrievalService.mockResolvedValue({ bankList: buildBankListEntity() })
+
+      await handler(buildEvent(), buildContext())
+
+      expect(criMetrics.captureMetricWithDimensions).toHaveBeenCalledWith(
+        'lambda_result',
+        { lambda: 'bank-list-retriever-test', result: 'success' },
+        1,
+        MetricUnit.Count
+      )
+      expect(criMetrics.captureMetricWithDimensions).toHaveBeenCalledWith(
+        'lambda_latency_ms',
+        {
+          lambda: 'bank-list-retriever-test',
+          start_state: expect.toBeOneOf(['cold', 'hot']) as string
+        },
+        expect.any(Number),
+        MetricUnit.Milliseconds
+      )
+    })
+
+    it('emits lambda_result=error and lambda_latency_ms when the handler fails', async () => {
+      bankListRetrievalService.mockRejectedValue(new Error('crumbs'))
+
+      await handler(buildEvent(), buildContext())
+
+      expect(criMetrics.captureMetricWithDimensions).toHaveBeenCalledWith(
+        'lambda_result',
+        { lambda: 'bank-list-retriever-test', result: 'error' },
+        1,
+        MetricUnit.Count
+      )
+      expect(criMetrics.captureMetricWithDimensions).toHaveBeenCalledWith(
+        'lambda_latency_ms',
+        { lambda: 'bank-list-retriever-test', start_state: expect.toBeOneOf(['cold', 'hot']) },
+        expect.any(Number),
+        MetricUnit.Milliseconds
+      )
+    })
   })
 })
