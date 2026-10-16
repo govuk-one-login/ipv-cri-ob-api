@@ -1558,15 +1558,13 @@ Resources:
     Condition: StubBankListAlarmsEnabled
     Properties:
       AlarmName: !Sub "${AWS::StackName}-${Environment}-bank-list-size-drop-stub"
-      AlarmDescription: "STUB bank list size dropped by more than 20% between updater runs."
+      AlarmDescription: "STUB bank list size dropped by more than 10% between updater runs."
       ActionsEnabled: true
       AlarmActions:
         - !ImportValue build-notifications-WarningAlertsTopicArn
-      OKActions:
-        - !ImportValue build-notifications-WarningAlertsTopicArn
-      EvaluationPeriods: 5
+      EvaluationPeriods: 60
       DatapointsToAlarm: 1
-      Threshold: -20
+      Threshold: -10
       ComparisonOperator: LessThanThreshold
       TreatMissingData: notBreaching
       Metrics:
@@ -1593,15 +1591,13 @@ Resources:
     Condition: UatBankListAlarmsEnabled
     Properties:
       AlarmName: !Sub "${AWS::StackName}-${Environment}-bank-list-size-drop-uat"
-      AlarmDescription: "UAT bank list size dropped by more than 20% between updater runs."
+      AlarmDescription: "UAT bank list size dropped by more than 10% between updater runs."
       ActionsEnabled: true
       AlarmActions:
         - !ImportValue build-notifications-WarningAlertsTopicArn
-      OKActions:
-        - !ImportValue build-notifications-WarningAlertsTopicArn
-      EvaluationPeriods: 5
+      EvaluationPeriods: 60
       DatapointsToAlarm: 1
-      Threshold: -20
+      Threshold: -10
       ComparisonOperator: LessThanThreshold
       TreatMissingData: notBreaching
       Metrics:
@@ -1628,15 +1624,13 @@ Resources:
     Condition: LiveBankListAlarmsEnabled
     Properties:
       AlarmName: !Sub "${AWS::StackName}-${Environment}-bank-list-size-drop-live"
-      AlarmDescription: "LIVE bank list size dropped by more than 20% between updater runs."
+      AlarmDescription: "LIVE bank list size dropped by more than 10% between updater runs."
       ActionsEnabled: true
       AlarmActions:
         - !ImportValue build-notifications-WarningAlertsTopicArn
-      OKActions:
-        - !ImportValue build-notifications-WarningAlertsTopicArn
-      EvaluationPeriods: 5
+      EvaluationPeriods: 60
       DatapointsToAlarm: 1
-      Threshold: -20
+      Threshold: -10
       ComparisonOperator: LessThanThreshold
       TreatMissingData: notBreaching
       Metrics:
