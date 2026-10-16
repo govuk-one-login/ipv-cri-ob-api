@@ -22,7 +22,7 @@ export const errorHandler = (): MiddlewareObj<APIGatewayProxyEvent, APIGatewayPr
   }
 })
 
-export const latencyRecorder = (): MiddlewareObj<APIGatewayProxyEvent, APIGatewayProxyResult> => {
+export const latencyRecorder = <TEvent, TResult>(): MiddlewareObj<TEvent, TResult> => {
   const startTimes = new WeakMap<object, number>()
   let startState: LambdaStartState = LambdaStartState.COLD
 
@@ -50,7 +50,7 @@ export const latencyRecorder = (): MiddlewareObj<APIGatewayProxyEvent, APIGatewa
   }
 }
 
-export const resultRecorder = (): MiddlewareObj<APIGatewayProxyEvent, APIGatewayProxyResult> => {
+export const resultRecorder = <TEvent, TResult>(): MiddlewareObj<TEvent, TResult> => {
   const emit = (request: { context: Context }, result: LambdaResult): void => {
     captureMetricWithDimensions(
       LAMBDA_RESULT_METRIC_NAME,

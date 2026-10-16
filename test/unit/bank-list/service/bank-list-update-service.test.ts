@@ -1,4 +1,5 @@
 import type { SSMConfigProvider } from '@common/client/ssm-config-provider'
+import type * as CriMetricsModule from '@govuk-one-login/cri-metrics'
 import type { TokenRetrievalService } from '@govuk-one-login/cri-token-rotator'
 import type { BankListRepository } from '@src/bank-list/client/bank-list-repository'
 import type { BankListProvider, GetBanksParams } from '@src/bank-list/model/bank-list-provider'
@@ -6,8 +7,14 @@ import type { BankListEntity, StoredBank } from '@src/bank-list/model/database/b
 
 import { NoUsableTokenError } from '@common/error'
 import { EndpointProfile } from '@common/model/endpoint-profile'
+import { captureMetricWithDimensions } from '@govuk-one-login/cri-metrics'
 import { createBankListUpdateService } from '@src/bank-list/service/bank-list-update-service'
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest'
+
+vi.mock('@govuk-one-login/cri-metrics', async (importOriginal) => ({
+  ...(await importOriginal<typeof CriMetricsModule>()),
+  captureMetricWithDimensions: vi.fn()
+}))
 
 const ACCESS_TOKEN = 'test-access-token'
 const NOW_EPOCH_SECONDS = 1_800_000_000
@@ -25,6 +32,15 @@ const oneBank: StoredBank[] = [
   {
     bankId: 'example-bank',
     friendlyName: 'Example Bank',
+    serviceStatus: true
+  }
+]
+
+const twoBanks: StoredBank[] = [
+  ...oneBank,
+  {
+    bankId: 'another-bank',
+    friendlyName: 'Another Bank',
     serviceStatus: true
   }
 ]
@@ -66,6 +82,7 @@ describe('createBankListUpdateService', () => {
 
   afterEach(() => {
     vi.useRealTimers()
+    vi.clearAllMocks()
   })
 
   const createService = () =>
@@ -239,5 +256,63 @@ describe('createBankListUpdateService', () => {
 
     expect(bankListProvider.getBanks).not.toHaveBeenCalled()
     expect(bankListRepository.replaceList).not.toHaveBeenCalled()
+  })
+
+  describe('metrics', () => {
+    it('emits the list size and updated metrics when the list is updated', async () => {
+      vi.mocked(bankListRepository.getList).mockResolvedValue(
+        buildBankListEntity({
+          banks: oneBank,
+          refreshedAtSeconds: NOW_EPOCH_SECONDS - REFRESH_AFTER_SECONDS
+        })
+      )
+      vi.mocked(bankListProvider.getBanks).mockResolvedValue(twoBanks)
+
+      await createService()(EndpointProfile.STUB)
+
+      expect(captureMetricWithDimensions).toHaveBeenCalledWith(
+        'bank_list_size',
+        { endpoint_profile: EndpointProfile.STUB },
+        2
+      )
+      expect(captureMetricWithDimensions).toHaveBeenCalledWith('bank_list_updated', {
+        endpoint_profile: EndpointProfile.STUB
+      })
+    })
+
+    it('emits the list size only when the list is fresh', async () => {
+      vi.mocked(bankListRepository.getList).mockResolvedValue(
+        buildBankListEntity({
+          banks: twoBanks,
+          refreshedAtSeconds: NOW_EPOCH_SECONDS - REFRESH_AFTER_SECONDS + 1
+        })
+      )
+
+      await createService()(EndpointProfile.STUB)
+
+      expect(captureMetricWithDimensions).toHaveBeenCalledWith(
+        'bank_list_size',
+        { endpoint_profile: EndpointProfile.STUB },
+        2
+      )
+      expect(captureMetricWithDimensions).not.toHaveBeenCalledWith(
+        'bank_list_updated',
+        expect.anything()
+      )
+    })
+
+    it('emits nothing when there is a problem refreshing the list', async () => {
+      vi.mocked(bankListRepository.getList).mockResolvedValue(
+        buildBankListEntity({
+          banks: oneBank,
+          refreshedAtSeconds: NOW_EPOCH_SECONDS - REFRESH_AFTER_SECONDS
+        })
+      )
+      vi.mocked(bankListProvider.getBanks).mockRejectedValue(new Error('crumbs'))
+
+      await expect(createService()(EndpointProfile.STUB)).rejects.toThrow('crumbs')
+
+      expect(captureMetricWithDimensions).not.toHaveBeenCalled()
+    })
   })
 })

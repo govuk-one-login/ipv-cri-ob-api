@@ -25,6 +25,7 @@ export default defineConfig({
             AUDIT_QUEUE_URL: 'https://sqs.example.test/audit',
             BANK_LIST_DB_TABLE_NAME: 'test-bank-list-table',
             CONSENTS_DB_TABLE_NAME: 'test-consents-table',
+            ENDPOINT_PROFILES: 'STUB',
             IDENTITY_SCORE_DB_TABLE_NAME: 'test-identity-score-table',
             JWT_TTL_SECONDS: '7200',
             KMS_SIGNING_KEY_ID: 'test-kms-key-id',

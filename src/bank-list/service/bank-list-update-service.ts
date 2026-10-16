@@ -7,7 +7,13 @@ import type { BankListProvider } from '@src/bank-list/model/bank-list-provider'
 import { NoUsableTokenError } from '@common/error'
 import { nowSeconds } from '@common/util/time'
 import { describeZodIssues } from '@common/util/zod'
+import { captureMetricWithDimensions } from '@govuk-one-login/cri-metrics'
 import { type BankListConfig, bankListConfigSchema } from '@src/bank-list/model/bank-list-config'
+import {
+  BANK_LIST_SIZE_METRIC_NAME,
+  BANK_LIST_UPDATED_METRIC_NAME,
+  BankListMetricDimensions
+} from '@src/bank-list/model/metrics/bank-list-metrics'
 
 export interface BankListUpdateResponse {
   updated: boolean
@@ -38,6 +44,7 @@ export const createBankListUpdateService = (
     if (existingList) {
       const ageSeconds = now - existingList.refreshedAtSeconds
       if (ageSeconds < config.refreshAfterSeconds) {
+        emitBankListSize({ size: existingList.banks.length, profile })
         return { updated: false }
       }
     }
@@ -67,6 +74,22 @@ export const createBankListUpdateService = (
       refreshedAtSeconds: now
     })
 
+    emitBankListSize({ size: banks.length, profile })
+    emitBankListUpdated({ profile })
     return { updated: true }
   }
 }
+
+const emitBankListSize = (args: { profile: EndpointProfile; size: number }) =>
+  captureMetricWithDimensions(
+    BANK_LIST_SIZE_METRIC_NAME,
+    {
+      [BankListMetricDimensions.ENDPOINT_PROFILE]: args.profile
+    },
+    args.size
+  )
+
+const emitBankListUpdated = (args: { profile: EndpointProfile }) =>
+  captureMetricWithDimensions(BANK_LIST_UPDATED_METRIC_NAME, {
+    [BankListMetricDimensions.ENDPOINT_PROFILE]: args.profile
+  })

@@ -3,7 +3,12 @@ import type { ScheduledEvent } from 'aws-lambda'
 import { createBaseHttpClient } from '@common/client/base-http-client'
 import { dynamoDBDocumentClient } from '@common/client/dynamodb-client'
 import { ssmConfigProvider } from '@common/client/ssm-config-provider'
-import { injectLambdaContext, logMetrics } from '@common/handler/middleware'
+import {
+  injectLambdaContext,
+  latencyRecorder,
+  logMetrics,
+  resultRecorder
+} from '@common/handler/middleware'
 import { EndpointProfile } from '@common/model/endpoint-profile'
 import { requireEnv } from '@common/util/env'
 import { parseProfiles } from '@common/util/parse-profiles'
@@ -64,6 +69,8 @@ const lambdaHandler = async (_event: ScheduledEvent): Promise<void> => {
 }
 
 export const handler = middy<ScheduledEvent, void>()
+  .use(latencyRecorder()) // latencyRecorder is first
+  .use(resultRecorder())
   .use(injectLambdaContext(logger, { resetKeys: true }))
   .use(logMetrics(metrics, { captureColdStartMetric: true }))
   .handler(lambdaHandler)
