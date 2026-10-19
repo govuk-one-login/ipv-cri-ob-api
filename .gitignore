@@ -13,6 +13,9 @@ dist
 # AWS SAM
 .aws-sam/
 
+# CDK synth output
+deploy/template.cdk.yaml
+
 #vitest
 coverage/
 
