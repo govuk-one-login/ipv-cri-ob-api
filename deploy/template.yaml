@@ -91,6 +91,18 @@ Conditions:
   CreateTestResourcesParam: !And
     - !Condition IsDeployedFromPipeline
     - !Condition IsNotProduction
+  StubBankListAlarmsEnabled: !And
+    - !Condition AlarmsEnabled
+    - !Or
+      - !Equals [ !Ref Environment, dev ]
+      - !Equals [ !Ref Environment, build ]
+      - !Equals [ !Ref Environment, staging ]
+  UatBankListAlarmsEnabled: !And
+    - !Condition AlarmsEnabled
+    - !Condition IsNotProduction
+  LiveBankListAlarmsEnabled: !And
+    - !Condition AlarmsEnabled
+    - !Condition IsProduction
 
 Globals:
   Function:
@@ -1275,6 +1287,7 @@ Resources:
                   Value: !Sub "${AWS::StackName}-PrivateOpenBankingAPI"
             Period: 300
             Stat: Sum
+
   ###################################################################
   #                                                                 #
   # Canary Alarms                                                   #
@@ -1349,7 +1362,7 @@ Resources:
       OKActions:
         - !ImportValue build-notifications-WarningAlertsTopicArn
       AlarmName: !Sub "${AWS::StackName}-${Environment}-IssueCredentialFunction-Canary-Errors"
-      AlarmDescription: "Errors returned from the IssueCredential Function Lambda."
+      AlarmDescription: "Errors returned from the IssueCredential Lambda."
       MetricName: Errors
       Dimensions:
         - Name: FunctionName
@@ -1454,6 +1467,183 @@ Resources:
       Threshold: 1
       ComparisonOperator: GreaterThanOrEqualToThreshold
       TreatMissingData: notBreaching
+
+  StubBankListSizeDropAlarm:
+    Type: AWS::CloudWatch::Alarm
+    Condition: StubBankListAlarmsEnabled
+    Properties:
+      AlarmName: !Sub "${AWS::StackName}-${Environment}-bank-list-size-drop-stub"
+      AlarmDescription: "STUB bank list size dropped by more than 10% between updater runs."
+      ActionsEnabled: true
+      AlarmActions:
+        - !ImportValue build-notifications-WarningAlertsTopicArn
+      EvaluationPeriods: 60
+      DatapointsToAlarm: 1
+      Threshold: -10
+      ComparisonOperator: LessThanThreshold
+      TreatMissingData: notBreaching
+      Metrics:
+        - Id: change
+          Label: Percentage change in bank list size
+          ReturnData: true
+          Expression: 100 * DIFF(size) / (size - DIFF(size))
+        - Id: size
+          ReturnData: false
+          MetricStat:
+            Metric:
+              Namespace: !Ref CriIdentifier
+              MetricName: bank_list_size
+              Dimensions:
+                - Name: service
+                  Value: !Sub "${CriIdentifier}-bank-list-updater"
+                - Name: endpoint_profile
+                  Value: STUB
+            Period: 60
+            Stat: Minimum
+
+  UatBankListSizeDropAlarm:
+    Type: AWS::CloudWatch::Alarm
+    Condition: UatBankListAlarmsEnabled
+    Properties:
+      AlarmName: !Sub "${AWS::StackName}-${Environment}-bank-list-size-drop-uat"
+      AlarmDescription: "UAT bank list size dropped by more than 10% between updater runs."
+      ActionsEnabled: true
+      AlarmActions:
+        - !ImportValue build-notifications-WarningAlertsTopicArn
+      EvaluationPeriods: 60
+      DatapointsToAlarm: 1
+      Threshold: -10
+      ComparisonOperator: LessThanThreshold
+      TreatMissingData: notBreaching
+      Metrics:
+        - Id: change
+          Label: Percentage change in bank list size
+          ReturnData: true
+          Expression: 100 * DIFF(size) / (size - DIFF(size))
+        - Id: size
+          ReturnData: false
+          MetricStat:
+            Metric:
+              Namespace: !Ref CriIdentifier
+              MetricName: bank_list_size
+              Dimensions:
+                - Name: service
+                  Value: !Sub "${CriIdentifier}-bank-list-updater"
+                - Name: endpoint_profile
+                  Value: UAT
+            Period: 60
+            Stat: Minimum
+
+  LiveBankListSizeDropAlarm:
+    Type: AWS::CloudWatch::Alarm
+    Condition: LiveBankListAlarmsEnabled
+    Properties:
+      AlarmName: !Sub "${AWS::StackName}-${Environment}-bank-list-size-drop-live"
+      AlarmDescription: "LIVE bank list size dropped by more than 10% between updater runs."
+      ActionsEnabled: true
+      AlarmActions:
+        - !ImportValue build-notifications-WarningAlertsTopicArn
+      EvaluationPeriods: 60
+      DatapointsToAlarm: 1
+      Threshold: -10
+      ComparisonOperator: LessThanThreshold
+      TreatMissingData: notBreaching
+      Metrics:
+        - Id: change
+          Label: Percentage change in bank list size
+          ReturnData: true
+          Expression: 100 * DIFF(size) / (size - DIFF(size))
+        - Id: size
+          ReturnData: false
+          MetricStat:
+            Metric:
+              Namespace: !Ref CriIdentifier
+              MetricName: bank_list_size
+              Dimensions:
+                - Name: service
+                  Value: !Sub "${CriIdentifier}-bank-list-updater"
+                - Name: endpoint_profile
+                  Value: LIVE
+            Period: 60
+            Stat: Minimum
+
+  StubBankListNotUpdatedAlarm:
+    Type: AWS::CloudWatch::Alarm
+    Condition: StubBankListAlarmsEnabled
+    Properties:
+      AlarmName: !Sub "${AWS::StackName}-${Environment}-bank-list-not-updated-stub"
+      AlarmDescription: "STUB bank list has not been updated for 2 hours."
+      ActionsEnabled: true
+      AlarmActions:
+        - !ImportValue build-notifications-WarningAlertsTopicArn
+      OKActions:
+        - !ImportValue build-notifications-WarningAlertsTopicArn
+      Namespace: !Ref CriIdentifier
+      MetricName: bank_list_updated
+      Dimensions:
+        - Name: service
+          Value: !Sub "${CriIdentifier}-bank-list-updater"
+        - Name: endpoint_profile
+          Value: STUB
+      Statistic: Sum
+      Period: 3600
+      EvaluationPeriods: 2
+      DatapointsToAlarm: 2
+      Threshold: 1
+      ComparisonOperator: LessThanThreshold
+      TreatMissingData: breaching
+
+  UatBankListNotUpdatedAlarm:
+    Type: AWS::CloudWatch::Alarm
+    Condition: UatBankListAlarmsEnabled
+    Properties:
+      AlarmName: !Sub "${AWS::StackName}-${Environment}-bank-list-not-updated-uat"
+      AlarmDescription: "UAT bank list has not been updated for 2 hours."
+      ActionsEnabled: true
+      AlarmActions:
+        - !ImportValue build-notifications-WarningAlertsTopicArn
+      OKActions:
+        - !ImportValue build-notifications-WarningAlertsTopicArn
+      Namespace: !Ref CriIdentifier
+      MetricName: bank_list_updated
+      Dimensions:
+        - Name: service
+          Value: !Sub "${CriIdentifier}-bank-list-updater"
+        - Name: endpoint_profile
+          Value: UAT
+      Statistic: Sum
+      Period: 3600
+      EvaluationPeriods: 2
+      DatapointsToAlarm: 2
+      Threshold: 1
+      ComparisonOperator: LessThanThreshold
+      TreatMissingData: breaching
+
+  LiveBankListNotUpdatedAlarm:
+    Type: AWS::CloudWatch::Alarm
+    Condition: LiveBankListAlarmsEnabled
+    Properties:
+      AlarmName: !Sub "${AWS::StackName}-${Environment}-bank-list-not-updated-live"
+      AlarmDescription: "LIVE bank list has not been updated for 2 hours."
+      ActionsEnabled: true
+      AlarmActions:
+        - !ImportValue build-notifications-WarningAlertsTopicArn
+      OKActions:
+        - !ImportValue build-notifications-WarningAlertsTopicArn
+      Namespace: !Ref CriIdentifier
+      MetricName: bank_list_updated
+      Dimensions:
+        - Name: service
+          Value: !Sub "${CriIdentifier}-bank-list-updater"
+        - Name: endpoint_profile
+          Value: LIVE
+      Statistic: Sum
+      Period: 3600
+      EvaluationPeriods: 2
+      DatapointsToAlarm: 2
+      Threshold: 1
+      ComparisonOperator: LessThanThreshold
+      TreatMissingData: breaching
 
   ####################################################################
   #                                                                  #
