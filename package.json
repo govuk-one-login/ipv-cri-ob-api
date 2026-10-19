@@ -22,13 +22,14 @@
     "format:fix": "oxfmt --write",
     "lint": "oxlint",
     "lint:fix": "oxlint --fix",
+    "infra:synth": "tsx --tsconfig infra/tsconfig.json infra/synth.ts",
     "test": "vitest run --project unit",
     "test:watch": "vitest",
     "test:coverage": "vitest run --coverage",
     "test:infra": "vitest run --project infra",
     "test:api": "cucumber-js --config test/acceptance-tests/cucumber.ts --profile api",
     "test:smoke": "cucumber-js --config test/acceptance-tests/cucumber.ts --profile smoke",
-    "type-check": "tsc --noEmit"
+    "type-check": "tsc --noEmit && tsc -p infra"
   },
   "devDependencies": {
     "@aws-crypto/sha256-js": "5.2.0",
@@ -39,6 +40,8 @@
     "@types/aws-lambda": "8.10.162",
     "@types/node": "25.9.3",
     "@vitest/coverage-v8": "4.1.11",
+    "aws-cdk-lib": "2.273.0",
+    "constructs": "10.8.1",
     "eslint-plugin-perfectionist": "5.9.1",
     "oxfmt": "0.72.0",
     "oxlint": "1.87.0",
