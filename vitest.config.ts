@@ -15,7 +15,8 @@ export default defineConfig({
           alias: {
             '@common': path.resolve(import.meta.dirname, 'src/common'),
             '@lib': path.resolve(import.meta.dirname, 'src/lib'),
-            '@src': path.resolve(import.meta.dirname, 'src')
+            '@src': path.resolve(import.meta.dirname, 'src'),
+            '@infra': path.resolve(import.meta.dirname, 'infra')
           }
         },
         test: {
