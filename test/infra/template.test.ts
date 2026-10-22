@@ -356,6 +356,39 @@ describe('template.yaml bank list updater alarms', () => {
         expect(props['AlarmActions']).toBeDefined()
       })
     })
+
+    describe(`${prefix}BankListEmptyAlarm`, () => {
+      const alarm = resources[`${prefix}BankListEmptyAlarm`]!
+      const props = alarm['Properties'] as Record<string, unknown>
+
+      it(`has ${condition} condition`, () => {
+        expect(alarm['Condition']).toBe(condition)
+      })
+
+      it(`monitors bank_list_size for the ${profile} profile`, () => {
+        expect(props['Namespace']).toBe('CriIdentifier')
+        expect(props['MetricName']).toBe('bank_list_size')
+        expect(props['Dimensions']).toEqual(expectedDimensions)
+      })
+
+      it('alarms when the bank list size is 0', () => {
+        expect(props['Statistic']).toBe('Maximum')
+        expect(props['Period']).toBe(60)
+        expect(props['EvaluationPeriods']).toBe(1)
+        expect(props['DatapointsToAlarm']).toBe(1)
+        expect(props['Threshold']).toBe(1)
+        expect(props['ComparisonOperator']).toBe('LessThanThreshold')
+      })
+
+      it('has TreatMissingData set to notBreaching', () => {
+        expect(props['TreatMissingData']).toBe('notBreaching')
+      })
+
+      it('has AlarmActions and OKActions configured', () => {
+        expect(props['AlarmActions']).toBeDefined()
+        expect(props['OKActions']).toBeDefined()
+      })
+    })
   })
 })
 

@@ -1501,6 +1501,84 @@ Resources:
             Period: 60
             Stat: Minimum
 
+  StubBankListEmptyAlarm:
+    Type: AWS::CloudWatch::Alarm
+    Condition: StubAlarmsEnabled
+    Properties:
+      AlarmName: !Sub "${AWS::StackName}-${Environment}-bank-list-empty-stub"
+      AlarmDescription: "STUB bank list is empty."
+      ActionsEnabled: true
+      AlarmActions:
+        - !ImportValue build-notifications-CriticalAlertsTopicArn
+      OKActions:
+        - !ImportValue build-notifications-CriticalAlertsTopicArn
+      Namespace: !Ref CriIdentifier
+      MetricName: bank_list_size
+      Dimensions:
+        - Name: service
+          Value: !Sub "${CriIdentifier}-bank-list-updater"
+        - Name: endpoint_profile
+          Value: STUB
+      Statistic: Maximum
+      Period: 60
+      EvaluationPeriods: 1
+      DatapointsToAlarm: 1
+      Threshold: 1
+      ComparisonOperator: LessThanThreshold
+      TreatMissingData: notBreaching
+
+  UatBankListEmptyAlarm:
+    Type: AWS::CloudWatch::Alarm
+    Condition: UatAlarmsEnabled
+    Properties:
+      AlarmName: !Sub "${AWS::StackName}-${Environment}-bank-list-empty-uat"
+      AlarmDescription: "UAT bank list is empty."
+      ActionsEnabled: true
+      AlarmActions:
+        - !ImportValue build-notifications-CriticalAlertsTopicArn
+      OKActions:
+        - !ImportValue build-notifications-CriticalAlertsTopicArn
+      Namespace: !Ref CriIdentifier
+      MetricName: bank_list_size
+      Dimensions:
+        - Name: service
+          Value: !Sub "${CriIdentifier}-bank-list-updater"
+        - Name: endpoint_profile
+          Value: UAT
+      Statistic: Maximum
+      Period: 60
+      EvaluationPeriods: 1
+      DatapointsToAlarm: 1
+      Threshold: 1
+      ComparisonOperator: LessThanThreshold
+      TreatMissingData: notBreaching
+
+  LiveBankListEmptyAlarm:
+    Type: AWS::CloudWatch::Alarm
+    Condition: LiveAlarmsEnabled
+    Properties:
+      AlarmName: !Sub "${AWS::StackName}-${Environment}-bank-list-empty-live"
+      AlarmDescription: "LIVE bank list is empty."
+      ActionsEnabled: true
+      AlarmActions:
+        - !ImportValue build-notifications-CriticalAlertsTopicArn
+      OKActions:
+        - !ImportValue build-notifications-CriticalAlertsTopicArn
+      Namespace: !Ref CriIdentifier
+      MetricName: bank_list_size
+      Dimensions:
+        - Name: service
+          Value: !Sub "${CriIdentifier}-bank-list-updater"
+        - Name: endpoint_profile
+          Value: LIVE
+      Statistic: Maximum
+      Period: 60
+      EvaluationPeriods: 1
+      DatapointsToAlarm: 1
+      Threshold: 1
+      ComparisonOperator: LessThanThreshold
+      TreatMissingData: notBreaching
+
   StubBankListNotUpdatedAlarm:
     Type: AWS::CloudWatch::Alarm
     Condition: StubAlarmsEnabled
