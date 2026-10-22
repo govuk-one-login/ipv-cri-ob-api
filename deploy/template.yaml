@@ -91,16 +91,16 @@ Conditions:
   CreateTestResourcesParam: !And
     - !Condition IsDeployedFromPipeline
     - !Condition IsNotProduction
-  StubBankListAlarmsEnabled: !And
+  StubAlarmsEnabled: !And
     - !Condition AlarmsEnabled
     - !Or
       - !Equals [ !Ref Environment, dev ]
       - !Equals [ !Ref Environment, build ]
       - !Equals [ !Ref Environment, staging ]
-  UatBankListAlarmsEnabled: !And
+  UatAlarmsEnabled: !And
     - !Condition AlarmsEnabled
     - !Condition IsNotProduction
-  LiveBankListAlarmsEnabled: !And
+  LiveAlarmsEnabled: !And
     - !Condition AlarmsEnabled
     - !Condition IsProduction
 
@@ -1404,7 +1404,7 @@ Resources:
 
   StubBankListSizeDropAlarm:
     Type: AWS::CloudWatch::Alarm
-    Condition: StubBankListAlarmsEnabled
+    Condition: StubAlarmsEnabled
     Properties:
       AlarmName: !Sub "${AWS::StackName}-${Environment}-bank-list-size-drop-stub"
       AlarmDescription: "STUB bank list size dropped by more than 10% between updater runs."
@@ -1437,7 +1437,7 @@ Resources:
 
   UatBankListSizeDropAlarm:
     Type: AWS::CloudWatch::Alarm
-    Condition: UatBankListAlarmsEnabled
+    Condition: UatAlarmsEnabled
     Properties:
       AlarmName: !Sub "${AWS::StackName}-${Environment}-bank-list-size-drop-uat"
       AlarmDescription: "UAT bank list size dropped by more than 10% between updater runs."
@@ -1470,7 +1470,7 @@ Resources:
 
   LiveBankListSizeDropAlarm:
     Type: AWS::CloudWatch::Alarm
-    Condition: LiveBankListAlarmsEnabled
+    Condition: LiveAlarmsEnabled
     Properties:
       AlarmName: !Sub "${AWS::StackName}-${Environment}-bank-list-size-drop-live"
       AlarmDescription: "LIVE bank list size dropped by more than 10% between updater runs."
@@ -1503,7 +1503,7 @@ Resources:
 
   StubBankListNotUpdatedAlarm:
     Type: AWS::CloudWatch::Alarm
-    Condition: StubBankListAlarmsEnabled
+    Condition: StubAlarmsEnabled
     Properties:
       AlarmName: !Sub "${AWS::StackName}-${Environment}-bank-list-not-updated-stub"
       AlarmDescription: "STUB bank list has not been updated for 2 hours."
@@ -1529,7 +1529,7 @@ Resources:
 
   UatBankListNotUpdatedAlarm:
     Type: AWS::CloudWatch::Alarm
-    Condition: UatBankListAlarmsEnabled
+    Condition: UatAlarmsEnabled
     Properties:
       AlarmName: !Sub "${AWS::StackName}-${Environment}-bank-list-not-updated-uat"
       AlarmDescription: "UAT bank list has not been updated for 2 hours."
@@ -1555,7 +1555,7 @@ Resources:
 
   LiveBankListNotUpdatedAlarm:
     Type: AWS::CloudWatch::Alarm
-    Condition: LiveBankListAlarmsEnabled
+    Condition: LiveAlarmsEnabled
     Properties:
       AlarmName: !Sub "${AWS::StackName}-${Environment}-bank-list-not-updated-live"
       AlarmDescription: "LIVE bank list has not been updated for 2 hours."
