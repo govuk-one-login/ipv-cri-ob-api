@@ -1590,20 +1590,29 @@ Resources:
         - !ImportValue build-notifications-WarningAlertsTopicArn
       OKActions:
         - !ImportValue build-notifications-WarningAlertsTopicArn
-      Namespace: !Ref CriIdentifier
-      MetricName: bank_list_updated
-      Dimensions:
-        - Name: service
-          Value: !Sub "${CriIdentifier}-bank-list-updater"
-        - Name: endpoint_profile
-          Value: STUB
-      Statistic: Sum
-      Period: 3600
-      EvaluationPeriods: 2
-      DatapointsToAlarm: 2
+      EvaluationPeriods: 8
+      DatapointsToAlarm: 8
       Threshold: 1
       ComparisonOperator: LessThanThreshold
       TreatMissingData: breaching
+      Metrics:
+        - Id: updatesOrZero
+          Label: Bank list updates with missing data filled as 0
+          ReturnData: true
+          Expression: FILL(updates, 0)
+        - Id: updates
+          ReturnData: false
+          MetricStat:
+            Metric:
+              Namespace: !Ref CriIdentifier
+              MetricName: bank_list_updated
+              Dimensions:
+                - Name: service
+                  Value: !Sub "${CriIdentifier}-bank-list-updater"
+                - Name: endpoint_profile
+                  Value: STUB
+            Period: 900
+            Stat: Sum
 
   UatBankListNotUpdatedAlarm:
     Type: AWS::CloudWatch::Alarm
@@ -1616,20 +1625,29 @@ Resources:
         - !ImportValue build-notifications-WarningAlertsTopicArn
       OKActions:
         - !ImportValue build-notifications-WarningAlertsTopicArn
-      Namespace: !Ref CriIdentifier
-      MetricName: bank_list_updated
-      Dimensions:
-        - Name: service
-          Value: !Sub "${CriIdentifier}-bank-list-updater"
-        - Name: endpoint_profile
-          Value: UAT
-      Statistic: Sum
-      Period: 3600
-      EvaluationPeriods: 2
-      DatapointsToAlarm: 2
+      EvaluationPeriods: 8
+      DatapointsToAlarm: 8
       Threshold: 1
       ComparisonOperator: LessThanThreshold
       TreatMissingData: breaching
+      Metrics:
+        - Id: updatesOrZero
+          Label: Bank list updates with missing data filled as 0
+          ReturnData: true
+          Expression: FILL(updates, 0)
+        - Id: updates
+          ReturnData: false
+          MetricStat:
+            Metric:
+              Namespace: !Ref CriIdentifier
+              MetricName: bank_list_updated
+              Dimensions:
+                - Name: service
+                  Value: !Sub "${CriIdentifier}-bank-list-updater"
+                - Name: endpoint_profile
+                  Value: UAT
+            Period: 900
+            Stat: Sum
 
   LiveBankListNotUpdatedAlarm:
     Type: AWS::CloudWatch::Alarm
@@ -1642,20 +1660,29 @@ Resources:
         - !ImportValue build-notifications-WarningAlertsTopicArn
       OKActions:
         - !ImportValue build-notifications-WarningAlertsTopicArn
-      Namespace: !Ref CriIdentifier
-      MetricName: bank_list_updated
-      Dimensions:
-        - Name: service
-          Value: !Sub "${CriIdentifier}-bank-list-updater"
-        - Name: endpoint_profile
-          Value: LIVE
-      Statistic: Sum
-      Period: 3600
-      EvaluationPeriods: 2
-      DatapointsToAlarm: 2
+      EvaluationPeriods: 8
+      DatapointsToAlarm: 8
       Threshold: 1
       ComparisonOperator: LessThanThreshold
       TreatMissingData: breaching
+      Metrics:
+        - Id: updatesOrZero
+          Label: Bank list updates with missing data filled as 0
+          ReturnData: true
+          Expression: FILL(updates, 0)
+        - Id: updates
+          ReturnData: false
+          MetricStat:
+            Metric:
+              Namespace: !Ref CriIdentifier
+              MetricName: bank_list_updated
+              Dimensions:
+                - Name: service
+                  Value: !Sub "${CriIdentifier}-bank-list-updater"
+                - Name: endpoint_profile
+                  Value: LIVE
+            Period: 900
+            Stat: Sum
 
   ####################################################################
   #                                                                  #

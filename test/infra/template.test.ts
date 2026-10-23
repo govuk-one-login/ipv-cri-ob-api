@@ -288,22 +288,35 @@ describe('template.yaml bank list updater alarms', () => {
     describe(`${prefix}BankListNotUpdatedAlarm`, () => {
       const alarm = resources[`${prefix}BankListNotUpdatedAlarm`]!
       const props = alarm['Properties'] as Record<string, unknown>
+      const metrics = props['Metrics'] as Record<string, unknown>[]
 
       it(`has ${condition} condition`, () => {
         expect(alarm['Condition']).toBe(condition)
       })
 
       it(`monitors bank_list_updated for the ${profile} profile`, () => {
-        expect(props['Namespace']).toBe('CriIdentifier')
-        expect(props['MetricName']).toBe('bank_list_updated')
-        expect(props['Dimensions']).toEqual(expectedDimensions)
+        const updates = metrics.find((m) => m['Id'] === 'updates')!
+        expect(updates['ReturnData']).toBe(false)
+        expect(updates['MetricStat']).toEqual({
+          Metric: {
+            Namespace: 'CriIdentifier',
+            MetricName: 'bank_list_updated',
+            Dimensions: expectedDimensions
+          },
+          Period: 900,
+          Stat: 'Sum'
+        })
+      })
+
+      it('fills missing data as 0 so gaps are evaluated as breaching periods', () => {
+        const updatesOrZero = metrics.find((m) => m['Id'] === 'updatesOrZero')!
+        expect(updatesOrZero['ReturnData']).toBe(true)
+        expect(updatesOrZero['Expression']).toBe('FILL(updates, 0)')
       })
 
       it('alarms after 2 hours with no updates', () => {
-        expect(props['Statistic']).toBe('Sum')
-        expect(props['Period']).toBe(3600)
-        expect(props['EvaluationPeriods']).toBe(2)
-        expect(props['DatapointsToAlarm']).toBe(2)
+        expect(props['EvaluationPeriods']).toBe(8)
+        expect(props['DatapointsToAlarm']).toBe(8)
         expect(props['Threshold']).toBe(1)
         expect(props['ComparisonOperator']).toBe('LessThanThreshold')
       })
