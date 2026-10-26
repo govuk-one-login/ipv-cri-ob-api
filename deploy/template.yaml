@@ -1166,6 +1166,104 @@ Resources:
       SqsManagedSseEnabled: true
       VisibilityTimeout: 240
 
+  WebhookIngestFunctionLogGroup:
+    Type: AWS::Logs::LogGroup
+    Properties:
+      LogGroupName:
+        Fn::Sub: /aws/lambda/${AWS::StackName}-webhook-ingest
+      RetentionInDays:
+        Ref: LogGroupRetentionInDays
+
+  WebhookIngestFunction:
+    Type: AWS::Serverless::Function
+    Properties:
+      Architectures:
+        - arm64
+      AutoPublishAlias: live
+      CodeSigningConfigArn:
+        Fn::If:
+          - UseCodeSigning
+          - Ref: CodeSigningConfigArn
+          - Ref: AWS::NoValue
+      CodeUri: ../
+      Environment:
+        Variables:
+          POWERTOOLS_SERVICE_NAME:
+            Fn::Sub: ${CriIdentifier}-webhook-ingest
+          WEBHOOK_DEDUPLICATION_TABLE_NAME:
+            Ref: WebhookDeduplicationTable
+          WEBHOOK_QUEUE_URL:
+            Ref: WebhookQueue
+      FunctionName:
+        Fn::Sub: ${AWS::StackName}-webhook-ingest
+      Handler: webhook-ingest.handler
+      Policies:
+        - AWSLambdaBasicExecutionRole
+        - AWSXrayWriteOnlyAccess
+        - Statement:
+            - Action:
+                - dynamodb:GetItem
+                - dynamodb:PutItem
+              Effect: Allow
+              Resource:
+                Fn::GetAtt:
+                  - WebhookDeduplicationTable
+                  - Arn
+        - SQSSendMessagePolicy:
+            QueueName:
+              Fn::GetAtt:
+                - WebhookQueue
+                - QueueName
+        - SSMParameterReadPolicy:
+            ParameterName:
+              Fn::Sub:
+                - ${Prefix}/webhook-ingest/*
+                - Prefix:
+                    Fn::If:
+                      - UseParameterPrefix
+                      - Ref: ParameterPrefix
+                      - Ref: AWS::StackName
+      ReservedConcurrentExecutions: 10
+      Timeout: 10
+      VpcConfig:
+        SecurityGroupIds:
+          - Fn::ImportValue:
+              Fn::Sub: ${VpcStackName}-AWSServicesEndpointSecurityGroupId
+        SubnetIds:
+          - Fn::ImportValue:
+              Fn::Sub: ${VpcStackName}-PrivateSubnetIdA
+          - Fn::ImportValue:
+              Fn::Sub: ${VpcStackName}-PrivateSubnetIdB
+          - Fn::ImportValue:
+              Fn::Sub: ${VpcStackName}-PrivateSubnetIdC
+      AutoPublishAliasAllProperties: true
+      LoggingConfig:
+        LogGroup:
+          Ref: WebhookIngestFunctionLogGroup
+    Metadata:
+      BuildMethod: esbuild
+      BuildProperties:
+        Banner:
+          - js=import { createRequire } from 'module'; const require = createRequire(import.meta.url);
+        EntryPoints:
+          - src/webhooks/handler/webhook-ingest.ts
+        External:
+          - "@aws-sdk/*"
+        Format: esm
+        Minify: false
+        OutExtension:
+          - .js=.mjs
+        Sourcemap: true
+        Target: node24
+
+  WebhookIngestFunctionAliasPermission:
+    Type: AWS::Lambda::Permission
+    Properties:
+      Action: lambda:InvokeFunction
+      FunctionName:
+        Ref: WebhookIngestFunction.Alias
+      Principal: apigateway.amazonaws.com
+
   ####################################################################
   #                                                                  #
   # API config                                                       #

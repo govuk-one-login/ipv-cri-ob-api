@@ -23,17 +23,17 @@ paths:
           description: "401 Missing or invalid signature"
         "500":
           description: "500 Internal server error"
-        "501":
-          description: "(TEMP) 501 Webhook ingestion not yet implemented"
       x-amazon-apigateway-request-validator: "Validate Param only"
       x-amazon-apigateway-integration:
-        type: "mock"
-        requestTemplates:
-          application/json: '{"statusCode": 501}'
-        passthroughBehavior: "when_no_templates"
+        httpMethod: POST
+        uri:
+          Fn::Sub: arn:${AWS::Partition}:apigateway:${AWS::Region}:lambda:path/2015-03-31/functions/${WebhookIngestFunction.Arn}:live/invocations
         responses:
           default:
-            statusCode: "501"
+            statusCode: "200"
+        passthroughBehavior: when_no_match
+        contentHandling: CONVERT_TO_TEXT
+        type: aws_proxy
 
   /health:
     get:
