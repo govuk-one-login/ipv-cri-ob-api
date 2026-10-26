@@ -103,10 +103,8 @@ describe('template.yaml resources', () => {
     'PublicAPILogGroup',
     'PrivateAPI',
     'PrivateAPILogGroup',
-    'BasicFunction',
-    'BasicFunctionLogGroup',
-    'BasicFunctionPermission',
-    'BasicFunctionAliasPermission',
+    'BankListUpdaterFunction',
+    'BankListUpdaterFunctionLogGroup',
     'PublicAPIUsagePlan',
     'PrivateAPIUsagePlan',
     'LoggingKmsKey',
@@ -124,19 +122,22 @@ describe('template.yaml resources', () => {
     }
   })
 
-  it('BasicFunction uses arm64 architecture via Globals', () => {
+  it('BankListUpdaterFunction uses arm64 architecture via Globals', () => {
     const globals = template['Globals'] as Record<string, Record<string, unknown>>
     const architectures = globals['Function']?.['Architectures'] as string[]
     expect(architectures).toContain('arm64')
   })
 
-  it('BasicFunction has deployment preference configured', () => {
-    const props = resources['BasicFunction']?.['Properties'] as Record<string, unknown>
-    expect(props).toHaveProperty('DeploymentPreference')
-    expect(props).toHaveProperty('AutoPublishAlias', 'live')
+  it('BankListUpdaterFunction is invoked every minute on a schedule', () => {
+    const props = resources['BankListUpdaterFunction']?.['Properties'] as Record<string, unknown>
+    const events = props['Events'] as Record<string, Record<string, unknown>>
+    expect(events['ScheduledUpdate']).toEqual({
+      Type: 'Schedule',
+      Properties: { Schedule: 'rate(1 minute)' }
+    })
   })
 
-  it('BasicFunction has timeout of 40 seconds', () => {
+  it('BankListUpdaterFunction has timeout of 40 seconds', () => {
     const globals = template['Globals'] as Record<string, Record<string, unknown>>
     expect(globals['Function']?.['Timeout']).toBe(40)
   })
@@ -256,54 +257,151 @@ describe('template.yaml LoggingKmsKey policy', () => {
   })
 })
 
-describe('template.yaml BasicFunction VPC config', () => {
-  it('BasicFunction has VpcConfig with SecurityGroupIds and SubnetIds', () => {
-    const props = resources['BasicFunction']?.['Properties'] as Record<string, unknown>
+describe('template.yaml BankListUpdaterFunction VPC config', () => {
+  it('BankListUpdaterFunction has VpcConfig with SecurityGroupIds and SubnetIds', () => {
+    const props = resources['BankListUpdaterFunction']?.['Properties'] as Record<string, unknown>
     const vpcConfig = props['VpcConfig'] as Record<string, unknown>
     expect(vpcConfig).toHaveProperty('SecurityGroupIds')
     expect(vpcConfig).toHaveProperty('SubnetIds')
   })
 })
 
-describe('template.yaml canary alarms', () => {
-  it('BasicFunctionCanaryErrors has UseCanaryDeploymentAlarms condition', () => {
-    const alarm = resources['BasicFunctionCanaryErrors']!
-    expect(alarm['Condition']).toBe('UseCanaryDeploymentAlarms')
-  })
+describe('template.yaml bank list updater alarms', () => {
+  const updaterProps = resources['BankListUpdaterFunction']?.['Properties'] as Record<
+    string,
+    Record<string, Record<string, unknown>>
+  >
+  const updaterServiceName = updaterProps['Environment']?.['Variables']?.['POWERTOOLS_SERVICE_NAME']
 
-  it('BasicFunctionCanary5xxErrors has UseCanaryDeploymentAlarms condition', () => {
-    const alarm = resources['BasicFunctionCanary5xxErrors']!
-    expect(alarm['Condition']).toBe('UseCanaryDeploymentAlarms')
-  })
+  const profiles = [
+    { profile: 'STUB', prefix: 'Stub', condition: 'StubAlarmsEnabled' },
+    { profile: 'UAT', prefix: 'Uat', condition: 'UatAlarmsEnabled' },
+    { profile: 'LIVE', prefix: 'Live', condition: 'LiveAlarmsEnabled' }
+  ]
 
-  it('BasicFunction deployment preference alarms reference canary alarms', () => {
-    const props = resources['BasicFunction']?.['Properties'] as Record<string, unknown>
-    const deploymentPref = props['DeploymentPreference'] as Record<string, unknown>
-    expect(deploymentPref).toHaveProperty('Alarms')
-  })
+  describe.each(profiles)('$profile', ({ profile, prefix, condition }) => {
+    const expectedDimensions = [
+      { Name: 'service', Value: updaterServiceName },
+      { Name: 'endpoint_profile', Value: profile }
+    ]
 
-  it.each(['BasicFunctionCanaryErrors', 'BasicFunctionCanary5xxErrors'])(
-    '%s has TreatMissingData set to notBreaching',
-    (alarmName) => {
-      const props = resources[alarmName]!['Properties'] as Record<string, unknown>
-      expect(props['TreatMissingData']).toBe('notBreaching')
-      expect(props['ComparisonOperator']).toBe('GreaterThanOrEqualToThreshold')
-    }
-  )
+    describe(`${prefix}BankListNotUpdatedAlarm`, () => {
+      const alarm = resources[`${prefix}BankListNotUpdatedAlarm`]!
+      const props = alarm['Properties'] as Record<string, unknown>
+      const metrics = props['Metrics'] as Record<string, unknown>[]
 
-  it('BasicFunctionCanaryErrors monitors Lambda Errors metric', () => {
-    const props = resources['BasicFunctionCanaryErrors']!['Properties'] as Record<string, unknown>
-    expect(props['Namespace']).toBe('AWS/Lambda')
-    expect(props['MetricName']).toBe('Errors')
-  })
+      it(`has ${condition} condition`, () => {
+        expect(alarm['Condition']).toBe(condition)
+      })
 
-  it('BasicFunctionCanary5xxErrors monitors API Gateway 5XXError metric', () => {
-    const props = resources['BasicFunctionCanary5xxErrors']!['Properties'] as Record<
-      string,
-      unknown
-    >
-    expect(props['Namespace']).toBe('AWS/ApiGateway')
-    expect(props['MetricName']).toBe('5XXError')
+      it(`monitors bank_list_updated for the ${profile} profile`, () => {
+        const updates = metrics.find((m) => m['Id'] === 'updates')!
+        expect(updates['ReturnData']).toBe(false)
+        expect(updates['MetricStat']).toEqual({
+          Metric: {
+            Namespace: 'CriIdentifier',
+            MetricName: 'bank_list_updated',
+            Dimensions: expectedDimensions
+          },
+          Period: 900,
+          Stat: 'Sum'
+        })
+      })
+
+      it('fills missing data as 0 so gaps are evaluated as breaching periods', () => {
+        const updatesOrZero = metrics.find((m) => m['Id'] === 'updatesOrZero')!
+        expect(updatesOrZero['ReturnData']).toBe(true)
+        expect(updatesOrZero['Expression']).toBe('FILL(updates, 0)')
+      })
+
+      it('alarms after 2 hours with no updates', () => {
+        expect(props['EvaluationPeriods']).toBe(8)
+        expect(props['DatapointsToAlarm']).toBe(8)
+        expect(props['Threshold']).toBe(1)
+        expect(props['ComparisonOperator']).toBe('LessThanThreshold')
+      })
+
+      it('has TreatMissingData set to breaching', () => {
+        expect(props['TreatMissingData']).toBe('breaching')
+      })
+
+      it('has AlarmActions and OKActions configured', () => {
+        expect(props['AlarmActions']).toBeDefined()
+        expect(props['OKActions']).toBeDefined()
+      })
+    })
+
+    describe(`${prefix}BankListSizeDropAlarm`, () => {
+      const alarm = resources[`${prefix}BankListSizeDropAlarm`]!
+      const props = alarm['Properties'] as Record<string, unknown>
+      const metrics = props['Metrics'] as Record<string, unknown>[]
+
+      it(`has ${condition} condition`, () => {
+        expect(alarm['Condition']).toBe(condition)
+      })
+
+      it(`monitors bank_list_size for the ${profile} profile`, () => {
+        const size = metrics.find((m) => m['Id'] === 'size')!
+        expect(size['MetricStat']).toEqual(
+          expect.objectContaining({
+            Metric: {
+              Namespace: 'CriIdentifier',
+              MetricName: 'bank_list_size',
+              Dimensions: expectedDimensions
+            }
+          })
+        )
+      })
+
+      it('alarms on a drop of more than 10%', () => {
+        const change = metrics.find((m) => m['Id'] === 'change')!
+        expect(change['ReturnData']).toBe(true)
+        expect(change['Expression']).toBe('100 * DIFF(size) / (size - DIFF(size))')
+        expect(props['Threshold']).toBe(-10)
+        expect(props['ComparisonOperator']).toBe('LessThanThreshold')
+      })
+
+      it('has TreatMissingData set to notBreaching', () => {
+        expect(props['TreatMissingData']).toBe('notBreaching')
+      })
+
+      it('has AlarmActions configured', () => {
+        expect(props['AlarmActions']).toBeDefined()
+      })
+    })
+
+    describe(`${prefix}BankListEmptyAlarm`, () => {
+      const alarm = resources[`${prefix}BankListEmptyAlarm`]!
+      const props = alarm['Properties'] as Record<string, unknown>
+
+      it(`has ${condition} condition`, () => {
+        expect(alarm['Condition']).toBe(condition)
+      })
+
+      it(`monitors bank_list_size for the ${profile} profile`, () => {
+        expect(props['Namespace']).toBe('CriIdentifier')
+        expect(props['MetricName']).toBe('bank_list_size')
+        expect(props['Dimensions']).toEqual(expectedDimensions)
+      })
+
+      it('alarms when the bank list size is 0', () => {
+        expect(props['Statistic']).toBe('Maximum')
+        expect(props['Period']).toBe(60)
+        expect(props['EvaluationPeriods']).toBe(1)
+        expect(props['DatapointsToAlarm']).toBe(1)
+        expect(props['Threshold']).toBe(1)
+        expect(props['ComparisonOperator']).toBe('LessThanThreshold')
+      })
+
+      it('has TreatMissingData set to notBreaching', () => {
+        expect(props['TreatMissingData']).toBe('notBreaching')
+      })
+
+      it('has AlarmActions and OKActions configured', () => {
+        expect(props['AlarmActions']).toBeDefined()
+        expect(props['OKActions']).toBeDefined()
+      })
+    })
   })
 })
 
