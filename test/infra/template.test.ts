@@ -468,6 +468,52 @@ describe('template.yaml APIGW5XXErrors alarm', () => {
   })
 })
 
+const canaryAlarms = [
+  { name: 'IssueCredentialFunctionCanaryErrors', functionRef: 'IssueCredentialFunction' },
+  { name: 'IssueCredentialFunctionCanary5xxErrors', resource: '/credential/issue' },
+  { name: 'ConsentsFunctionCanaryErrors', functionRef: 'ConsentsFunction' },
+  { name: 'ConsentsFunctionCanary5xxErrors', resource: '/consents' },
+  { name: 'BankListRetrieverFunctionCanaryErrors', functionRef: 'BankListRetrieverFunction' },
+  { name: 'BankListRetrieverFunctionCanary5xxErrors', resource: '/banks' }
+]
+
+describe.each(canaryAlarms)('template.yaml canary alarms', ({ name, functionRef, resource }) => {
+  const alarm = resources[name]!
+  const props = alarm['Properties'] as Record<string, unknown>
+  const dimensions = props['Dimensions'] as Record<string, unknown>[]
+
+  it('has UseCanaryDeploymentAlarms condition', () => {
+    expect(alarm['Condition']).toBe('UseCanaryDeploymentAlarms')
+  })
+
+  it('alarms after 2 out of 3 periods with threshold of 1', () => {
+    expect(props['Period']).toBe(60)
+    expect(props['EvaluationPeriods']).toBe(3)
+    expect(props['DatapointsToAlarm']).toBe(2)
+    expect(props['Threshold']).toBe(1)
+    expect(props['ComparisonOperator']).toBe('GreaterThanOrEqualToThreshold')
+  })
+
+  it('has TreatMissingData set to notBreaching', () => {
+    expect(props['TreatMissingData']).toBe('notBreaching')
+  })
+
+  it('has AlarmActions and OKActions configured', () => {
+    expect(props['AlarmActions']).toBeDefined()
+    expect(props['OKActions']).toBeDefined()
+  })
+
+  it('has correct namespace and dimensions', () => {
+    if (functionRef) {
+      expect(props['Namespace']).toBe('AWS/Lambda')
+      expect(dimensions.find((d) => d['Name'] === 'ExecutedVersion')).toBeDefined()
+    } else {
+      expect(props['Namespace']).toBe('AWS/ApiGateway')
+      expect(dimensions.find((d) => d['Name'] === 'Resource')?.['Value']).toBe(resource)
+    }
+  })
+})
+
 describe('template.yaml globals', () => {
   const globals = template['Globals'] as Record<string, Record<string, unknown>>
 
