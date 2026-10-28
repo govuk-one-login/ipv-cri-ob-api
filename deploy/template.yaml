@@ -311,11 +311,17 @@ Resources:
         - LoggingLevel: INFO
           ResourcePath: '/*'
           HttpMethod: '*'
-          # Disable data trace in production to avoid logging customer sensitive information
           DataTraceEnabled: !If [IsProduction, false, true]
           MetricsEnabled: true
           ThrottlingRateLimit: 200
           ThrottlingBurstLimit: 400
+        - LoggingLevel: INFO
+          ResourcePath: /~1webhooks
+          HttpMethod: POST
+          DataTraceEnabled: !If [IsProduction, false, true]
+          MetricsEnabled: true
+          ThrottlingRateLimit: 200 # TODO: LIME-2542 consider lowering these values
+          ThrottlingBurstLimit: 400 # TODO: LIME-2542 consider lowering these values
       AccessLogSetting:
         DestinationArn: !GetAtt PublicAPILogGroup.Arn
         Format: >-
@@ -1108,6 +1114,167 @@ Resources:
       Value: !Sub
         - ${BaseUrl}/api/v2.0/banks
         - BaseUrl: !FindInMap [ ProfileEndpoints, !Ref Environment, LiveEndpointUrl ]
+
+  ####################################################################
+  #                                                                  #
+  # Webhooks                                                         #
+  #                                                                  #
+  ####################################################################
+
+  WebhookDeduplicationTable:
+    Type: AWS::DynamoDB::Table
+    Properties:
+      TableName: !Sub "${AWS::StackName}-webhook-deduplication"
+      BillingMode: PAY_PER_REQUEST
+      AttributeDefinitions:
+        - AttributeName: eventId
+          AttributeType: S
+      KeySchema:
+        - AttributeName: eventId
+          KeyType: HASH
+      SSESpecification:
+        SSEEnabled: true
+      TimeToLiveSpecification:
+        AttributeName: ttl
+        Enabled: true
+      PointInTimeRecoverySpecification:
+        PointInTimeRecoveryEnabled: !If [ IsProduction, true, false ]
+
+  WebhookStatusTable:
+    Type: AWS::DynamoDB::Table
+    Properties:
+      TableName: !Sub "${AWS::StackName}-webhook-status"
+      BillingMode: PAY_PER_REQUEST
+      AttributeDefinitions:
+        - AttributeName: consentId
+          AttributeType: S
+      KeySchema:
+        - AttributeName: consentId
+          KeyType: HASH
+      SSESpecification:
+        SSEEnabled: true
+      TimeToLiveSpecification:
+        AttributeName: ttl
+        Enabled: true
+      PointInTimeRecoverySpecification:
+        PointInTimeRecoveryEnabled: !If [ IsProduction, true, false ]
+
+  WebhookDeadLetterQueue:
+    Type: AWS::SQS::Queue
+    Properties:
+      MessageRetentionPeriod: 604800
+      SqsManagedSseEnabled: true
+
+  WebhookQueue:
+    Type: AWS::SQS::Queue
+    Properties:
+      MessageRetentionPeriod: 3600
+      RedrivePolicy:
+        deadLetterTargetArn:
+          Fn::GetAtt:
+            - WebhookDeadLetterQueue
+            - Arn
+        maxReceiveCount: 5
+      SqsManagedSseEnabled: true
+      VisibilityTimeout: 240
+
+  WebhookIngestFunctionLogGroup:
+    Type: AWS::Logs::LogGroup
+    Properties:
+      LogGroupName:
+        Fn::Sub: /aws/lambda/${AWS::StackName}-webhook-ingest
+      RetentionInDays:
+        Ref: LogGroupRetentionInDays
+
+  WebhookIngestFunction:
+    Type: AWS::Serverless::Function
+    Properties:
+      Architectures:
+        - arm64
+      AutoPublishAlias: live
+      CodeSigningConfigArn:
+        Fn::If:
+          - UseCodeSigning
+          - Ref: CodeSigningConfigArn
+          - Ref: AWS::NoValue
+      CodeUri: ../
+      Environment:
+        Variables:
+          POWERTOOLS_SERVICE_NAME:
+            Fn::Sub: ${CriIdentifier}-webhook-ingest
+          WEBHOOK_DEDUPLICATION_TABLE_NAME:
+            Ref: WebhookDeduplicationTable
+          WEBHOOK_QUEUE_URL:
+            Ref: WebhookQueue
+      FunctionName:
+        Fn::Sub: ${AWS::StackName}-webhook-ingest
+      Handler: webhook-ingest.handler
+      Policies:
+        - AWSLambdaBasicExecutionRole
+        - AWSXrayWriteOnlyAccess
+        - Statement:
+            - Action:
+                - dynamodb:GetItem
+                - dynamodb:PutItem
+              Effect: Allow
+              Resource:
+                Fn::GetAtt:
+                  - WebhookDeduplicationTable
+                  - Arn
+        - SQSSendMessagePolicy:
+            QueueName:
+              Fn::GetAtt:
+                - WebhookQueue
+                - QueueName
+        - SSMParameterReadPolicy:
+            ParameterName:
+              Fn::Sub:
+                - ${Prefix}/webhook-ingest/*
+                - Prefix:
+                    Fn::If:
+                      - UseParameterPrefix
+                      - Ref: ParameterPrefix
+                      - Ref: AWS::StackName
+      ReservedConcurrentExecutions: 10
+      Timeout: 10
+      VpcConfig:
+        SecurityGroupIds:
+          - Fn::ImportValue:
+              Fn::Sub: ${VpcStackName}-AWSServicesEndpointSecurityGroupId
+        SubnetIds:
+          - Fn::ImportValue:
+              Fn::Sub: ${VpcStackName}-PrivateSubnetIdA
+          - Fn::ImportValue:
+              Fn::Sub: ${VpcStackName}-PrivateSubnetIdB
+          - Fn::ImportValue:
+              Fn::Sub: ${VpcStackName}-PrivateSubnetIdC
+      AutoPublishAliasAllProperties: true
+      LoggingConfig:
+        LogGroup:
+          Ref: WebhookIngestFunctionLogGroup
+    Metadata:
+      BuildMethod: esbuild
+      BuildProperties:
+        Banner:
+          - js=import { createRequire } from 'module'; const require = createRequire(import.meta.url);
+        EntryPoints:
+          - src/webhooks/handler/webhook-ingest.ts
+        External:
+          - "@aws-sdk/*"
+        Format: esm
+        Minify: false
+        OutExtension:
+          - .js=.mjs
+        Sourcemap: true
+        Target: node24
+
+  WebhookIngestFunctionAliasPermission:
+    Type: AWS::Lambda::Permission
+    Properties:
+      Action: lambda:InvokeFunction
+      FunctionName:
+        Ref: WebhookIngestFunction.Alias
+      Principal: apigateway.amazonaws.com
 
   ####################################################################
   #                                                                  #
