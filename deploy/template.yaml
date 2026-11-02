@@ -106,10 +106,6 @@ Conditions:
 
 Globals:
   Function:
-    CodeSigningConfigArn: !If
-      - UseCodeSigning
-      - !Ref CodeSigningConfigArn
-      - !Ref AWS::NoValue
     PermissionsBoundary: !If
       - UsePermissionsBoundary
       - !Ref PermissionsBoundary
@@ -499,6 +495,10 @@ Resources:
           CONSENTS_DB_TABLE_NAME: !Ref ConsentsTable
           SESSION_DB_TABLE_NAME: !GetAtt OAuth.Outputs.DbSessionTableName
           TOKEN_ROTATOR_DB_TABLE_NAME: !Ref TokenRotatorTable
+      CodeSigningConfigArn: !If
+        - UseCodeSigning
+        - !Ref CodeSigningConfigArn
+        - !Ref AWS::NoValue
       AutoPublishAlias: live
       AutoPublishAliasAllProperties: true
       DeploymentPreference:
@@ -644,6 +644,10 @@ Resources:
           SESSION_DB_TABLE_NAME: !GetAtt OAuth.Outputs.DbSessionTableName
           PERSON_IDENTITY_DB_TABLE_NAME: !GetAtt OAuth.Outputs.DbPersonIdentityTableName
           IDENTITY_SCORE_DB_TABLE_NAME: "blah" # TODO create the identity score database
+      CodeSigningConfigArn: !If
+        - UseCodeSigning
+        - !Ref CodeSigningConfigArn
+        - !Ref AWS::NoValue
       AutoPublishAlias: live
       AutoPublishAliasAllProperties: true
       DeploymentPreference:
@@ -745,6 +749,11 @@ Resources:
         Variables:
           POWERTOOLS_SERVICE_NAME: !Sub "${CriIdentifier}-basic-function"
           TOKEN_ROTATOR_DB_TABLE_NAME: !Ref TokenRotatorTable
+      CodeSigningConfigArn: !If
+        - UseCodeSigning
+        - !Ref CodeSigningConfigArn
+        - !Ref AWS::NoValue
+
       AutoPublishAlias: live
       AutoPublishAliasAllProperties: true
       Policies:
@@ -857,6 +866,11 @@ Resources:
             - UseParameterPrefix
             - !Sub "/${ParameterPrefix}/ecospend-token-rotator"
             - !Sub "/${AWS::StackName}/ecospend-token-rotator"
+      CodeSigningConfigArn: !If
+        - UseCodeSigning
+        - !Ref CodeSigningConfigArn
+        - !Ref AWS::NoValue
+
       AutoPublishAlias: live
       AutoPublishAliasAllProperties: true
       EventInvokeConfig:
@@ -949,6 +963,10 @@ Resources:
           TOKEN_ROTATOR_DB_TABLE_NAME: !Ref TokenRotatorTable
           BANK_LIST_DB_TABLE_NAME: !Ref BankListTable
           ENDPOINT_PROFILES: !FindInMap [ EnvironmentConfiguration, !Ref Environment, endpointProfiles ]
+      CodeSigningConfigArn: !If
+        - UseCodeSigning
+        - !Ref CodeSigningConfigArn
+        - !Ref AWS::NoValue
       AutoPublishAlias: live
       AutoPublishAliasAllProperties: true
       EventInvokeConfig:
@@ -1017,6 +1035,10 @@ Resources:
           POWERTOOLS_SERVICE_NAME: !Sub "${CriIdentifier}-bank-list-retriever"
           BANK_LIST_DB_TABLE_NAME: !Ref BankListTable
           SESSION_DB_TABLE_NAME: !GetAtt OAuth.Outputs.DbSessionTableName
+      CodeSigningConfigArn: !If
+        - UseCodeSigning
+        - !Ref CodeSigningConfigArn
+        - !Ref AWS::NoValue
       AutoPublishAlias: live
       AutoPublishAliasAllProperties: true
       DeploymentPreference:
