@@ -468,6 +468,95 @@ describe('template.yaml APIGW5XXErrors alarm', () => {
   })
 })
 
+const endpointApiGw5xxAlarms = [
+  {
+    name: 'Consents5XXApiGwWarningErrorAlarm',
+    threshold: 20,
+    resource: '/consents',
+    method: 'POST',
+    apiName: 'PrivateOpenBankingAPI'
+  },
+  {
+    name: 'Consents5XXApiGwErrorCriticalAlarm',
+    threshold: 80,
+    resource: '/consents',
+    method: 'POST',
+    apiName: 'PrivateOpenBankingAPI'
+  }
+]
+
+describe.each(endpointApiGw5xxAlarms)(
+  'template.yaml endpoint api gw 5xx alarms',
+  ({ name, threshold, resource, method }) => {
+    const alarm = resources[name]!
+    const props = alarm['Properties'] as Record<string, unknown>
+    const metrics = props['Metrics'] as Record<string, unknown>[]
+
+    it(`alarms fire when error rate exceeds ${threshold}%`, () => {
+      expect(props['Threshold']).toBe(threshold)
+      expect(props['ComparisonOperator']).toBe('GreaterThanOrEqualToThreshold')
+    })
+
+    it('does not alarm during low traffic', () => {
+      const errorThreshold = metrics.find((m) => m['Id'] === 'errorThreshold')!
+      expect(errorThreshold['ReturnData']).toBe(true)
+      expect(errorThreshold['Expression']).toBe(
+        'IF(requests < 5 || errors < 2, 0, errorPercentage)'
+      )
+    })
+
+    it('has correct dimensions', () => {
+      const errors = metrics.find((m) => m['Id'] === 'errors')!
+      const metricStat = errors['MetricStat'] as Record<string, unknown>
+      const metric = metricStat['Metric'] as Record<string, unknown>
+      const dimensions = metric['Dimensions'] as Record<string, string>[]
+
+      expect(dimensions.find((d) => d['Name'] === 'Resource')?.['Value']).toBe(resource)
+      expect(dimensions.find((d) => d['Name'] === 'Method')?.['Value']).toBe(method)
+    })
+
+    it('has TreatMissingData set to notBreaching', () => {
+      expect(props['TreatMissingData']).toBe('notBreaching')
+    })
+
+    it('has AlarmActions and OKActions configured', () => {
+      expect(props['AlarmActions']).toBeDefined()
+      expect(props['OKActions']).toBeDefined()
+    })
+  }
+)
+
+const lambdaThrottleAlarms = [
+  { name: 'ConsentsLambdaFunctionThrottleAlarm', functionRef: 'ConsentsFunction' }
+]
+
+describe.each(lambdaThrottleAlarms)(
+  'template.yaml lambda throttle alarms',
+  ({ name, functionRef }) => {
+    const alarm = resources[name]!
+    const props = alarm['Properties'] as Record<string, unknown>
+    const dimensions = props['Dimensions'] as Record<string, unknown>[]
+
+    it('references correct function', () => {
+      expect(dimensions.find((d) => d['Name'] === 'FunctionName')?.['Value']).toEqual(functionRef)
+    })
+
+    it('alarms on any throttle', () => {
+      expect(props['Threshold']).toBe(1)
+      expect(props['ComparisonOperator']).toBe('GreaterThanThreshold')
+    })
+
+    it('has TreatMissingData set to notBreaching', () => {
+      expect(props['TreatMissingData']).toBe('notBreaching')
+    })
+
+    it('has AlarmActions and OKActions configured', () => {
+      expect(props['AlarmActions']).toBeDefined()
+      expect(props['OKActions']).toBeDefined()
+    })
+  }
+)
+
 const canaryAlarms = [
   { name: 'IssueCredentialFunctionCanaryErrors', functionRef: 'IssueCredentialFunction' },
   { name: 'IssueCredentialFunctionCanary5xxErrors', resource: '/credential/issue' },
