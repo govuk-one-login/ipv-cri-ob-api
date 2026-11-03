@@ -43,7 +43,7 @@ export default defineConfig({
         patterns: [
           {
             regex: '^\\.\\.?/',
-            message: 'Use path aliases (@src, @lib, @common) instead of relative imports.'
+            message: 'Use path aliases (@src, @lib, @common, @infra) instead of relative imports.'
           }
         ]
       }
