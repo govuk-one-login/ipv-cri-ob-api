@@ -1310,7 +1310,7 @@ Resources:
             Period: 300
             Stat: Sum
 
-  Consents5XXApiGwWarningErrorAlarm:
+  Consents5XXApiGwErrorWarningAlarm:
     Type: AWS::CloudWatch::Alarm
     Condition: AlarmsEnabled
     Properties:

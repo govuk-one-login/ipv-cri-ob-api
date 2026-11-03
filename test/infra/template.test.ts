@@ -470,7 +470,7 @@ describe('template.yaml APIGW5XXErrors alarm', () => {
 
 const endpointApiGw5xxAlarms = [
   {
-    name: 'Consents5XXApiGwWarningErrorAlarm',
+    name: 'Consents5XXApiGwErrorWarningAlarm',
     threshold: 20,
     resource: '/consents',
     method: 'POST',
