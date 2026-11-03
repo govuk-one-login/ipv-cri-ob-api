@@ -106,10 +106,6 @@ Conditions:
 
 Globals:
   Function:
-    CodeSigningConfigArn: !If
-      - UseCodeSigning
-      - !Ref CodeSigningConfigArn
-      - !Ref AWS::NoValue
     PermissionsBoundary: !If
       - UsePermissionsBoundary
       - !Ref PermissionsBoundary
@@ -499,6 +495,10 @@ Resources:
           CONSENTS_DB_TABLE_NAME: !Ref ConsentsTable
           SESSION_DB_TABLE_NAME: !GetAtt OAuth.Outputs.DbSessionTableName
           TOKEN_ROTATOR_DB_TABLE_NAME: !Ref TokenRotatorTable
+      CodeSigningConfigArn: !If
+        - UseCodeSigning
+        - !Ref CodeSigningConfigArn
+        - !Ref AWS::NoValue
       AutoPublishAlias: live
       AutoPublishAliasAllProperties: true
       DeploymentPreference:
@@ -644,6 +644,10 @@ Resources:
           SESSION_DB_TABLE_NAME: !GetAtt OAuth.Outputs.DbSessionTableName
           PERSON_IDENTITY_DB_TABLE_NAME: !GetAtt OAuth.Outputs.DbPersonIdentityTableName
           IDENTITY_SCORE_DB_TABLE_NAME: "blah" # TODO create the identity score database
+      CodeSigningConfigArn: !If
+        - UseCodeSigning
+        - !Ref CodeSigningConfigArn
+        - !Ref AWS::NoValue
       AutoPublishAlias: live
       AutoPublishAliasAllProperties: true
       DeploymentPreference:
@@ -745,6 +749,11 @@ Resources:
         Variables:
           POWERTOOLS_SERVICE_NAME: !Sub "${CriIdentifier}-basic-function"
           TOKEN_ROTATOR_DB_TABLE_NAME: !Ref TokenRotatorTable
+      CodeSigningConfigArn: !If
+        - UseCodeSigning
+        - !Ref CodeSigningConfigArn
+        - !Ref AWS::NoValue
+
       AutoPublishAlias: live
       AutoPublishAliasAllProperties: true
       Policies:
@@ -857,6 +866,11 @@ Resources:
             - UseParameterPrefix
             - !Sub "/${ParameterPrefix}/ecospend-token-rotator"
             - !Sub "/${AWS::StackName}/ecospend-token-rotator"
+      CodeSigningConfigArn: !If
+        - UseCodeSigning
+        - !Ref CodeSigningConfigArn
+        - !Ref AWS::NoValue
+
       AutoPublishAlias: live
       AutoPublishAliasAllProperties: true
       EventInvokeConfig:
@@ -949,6 +963,10 @@ Resources:
           TOKEN_ROTATOR_DB_TABLE_NAME: !Ref TokenRotatorTable
           BANK_LIST_DB_TABLE_NAME: !Ref BankListTable
           ENDPOINT_PROFILES: !FindInMap [ EnvironmentConfiguration, !Ref Environment, endpointProfiles ]
+      CodeSigningConfigArn: !If
+        - UseCodeSigning
+        - !Ref CodeSigningConfigArn
+        - !Ref AWS::NoValue
       AutoPublishAlias: live
       AutoPublishAliasAllProperties: true
       EventInvokeConfig:
@@ -1017,6 +1035,10 @@ Resources:
           POWERTOOLS_SERVICE_NAME: !Sub "${CriIdentifier}-bank-list-retriever"
           BANK_LIST_DB_TABLE_NAME: !Ref BankListTable
           SESSION_DB_TABLE_NAME: !GetAtt OAuth.Outputs.DbSessionTableName
+      CodeSigningConfigArn: !If
+        - UseCodeSigning
+        - !Ref CodeSigningConfigArn
+        - !Ref AWS::NoValue
       AutoPublishAlias: live
       AutoPublishAliasAllProperties: true
       DeploymentPreference:
@@ -1287,6 +1309,153 @@ Resources:
                   Value: !Sub "${AWS::StackName}-PrivateOpenBankingAPI"
             Period: 300
             Stat: Sum
+
+  Consents5XXApiGwErrorWarningAlarm:
+    Type: AWS::CloudWatch::Alarm
+    Condition: AlarmsEnabled
+    Properties:
+      AlarmName: !Sub "${AWS::StackName}-consents-api-gw-5XX-warning-error"
+      AlarmDescription: "Consents endpoint 5XX error rate exceeds 20%."
+      ActionsEnabled: true
+      OKActions:
+        - !ImportValue build-notifications-WarningAlertsTopicArn
+      AlarmActions:
+        - !ImportValue build-notifications-WarningAlertsTopicArn
+      InsufficientDataActions: []
+      EvaluationPeriods: 5
+      DatapointsToAlarm: 2
+      Threshold: 20
+      ComparisonOperator: GreaterThanOrEqualToThreshold
+      TreatMissingData: notBreaching
+      Metrics:
+        - Id: errorThreshold
+          Label: errorThreshold
+          ReturnData: true
+          Expression: IF(requests < 5 || errors < 2, 0, errorPercentage)
+        - Id: requests
+          ReturnData: false
+          MetricStat:
+            Metric:
+              Namespace: AWS/ApiGateway
+              MetricName: Count
+              Dimensions:
+                - Name: Method
+                  Value: POST
+                - Name: ApiName
+                  Value: !Sub "${AWS::StackName}-PrivateOpenBankingAPI"
+                - Name: Stage
+                  Value: !Ref Environment
+                - Name: Resource
+                  Value: /consents
+            Period: 60
+            Stat: Sum
+        - Id: errorPercentage
+          Label: errorPercentage
+          ReturnData: false
+          Expression: (errors / requests) * 100
+        - Id: errors
+          ReturnData: false
+          MetricStat:
+            Metric:
+              Namespace: AWS/ApiGateway
+              MetricName: 5XXError
+              Dimensions:
+                - Name: Method
+                  Value: POST
+                - Name: ApiName
+                  Value: !Sub "${AWS::StackName}-PrivateOpenBankingAPI"
+                - Name: Stage
+                  Value: !Ref Environment
+                - Name: Resource
+                  Value: /consents
+            Period: 60
+            Stat: Sum
+
+  Consents5XXApiGwErrorCriticalAlarm:
+    Type: AWS::CloudWatch::Alarm
+    Condition: AlarmsEnabled
+    Properties:
+      AlarmName: !Sub "${AWS::StackName}-consents-api-gw-5XX-critical-error"
+      AlarmDescription: "Consents endpoint 5XX error rate exceeds 80%."
+      ActionsEnabled: true
+      OKActions:
+        - !ImportValue build-notifications-CriticalAlertsTopicArn
+      AlarmActions:
+        - !ImportValue build-notifications-CriticalAlertsTopicArn
+      InsufficientDataActions: [ ]
+      EvaluationPeriods: 5
+      DatapointsToAlarm: 2
+      Threshold: 80
+      ComparisonOperator: GreaterThanOrEqualToThreshold
+      TreatMissingData: notBreaching
+      Metrics:
+        - Id: errorThreshold
+          Label: errorThreshold
+          ReturnData: true
+          Expression: IF(requests < 5 || errors < 2, 0, errorPercentage)
+        - Id: requests
+          ReturnData: false
+          MetricStat:
+            Metric:
+              Namespace: AWS/ApiGateway
+              MetricName: Count
+              Dimensions:
+                - Name: Method
+                  Value: POST
+                - Name: ApiName
+                  Value: !Sub "${AWS::StackName}-PrivateOpenBankingAPI"
+                - Name: Stage
+                  Value: !Ref Environment
+                - Name: Resource
+                  Value: /consents
+            Period: 60
+            Stat: Sum
+        - Id: errorPercentage
+          Label: errorPercentage
+          ReturnData: false
+          Expression: (errors / requests) * 100
+        - Id: errors
+          ReturnData: false
+          MetricStat:
+            Metric:
+              Namespace: AWS/ApiGateway
+              MetricName: 5XXError
+              Dimensions:
+                - Name: Method
+                  Value: POST
+                - Name: ApiName
+                  Value: !Sub "${AWS::StackName}-PrivateOpenBankingAPI"
+                - Name: Stage
+                  Value: !Ref Environment
+                - Name: Resource
+                  Value: /consents
+            Period: 60
+            Stat: Sum
+
+  ConsentsLambdaFunctionThrottleAlarm:
+    Type: AWS::CloudWatch::Alarm
+    Condition: AlarmsEnabled
+    Properties:
+      AlarmName: !Sub "${AWS::StackName}-consents-lambda-function-throttle-alarm"
+      AlarmDescription: "Consents Lambda is being throttled."
+      ActionsEnabled: true
+      AlarmActions:
+        - !ImportValue build-notifications-WarningAlertsTopicArn
+      OKActions:
+        - !ImportValue build-notifications-WarningAlertsTopicArn
+      InsufficientDataActions: [ ]
+      MetricName: Throttles
+      Dimensions:
+        - Name: FunctionName
+          Value: !Ref ConsentsFunction
+      Namespace: AWS/Lambda
+      Statistic: Sum
+      TreatMissingData: notBreaching
+      Period: 60
+      EvaluationPeriods: 1
+      DatapointsToAlarm: 1
+      Threshold: 1
+      ComparisonOperator: GreaterThanThreshold
 
   ###################################################################
   #                                                                 #
