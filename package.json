@@ -33,19 +33,19 @@
   "devDependencies": {
     "@aws-crypto/sha256-js": "5.2.0",
     "@aws-sdk/credential-providers": "3.1070.0",
-    "@cucumber/cucumber": "12.9.0",
+    "@cucumber/cucumber": "13.3.0",
     "@cucumber/html-formatter": "23.1.0",
     "@smithy/signature-v4": "4.2.4",
     "@types/aws-lambda": "8.10.162",
     "@types/node": "25.9.3",
-    "@vitest/coverage-v8": "4.1.11",
+    "@vitest/coverage-v8": "4.1.12",
     "eslint-plugin-perfectionist": "5.9.1",
     "oxfmt": "0.72.0",
     "oxlint": "1.87.0",
     "oxlint-tsgolint": "7.0.2003",
     "tsx": "4.23.15",
     "typescript": "7.0.2",
-    "vitest": "4.1.11",
+    "vitest": "4.1.12",
     "yaml": "2.9.0"
   },
   "dependencies": {
@@ -67,6 +67,6 @@
     "@middy/http-header-normalizer": "7.6.7",
     "ecdsa-sig-formatter": "1.0.11",
     "esbuild": "0.28.1",
-    "zod": "4.4.3"
+    "zod": "4.6.7"
   }
 }
