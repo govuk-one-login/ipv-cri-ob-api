@@ -139,6 +139,9 @@ Globals:
       # SEE https://github.com/govuk-one-login/observability-infrastructure/tree/main/lambdalayer
       - !FindInMap [ EnvironmentConfiguration, !Ref Environment, dynatraceLayer ]
 Mappings:
+  StaticVariables:
+    Urls:
+      SupportManualURL: "https://team-manual.account.gov.uk/teams/CRI-Lime-team/supporting-cri-lime/"
   EnvironmentConfiguration:
     dev:
       dynatraceSecretArn: arn:aws:secretsmanager:eu-west-2:216552277552:secret:DynatraceNonProductionVariables
@@ -1218,7 +1221,9 @@ Resources:
     Condition: AlarmsEnabled
     Properties:
       AlarmName: !Sub "${AWS::StackName}-${Environment} - Open Banking CRI"
-      AlarmDescription: !Sub Open Banking ${Environment} lambda errors
+      AlarmDescription: !Sub
+        - "Open Banking ${Environment} Lambda errors. ${SupportManualURL}."
+        - SupportManualURL: !FindInMap [ StaticVariables, Urls, SupportManualURL ]
       ActionsEnabled: true
       AlarmActions:
         - !If [IsProduction, !ImportValue build-notifications-PagerDutySNSTopicArn, !ImportValue build-notifications-CriticalAlertsTopicArn]
@@ -1241,7 +1246,9 @@ Resources:
     Condition: AlarmsEnabled
     Properties:
       AlarmName: !Sub "${AWS::StackName}-${Environment}-APIGW-5XX-Errors"
-      AlarmDescription: !Sub Open Banking ${Environment} API Gateway 5XX errors
+      AlarmDescription: !Sub
+        - "Open Banking ${Environment} API Gateway 5XX errors. ${SupportManualURL}."
+        - SupportManualURL: !FindInMap [ StaticVariables, Urls, SupportManualURL ]
       ActionsEnabled: true
       AlarmActions:
         - !If [IsProduction, !ImportValue build-notifications-PagerDutySNSTopicArn, !ImportValue build-notifications-CriticalAlertsTopicArn]
@@ -1286,7 +1293,9 @@ Resources:
     Condition: AlarmsEnabled
     Properties:
       AlarmName: !Sub "${AWS::StackName}-consents-api-gw-5XX-warning-error"
-      AlarmDescription: "Consents endpoint 5XX error rate exceeds 20%."
+      AlarmDescription: !Sub
+        - "Consents endpoint 5XX error rate exceeds 20%. ${SupportManualURL}."
+        - SupportManualURL: !FindInMap [ StaticVariables, Urls, SupportManualURL ]
       ActionsEnabled: true
       OKActions:
         - !ImportValue build-notifications-WarningAlertsTopicArn
@@ -1347,7 +1356,9 @@ Resources:
     Condition: AlarmsEnabled
     Properties:
       AlarmName: !Sub "${AWS::StackName}-consents-api-gw-5XX-critical-error"
-      AlarmDescription: "Consents endpoint 5XX error rate exceeds 80%."
+      AlarmDescription: !Sub
+        - "Consents endpoint 5XX error rate exceeds 80%. ${SupportManualURL}."
+        - SupportManualURL: !FindInMap [ StaticVariables, Urls, SupportManualURL ]
       ActionsEnabled: true
       OKActions:
         - !ImportValue build-notifications-CriticalAlertsTopicArn
@@ -1408,7 +1419,9 @@ Resources:
     Condition: AlarmsEnabled
     Properties:
       AlarmName: !Sub "${AWS::StackName}-consents-lambda-function-throttle-alarm"
-      AlarmDescription: "Consents Lambda is being throttled."
+      AlarmDescription: !Sub
+        - "Consents Lambda is being throttled. ${SupportManualURL}."
+        - SupportManualURL: !FindInMap [ StaticVariables, Urls, SupportManualURL ]
       ActionsEnabled: true
       AlarmActions:
         - !ImportValue build-notifications-WarningAlertsTopicArn
@@ -1444,7 +1457,9 @@ Resources:
       OKActions:
         - !ImportValue build-notifications-WarningAlertsTopicArn
       AlarmName: !Sub "${AWS::StackName}-${Environment}-IssueCredentialFunction-Canary-Errors"
-      AlarmDescription: "Errors returned from the IssueCredential Lambda."
+      AlarmDescription: !Sub
+        - "Errors returned from the IssueCredential Lambda. ${SupportManualURL}."
+        - SupportManualURL: !FindInMap [ StaticVariables, Urls, SupportManualURL ]
       MetricName: Errors
       Dimensions:
         - Name: FunctionName
@@ -1471,7 +1486,9 @@ Resources:
       OKActions:
         - !ImportValue build-notifications-WarningAlertsTopicArn
       AlarmName: !Sub "${AWS::StackName}-${Environment}-IssueCredentialFunction-Canary-5XX"
-      AlarmDescription: "IssueCredential Lambda returning 5xx response."
+      AlarmDescription: !Sub
+        - "IssueCredential Lambda returning 5xx response. ${SupportManualURL}."
+        - SupportManualURL: !FindInMap [ StaticVariables, Urls, SupportManualURL ]
       Namespace: AWS/ApiGateway
       MetricName: 5XXError
       Dimensions:
@@ -1502,7 +1519,9 @@ Resources:
       OKActions:
         - !ImportValue build-notifications-WarningAlertsTopicArn
       AlarmName: !Sub "${AWS::StackName}-${Environment}-bank-list-retriever-function-canary-errors"
-      AlarmDescription: "Errors returned from the BankListRetriever Lambda."
+      AlarmDescription: !Sub
+        - "Errors returned from the BankListRetriever Lambda. ${SupportManualURL}."
+        - SupportManualURL: !FindInMap [ StaticVariables, Urls, SupportManualURL ]
       MetricName: Errors
       Dimensions:
         - Name: FunctionName
@@ -1529,7 +1548,9 @@ Resources:
       OKActions:
         - !ImportValue build-notifications-WarningAlertsTopicArn
       AlarmName: !Sub "${AWS::StackName}-${Environment}-bank-list-retriever-function-canary-5XX"
-      AlarmDescription: "BankListRetriever Lambda returning 5xx response."
+      AlarmDescription: !Sub
+        - "BankListRetriever Lambda returning 5xx response. ${SupportManualURL}."
+        - SupportManualURL: !FindInMap [ StaticVariables, Urls, SupportManualURL ]
       Namespace: AWS/ApiGateway
       MetricName: 5XXError
       Dimensions:
@@ -1560,7 +1581,9 @@ Resources:
       OKActions:
         - !ImportValue build-notifications-WarningAlertsTopicArn
       AlarmName: !Sub "${AWS::StackName}-${Environment}-consents-function-canary-errors"
-      AlarmDescription: "Errors returned from the Consents Lambda."
+      AlarmDescription: !Sub
+        - "Errors returned from the Consents Lambda. ${SupportManualURL}."
+        - SupportManualURL: !FindInMap [ StaticVariables, Urls, SupportManualURL ]
       MetricName: Errors
       Dimensions:
         - Name: FunctionName
@@ -1587,7 +1610,9 @@ Resources:
       OKActions:
         - !ImportValue build-notifications-WarningAlertsTopicArn
       AlarmName: !Sub "${AWS::StackName}-${Environment}-consents-function-canary-5XX"
-      AlarmDescription: "Consents Lambda returning 5xx response."
+      AlarmDescription: !Sub
+        - "Consents Lambda returning 5xx response. ${SupportManualURL}."
+        - SupportManualURL: !FindInMap [ StaticVariables, Urls, SupportManualURL ]
       Namespace: AWS/ApiGateway
       MetricName: 5XXError
       Dimensions:
@@ -1613,7 +1638,9 @@ Resources:
     Condition: StubAlarmsEnabled
     Properties:
       AlarmName: !Sub "${AWS::StackName}-${Environment}-bank-list-size-drop-stub"
-      AlarmDescription: "STUB bank list size dropped by more than 10% between updater runs."
+      AlarmDescription: !Sub
+        - "STUB bank list size dropped by more than 10% between updater runs. ${SupportManualURL}."
+        - SupportManualURL: !FindInMap [ StaticVariables, Urls, SupportManualURL ]
       ActionsEnabled: true
       AlarmActions:
         - !ImportValue build-notifications-WarningAlertsTopicArn
@@ -1646,7 +1673,9 @@ Resources:
     Condition: UatAlarmsEnabled
     Properties:
       AlarmName: !Sub "${AWS::StackName}-${Environment}-bank-list-size-drop-uat"
-      AlarmDescription: "UAT bank list size dropped by more than 10% between updater runs."
+      AlarmDescription: !Sub
+        - "UAT bank list size dropped by more than 10% between updater runs. ${SupportManualURL}."
+        - SupportManualURL: !FindInMap [ StaticVariables, Urls, SupportManualURL ]
       ActionsEnabled: true
       AlarmActions:
         - !ImportValue build-notifications-WarningAlertsTopicArn
@@ -1679,7 +1708,9 @@ Resources:
     Condition: LiveAlarmsEnabled
     Properties:
       AlarmName: !Sub "${AWS::StackName}-${Environment}-bank-list-size-drop-live"
-      AlarmDescription: "LIVE bank list size dropped by more than 10% between updater runs."
+      AlarmDescription: !Sub
+        - "LIVE bank list size dropped by more than 10% between updater runs. ${SupportManualURL}."
+        - SupportManualURL: !FindInMap [ StaticVariables, Urls, SupportManualURL ]
       ActionsEnabled: true
       AlarmActions:
         - !ImportValue build-notifications-WarningAlertsTopicArn
@@ -1712,7 +1743,9 @@ Resources:
     Condition: StubAlarmsEnabled
     Properties:
       AlarmName: !Sub "${AWS::StackName}-${Environment}-bank-list-empty-stub"
-      AlarmDescription: "STUB bank list is empty."
+      AlarmDescription: !Sub
+        - "STUB bank list is empty. ${SupportManualURL}."
+        - SupportManualURL: !FindInMap [ StaticVariables, Urls, SupportManualURL ]
       ActionsEnabled: true
       AlarmActions:
         - !ImportValue build-notifications-CriticalAlertsTopicArn
@@ -1738,7 +1771,9 @@ Resources:
     Condition: UatAlarmsEnabled
     Properties:
       AlarmName: !Sub "${AWS::StackName}-${Environment}-bank-list-empty-uat"
-      AlarmDescription: "UAT bank list is empty."
+      AlarmDescription: !Sub
+        - "UAT bank list is empty. ${SupportManualURL}."
+        - SupportManualURL: !FindInMap [ StaticVariables, Urls, SupportManualURL ]
       ActionsEnabled: true
       AlarmActions:
         - !ImportValue build-notifications-CriticalAlertsTopicArn
@@ -1764,7 +1799,9 @@ Resources:
     Condition: LiveAlarmsEnabled
     Properties:
       AlarmName: !Sub "${AWS::StackName}-${Environment}-bank-list-empty-live"
-      AlarmDescription: "LIVE bank list is empty."
+      AlarmDescription: !Sub
+        - "LIVE bank list is empty. ${SupportManualURL}."
+        - SupportManualURL: !FindInMap [ StaticVariables, Urls, SupportManualURL ]
       ActionsEnabled: true
       AlarmActions:
         - !ImportValue build-notifications-CriticalAlertsTopicArn
@@ -1790,7 +1827,9 @@ Resources:
     Condition: StubAlarmsEnabled
     Properties:
       AlarmName: !Sub "${AWS::StackName}-${Environment}-bank-list-not-updated-stub"
-      AlarmDescription: "STUB bank list has not been updated for 2 hours."
+      AlarmDescription: !Sub
+        - "STUB bank list has not been updated for 2 hours. ${SupportManualURL}."
+        - SupportManualURL: !FindInMap [ StaticVariables, Urls, SupportManualURL ]
       ActionsEnabled: true
       AlarmActions:
         - !ImportValue build-notifications-WarningAlertsTopicArn
@@ -1825,7 +1864,9 @@ Resources:
     Condition: UatAlarmsEnabled
     Properties:
       AlarmName: !Sub "${AWS::StackName}-${Environment}-bank-list-not-updated-uat"
-      AlarmDescription: "UAT bank list has not been updated for 2 hours."
+      AlarmDescription: !Sub
+        - "UAT bank list has not been updated for 2 hours. ${SupportManualURL}."
+        - SupportManualURL: !FindInMap [ StaticVariables, Urls, SupportManualURL ]
       ActionsEnabled: true
       AlarmActions:
         - !ImportValue build-notifications-WarningAlertsTopicArn
@@ -1860,7 +1901,9 @@ Resources:
     Condition: LiveAlarmsEnabled
     Properties:
       AlarmName: !Sub "${AWS::StackName}-${Environment}-bank-list-not-updated-live"
-      AlarmDescription: "LIVE bank list has not been updated for 2 hours."
+      AlarmDescription: !Sub
+        - "LIVE bank list has not been updated for 2 hours. ${SupportManualURL}."
+        - SupportManualURL: !FindInMap [ StaticVariables, Urls, SupportManualURL ]
       ActionsEnabled: true
       AlarmActions:
         - !ImportValue build-notifications-WarningAlertsTopicArn
