@@ -3,6 +3,38 @@ info:
   version: "0.1"
   title: "Open Banking Credential Issuer Public API"
 paths:
+  /webhooks:
+    summary: "Resource for Ecospend webhooks"
+    parameters:
+      - name: x-signature
+        in: header
+        required: true
+        description: "HMAC-SHA256 signature of the webhook body, hex encoded"
+        schema:
+          type: string
+    post:
+      summary: "POST request with a signed webhook payload"
+      responses:
+        "200":
+          description: "200 Webhook accepted"
+        "400":
+          description: "400 Invalid webhook payload or missing x-signature header"
+        "401":
+          description: "401 Missing or invalid signature"
+        "500":
+          description: "500 Internal server error"
+      x-amazon-apigateway-request-validator: "Validate Param only"
+      x-amazon-apigateway-integration:
+        httpMethod: POST
+        uri:
+          Fn::Sub: arn:${AWS::Partition}:apigateway:${AWS::Region}:lambda:path/2015-03-31/functions/${WebhookIngestFunction.Arn}:live/invocations
+        responses:
+          default:
+            statusCode: "200"
+        passthroughBehavior: when_no_match
+        contentHandling: CONVERT_TO_TEXT
+        type: aws_proxy
+
   /health:
     get:
       responses:
