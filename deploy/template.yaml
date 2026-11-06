@@ -50,10 +50,6 @@ Parameters:
     Type: String
     Default: "pipeline"
     Description: Private Api gateway resources are not be reachable in stacks deployed via pipelines, this override enables less restrictive settings for manual/pre-merge-test deployments.
-  LogGroupRetentionInDays:
-    Description: Retention for all log groups
-    Type: Number
-    Default: "365"
   LambdaDeploymentPreference:
     Description: "Specifies the configuration to enable gradual Lambda deployments"
     Type: String
@@ -151,6 +147,7 @@ Mappings:
       vcDomain: review-ob.dev.account.gov.uk
       endpointProfiles: STUB|UAT
       logFullErrors: "true"
+      logGroupRetentionInDays: 30
     build:
       dynatraceSecretArn: arn:aws:secretsmanager:eu-west-2:216552277552:secret:DynatraceNonProductionVariables
       dynatraceLayer: arn:aws:lambda:eu-west-2:216552277552:layer:Dynatrace_OneAgent_1_329_73_20260123-140641_with_collector_nodejs_arm:1
@@ -159,6 +156,7 @@ Mappings:
       vcDomain: review-ob.build.account.gov.uk
       endpointProfiles: STUB|UAT
       logFullErrors: "true"
+      logGroupRetentionInDays: 30
     staging:
       dynatraceSecretArn: arn:aws:secretsmanager:eu-west-2:216552277552:secret:DynatraceNonProductionVariables
       dynatraceLayer: arn:aws:lambda:eu-west-2:216552277552:layer:Dynatrace_OneAgent_1_329_73_20260123-140641_with_collector_nodejs_arm:1
@@ -167,6 +165,7 @@ Mappings:
       vcDomain: review-ob.staging.account.gov.uk
       endpointProfiles: STUB|UAT
       logFullErrors: "true"
+      logGroupRetentionInDays: 30
     integration:
       dynatraceSecretArn: arn:aws:secretsmanager:eu-west-2:216552277552:secret:DynatraceNonProductionVariables
       dynatraceLayer: arn:aws:lambda:eu-west-2:216552277552:layer:Dynatrace_OneAgent_1_329_73_20260123-140641_with_collector_nodejs_arm:1
@@ -175,6 +174,7 @@ Mappings:
       vcDomain: review-ob.integration.account.gov.uk
       endpointProfiles: UAT
       logFullErrors: "false"
+      logGroupRetentionInDays: 30
     production:
       dynatraceSecretArn: arn:aws:secretsmanager:eu-west-2:216552277552:secret:DynatraceProductionVariables
       dynatraceLayer: arn:aws:lambda:eu-west-2:216552277552:layer:Dynatrace_OneAgent_1_329_73_20260123-140641_with_collector_nodejs_arm:1
@@ -183,6 +183,7 @@ Mappings:
       vcDomain: review-ob.account.gov.uk
       endpointProfiles: LIVE
       logFullErrors: "false"
+      logGroupRetentionInDays: 365
 
   # Local Dev
   IPVCoreStubLocalMapping:
@@ -346,7 +347,7 @@ Resources:
     Type: AWS::Logs::LogGroup
     Properties:
       LogGroupName: !Sub /aws/apigateway/${AWS::StackName}-${PublicAPI}-public-AccessLogs
-      RetentionInDays: !Ref LogGroupRetentionInDays
+      RetentionInDays: !FindInMap [ EnvironmentConfiguration, !Ref Environment, logGroupRetentionInDays ]
       KmsKeyId: !GetAtt LoggingKmsKey.Arn
 
   PrivateAPI:
@@ -421,7 +422,7 @@ Resources:
     Type: AWS::Logs::LogGroup
     Properties:
       LogGroupName: !Sub /aws/apigateway/${AWS::StackName}-${PrivateAPI}-private-AccessLogs
-      RetentionInDays: !Ref LogGroupRetentionInDays
+      RetentionInDays: !FindInMap [ EnvironmentConfiguration, !Ref Environment, logGroupRetentionInDays ]
       KmsKeyId: !GetAtt LoggingKmsKey.Arn
 
   ####################################################################
@@ -547,7 +548,7 @@ Resources:
     Type: AWS::Logs::LogGroup
     Properties:
       LogGroupName: !Sub "/aws/lambda/${AWS::StackName}-consents"
-      RetentionInDays: !Ref LogGroupRetentionInDays
+      RetentionInDays: !FindInMap [ EnvironmentConfiguration, !Ref Environment, logGroupRetentionInDays ]
 
   ConsentsFunctionAliasPermission:
     Type: AWS::Lambda::Permission
@@ -686,7 +687,7 @@ Resources:
     Type: AWS::Logs::LogGroup
     Properties:
       LogGroupName: !Sub "/aws/lambda/${AWS::StackName}-issue-credential"
-      RetentionInDays: !Ref LogGroupRetentionInDays
+      RetentionInDays: !FindInMap [ EnvironmentConfiguration, !Ref Environment, logGroupRetentionInDays ]
 
   IssueCredentialFunctionPermission:
     Type: AWS::Lambda::Permission
@@ -770,7 +771,7 @@ Resources:
     Type: AWS::Logs::LogGroup
     Properties:
       LogGroupName: !Sub "/aws/lambda/${AWS::StackName}-basic-function"
-      RetentionInDays: !Ref LogGroupRetentionInDays
+      RetentionInDays: !FindInMap [ EnvironmentConfiguration, !Ref Environment, logGroupRetentionInDays ]
 
   BasicFunctionPermission:
     Type: AWS::Lambda::Permission
@@ -888,7 +889,7 @@ Resources:
     Type: AWS::Logs::LogGroup
     Properties:
       LogGroupName: !Sub "/aws/lambda/${AWS::StackName}-ecospend-token-rotator"
-      RetentionInDays: !Ref LogGroupRetentionInDays
+      RetentionInDays: !FindInMap [ EnvironmentConfiguration, !Ref Environment, logGroupRetentionInDays ]
 
   ####################################################################
   #                                                                  #
@@ -1057,13 +1058,13 @@ Resources:
     Type: AWS::Logs::LogGroup
     Properties:
       LogGroupName: !Sub "/aws/lambda/${AWS::StackName}-bank-list-updater"
-      RetentionInDays: !Ref LogGroupRetentionInDays
+      RetentionInDays: !FindInMap [ EnvironmentConfiguration, !Ref Environment, logGroupRetentionInDays ]
 
   BankListRetrieverFunctionLogGroup:
     Type: AWS::Logs::LogGroup
     Properties:
       LogGroupName: !Sub "/aws/lambda/${AWS::StackName}-bank-list-retriever"
-      RetentionInDays: !Ref LogGroupRetentionInDays
+      RetentionInDays: !FindInMap [ EnvironmentConfiguration, !Ref Environment, logGroupRetentionInDays ]
 
   BankListRetrieverFunctionAliasPermission:
     Type: AWS::Lambda::Permission
