@@ -31,7 +31,6 @@ describe('template.yaml parameters', () => {
     'CodeSigningConfigArn',
     'ParameterPrefix',
     'DeploymentType',
-    'LogGroupRetentionInDays',
     'LambdaDeploymentPreference'
   ]
 
@@ -142,13 +141,31 @@ describe('template.yaml resources', () => {
     expect(globals['Function']?.['Timeout']).toBe(40)
   })
 
-  it('log groups reference LogGroupRetentionInDays', () => {
-    for (const [name, resource] of Object.entries(resources)) {
-      if ((resource['Type'] as string) === 'AWS::Logs::LogGroup') {
-        const props = resource['Properties'] as Record<string, unknown>
-        expect(props, `${name} missing RetentionInDays`).toHaveProperty('RetentionInDays')
-      }
+  it('all AWS::Logs::LogGroup resources should set RetentionInDays from the EnvironmentConfiguration mapping', () => {
+    const logGroups = Object.entries(resources).filter(
+      ([, resource]) => resource['Type'] === 'AWS::Logs::LogGroup'
+    )
+    expect(logGroups.length).toBeGreaterThan(0)
+    for (const [name, resource] of logGroups) {
+      const props = resource['Properties'] as Record<string, unknown>
+      expect(props['RetentionInDays'], `${name} RetentionInDays`).toEqual([
+        'EnvironmentConfiguration',
+        'Environment',
+        'logGroupRetentionInDays'
+      ])
     }
+  })
+
+  it('EnvironmentConfiguration should set logGroupRetentionInDays to 365 in production and 30 in all other environments', () => {
+    const envConfig = mappings['EnvironmentConfiguration'] as Record<
+      string,
+      Record<string, unknown>
+    >
+    expect(envConfig['dev']?.['logGroupRetentionInDays']).toBe(30)
+    expect(envConfig['build']?.['logGroupRetentionInDays']).toBe(30)
+    expect(envConfig['staging']?.['logGroupRetentionInDays']).toBe(30)
+    expect(envConfig['integration']?.['logGroupRetentionInDays']).toBe(30)
+    expect(envConfig['production']?.['logGroupRetentionInDays']).toBe(365)
   })
 })
 
