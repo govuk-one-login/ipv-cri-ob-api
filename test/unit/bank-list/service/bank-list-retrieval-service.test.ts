@@ -1,4 +1,5 @@
 import type { SessionRepository } from '@common/client/session-repository'
+import type * as CriMetricsModule from '@govuk-one-login/cri-metrics'
 import type { SessionItem } from '@govuk-one-login/cri-types'
 import type { BankListRepository } from '@src/bank-list/client/bank-list-repository'
 import type { BankListEntity } from '@src/bank-list/model/database/bank-list-entity'
@@ -8,8 +9,14 @@ import { SessionNotFoundError } from '@common/error/session-not-found-error'
 import { EndpointProfile } from '@common/model/endpoint-profile'
 import { OAuthClientId } from '@common/model/oauth-client-id'
 import { logger } from '@govuk-one-login/cri-logger'
+import { captureMetricWithDimensions } from '@govuk-one-login/cri-metrics'
 import { createBankListRetrievalService } from '@src/bank-list/service/bank-list-retrieval-service'
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest'
+
+vi.mock('@govuk-one-login/cri-metrics', async (importOriginal) => ({
+  ...(await importOriginal<typeof CriMetricsModule>()),
+  captureMetricWithDimensions: vi.fn()
+}))
 
 const buildBankListEntity = (overrides: Partial<BankListEntity> = {}): BankListEntity => ({
   banks: [
@@ -57,6 +64,7 @@ describe('bank-list-retrieval-service', () => {
 
   afterEach(() => {
     vi.restoreAllMocks()
+    vi.clearAllMocks()
   })
 
   it('throws SessionNotFoundError when the session is missing', async () => {
@@ -142,5 +150,43 @@ describe('bank-list-retrieval-service', () => {
     })
 
     await expect(service({ sessionId: 'session-123' })).rejects.toThrow('DynamoDB unavailable')
+  })
+
+  describe('metrics', () => {
+    it('emits a bank_list_size of list length when a list is returned', async () => {
+      vi.mocked(sessionRepository.findBySessionId).mockResolvedValue(buildSession())
+      vi.mocked(bankListRepository.getList).mockResolvedValue(buildBankListEntity())
+
+      const service = createBankListRetrievalService({
+        bankListRepository,
+        sessionRepository
+      })
+
+      await service({ sessionId: 'session-123' })
+
+      expect(captureMetricWithDimensions).toHaveBeenCalledWith(
+        'bank_list_size',
+        { endpoint_profile: EndpointProfile.STUB },
+        1
+      )
+    })
+
+    it('emits a bank_list_size of zero when no list is returned', async () => {
+      vi.mocked(sessionRepository.findBySessionId).mockResolvedValue(buildSession())
+      vi.mocked(bankListRepository.getList).mockResolvedValue(undefined)
+
+      const service = createBankListRetrievalService({
+        bankListRepository,
+        sessionRepository
+      })
+
+      await service({ sessionId: 'session-123' })
+
+      expect(captureMetricWithDimensions).toHaveBeenCalledWith(
+        'bank_list_size',
+        { endpoint_profile: EndpointProfile.STUB },
+        0
+      )
+    })
   })
 })
