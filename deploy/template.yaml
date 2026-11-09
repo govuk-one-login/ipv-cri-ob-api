@@ -253,7 +253,10 @@ Resources:
           - UsePermissionsBoundary
           - !Ref PermissionsBoundary
           - !Ref AWS::NoValue
-        LambdaCodeSigningConfigArn: !Ref CodeSigningConfigArn
+        LambdaCodeSigningConfigArn: !If
+          - UseCodeSigning
+          - !Ref CodeSigningConfigArn
+          - !Ref AWS::NoValue
         LambdaDeploymentPreference: !Ref LambdaDeploymentPreference
 
   ####################################################################
