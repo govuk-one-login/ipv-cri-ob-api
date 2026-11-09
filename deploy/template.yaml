@@ -1442,6 +1442,159 @@ Resources:
       Threshold: 1
       ComparisonOperator: GreaterThanThreshold
 
+  BankListRetriever5XXApiGwErrorWarningAlarm:
+    Type: AWS::CloudWatch::Alarm
+    Condition: AlarmsEnabled
+    Properties:
+      AlarmName: !Sub "${AWS::StackName}-bank-list-retriever-api-gw-5XX-warning-error"
+      AlarmDescription: !Sub
+        - "Bank list retrieval endpoint 5XX error rate exceeds 20%. ${SupportManualURL}."
+        - SupportManualURL: !FindInMap [ StaticVariables, Urls, SupportManualURL ]
+      ActionsEnabled: true
+      OKActions:
+        - !ImportValue build-notifications-WarningAlertsTopicArn
+      AlarmActions:
+        - !ImportValue build-notifications-WarningAlertsTopicArn
+      InsufficientDataActions: [ ]
+      EvaluationPeriods: 5
+      DatapointsToAlarm: 2
+      Threshold: 20
+      ComparisonOperator: GreaterThanOrEqualToThreshold
+      TreatMissingData: notBreaching
+      Metrics:
+        - Id: errorThreshold
+          Label: errorThreshold
+          ReturnData: true
+          Expression: IF(requests < 5 || errors < 2, 0, errorPercentage)
+        - Id: requests
+          ReturnData: false
+          MetricStat:
+            Metric:
+              Namespace: AWS/ApiGateway
+              MetricName: Count
+              Dimensions:
+                - Name: Method
+                  Value: GET
+                - Name: ApiName
+                  Value: !Sub "${AWS::StackName}-PrivateOpenBankingAPI"
+                - Name: Stage
+                  Value: !Ref Environment
+                - Name: Resource
+                  Value: /banks
+            Period: 60
+            Stat: Sum
+        - Id: errorPercentage
+          Label: errorPercentage
+          ReturnData: false
+          Expression: (errors / requests) * 100
+        - Id: errors
+          ReturnData: false
+          MetricStat:
+            Metric:
+              Namespace: AWS/ApiGateway
+              MetricName: 5XXError
+              Dimensions:
+                - Name: Method
+                  Value: GET
+                - Name: ApiName
+                  Value: !Sub "${AWS::StackName}-PrivateOpenBankingAPI"
+                - Name: Stage
+                  Value: !Ref Environment
+                - Name: Resource
+                  Value: /banks
+            Period: 60
+            Stat: Sum
+
+  BankListRetriever5XXApiGwErrorCriticalAlarm:
+    Type: AWS::CloudWatch::Alarm
+    Condition: AlarmsEnabled
+    Properties:
+      AlarmName: !Sub "${AWS::StackName}-bank-list-retriever-api-gw-5XX-critical-error"
+      AlarmDescription: !Sub
+        - "Bank list retrieval endpoint 5XX error rate exceeds 80%. ${SupportManualURL}."
+        - SupportManualURL: !FindInMap [ StaticVariables, Urls, SupportManualURL ]
+      ActionsEnabled: true
+      OKActions:
+        - !ImportValue build-notifications-CriticalAlertsTopicArn
+      AlarmActions:
+        - !ImportValue build-notifications-CriticalAlertsTopicArn
+      InsufficientDataActions: [ ]
+      EvaluationPeriods: 5
+      DatapointsToAlarm: 2
+      Threshold: 80
+      ComparisonOperator: GreaterThanOrEqualToThreshold
+      TreatMissingData: notBreaching
+      Metrics:
+        - Id: errorThreshold
+          Label: errorThreshold
+          ReturnData: true
+          Expression: IF(requests < 5 || errors < 2, 0, errorPercentage)
+        - Id: requests
+          ReturnData: false
+          MetricStat:
+            Metric:
+              Namespace: AWS/ApiGateway
+              MetricName: Count
+              Dimensions:
+                - Name: Method
+                  Value: GET
+                - Name: ApiName
+                  Value: !Sub "${AWS::StackName}-PrivateOpenBankingAPI"
+                - Name: Stage
+                  Value: !Ref Environment
+                - Name: Resource
+                  Value: /banks
+            Period: 60
+            Stat: Sum
+        - Id: errorPercentage
+          Label: errorPercentage
+          ReturnData: false
+          Expression: (errors / requests) * 100
+        - Id: errors
+          ReturnData: false
+          MetricStat:
+            Metric:
+              Namespace: AWS/ApiGateway
+              MetricName: 5XXError
+              Dimensions:
+                - Name: Method
+                  Value: GET
+                - Name: ApiName
+                  Value: !Sub "${AWS::StackName}-PrivateOpenBankingAPI"
+                - Name: Stage
+                  Value: !Ref Environment
+                - Name: Resource
+                  Value: /banks
+            Period: 60
+            Stat: Sum
+
+  BankListRetrieverLambdaFunctionThrottleAlarm:
+    Type: AWS::CloudWatch::Alarm
+    Condition: AlarmsEnabled
+    Properties:
+      AlarmName: !Sub "${AWS::StackName}-bank-list-retriever-lambda-function-throttle-alarm"
+      AlarmDescription: !Sub
+        - "Bank list retrieval lambda is being throttled. ${SupportManualURL}."
+        - SupportManualURL: !FindInMap [ StaticVariables, Urls, SupportManualURL ]
+      ActionsEnabled: true
+      AlarmActions:
+        - !ImportValue build-notifications-WarningAlertsTopicArn
+      OKActions:
+        - !ImportValue build-notifications-WarningAlertsTopicArn
+      InsufficientDataActions: [ ]
+      MetricName: Throttles
+      Dimensions:
+        - Name: FunctionName
+          Value: !Ref BankListRetrieverFunction
+      Namespace: AWS/Lambda
+      Statistic: Sum
+      TreatMissingData: notBreaching
+      Period: 60
+      EvaluationPeriods: 1
+      DatapointsToAlarm: 1
+      Threshold: 1
+      ComparisonOperator: GreaterThanThreshold
+
   ###################################################################
   #                                                                 #
   # Canary Alarms                                                   #
@@ -1752,20 +1905,42 @@ Resources:
         - !ImportValue build-notifications-CriticalAlertsTopicArn
       OKActions:
         - !ImportValue build-notifications-CriticalAlertsTopicArn
-      Namespace: !Ref CriIdentifier
-      MetricName: bank_list_size
-      Dimensions:
-        - Name: service
-          Value: !Sub "${CriIdentifier}-bank-list-updater"
-        - Name: endpoint_profile
-          Value: STUB
-      Statistic: Maximum
-      Period: 60
       EvaluationPeriods: 1
       DatapointsToAlarm: 1
       Threshold: 1
       ComparisonOperator: LessThanThreshold
       TreatMissingData: notBreaching
+      Metrics:
+        - Id: emptiest
+          Label: Smallest bank list size stored or served
+          ReturnData: true
+          Expression: MIN([stored, served])
+        - Id: stored
+          ReturnData: false
+          MetricStat:
+            Metric:
+              Namespace: !Ref CriIdentifier
+              MetricName: bank_list_size
+              Dimensions:
+                - Name: service
+                  Value: !Sub "${CriIdentifier}-bank-list-updater"
+                - Name: endpoint_profile
+                  Value: STUB
+            Period: 60
+            Stat: Maximum
+        - Id: served
+          ReturnData: false
+          MetricStat:
+            Metric:
+              Namespace: !Ref CriIdentifier
+              MetricName: bank_list_size
+              Dimensions:
+                - Name: service
+                  Value: !Sub "${CriIdentifier}-bank-list-retriever"
+                - Name: endpoint_profile
+                  Value: STUB
+            Period: 60
+            Stat: Maximum
 
   UatBankListEmptyAlarm:
     Type: AWS::CloudWatch::Alarm
@@ -1780,20 +1955,42 @@ Resources:
         - !ImportValue build-notifications-CriticalAlertsTopicArn
       OKActions:
         - !ImportValue build-notifications-CriticalAlertsTopicArn
-      Namespace: !Ref CriIdentifier
-      MetricName: bank_list_size
-      Dimensions:
-        - Name: service
-          Value: !Sub "${CriIdentifier}-bank-list-updater"
-        - Name: endpoint_profile
-          Value: UAT
-      Statistic: Maximum
-      Period: 60
       EvaluationPeriods: 1
       DatapointsToAlarm: 1
       Threshold: 1
       ComparisonOperator: LessThanThreshold
       TreatMissingData: notBreaching
+      Metrics:
+        - Id: emptiest
+          Label: Smallest bank list size stored or served
+          ReturnData: true
+          Expression: MIN([stored, served])
+        - Id: stored
+          ReturnData: false
+          MetricStat:
+            Metric:
+              Namespace: !Ref CriIdentifier
+              MetricName: bank_list_size
+              Dimensions:
+                - Name: service
+                  Value: !Sub "${CriIdentifier}-bank-list-updater"
+                - Name: endpoint_profile
+                  Value: UAT
+            Period: 60
+            Stat: Maximum
+        - Id: served
+          ReturnData: false
+          MetricStat:
+            Metric:
+              Namespace: !Ref CriIdentifier
+              MetricName: bank_list_size
+              Dimensions:
+                - Name: service
+                  Value: !Sub "${CriIdentifier}-bank-list-retriever"
+                - Name: endpoint_profile
+                  Value: UAT
+            Period: 60
+            Stat: Maximum
 
   LiveBankListEmptyAlarm:
     Type: AWS::CloudWatch::Alarm
@@ -1808,20 +2005,42 @@ Resources:
         - !ImportValue build-notifications-CriticalAlertsTopicArn
       OKActions:
         - !ImportValue build-notifications-CriticalAlertsTopicArn
-      Namespace: !Ref CriIdentifier
-      MetricName: bank_list_size
-      Dimensions:
-        - Name: service
-          Value: !Sub "${CriIdentifier}-bank-list-updater"
-        - Name: endpoint_profile
-          Value: LIVE
-      Statistic: Maximum
-      Period: 60
       EvaluationPeriods: 1
       DatapointsToAlarm: 1
       Threshold: 1
       ComparisonOperator: LessThanThreshold
       TreatMissingData: notBreaching
+      Metrics:
+        - Id: emptiest
+          Label: Smallest bank list size stored or served
+          ReturnData: true
+          Expression: MIN([stored, served])
+        - Id: stored
+          ReturnData: false
+          MetricStat:
+            Metric:
+              Namespace: !Ref CriIdentifier
+              MetricName: bank_list_size
+              Dimensions:
+                - Name: service
+                  Value: !Sub "${CriIdentifier}-bank-list-updater"
+                - Name: endpoint_profile
+                  Value: LIVE
+            Period: 60
+            Stat: Maximum
+        - Id: served
+          ReturnData: false
+          MetricStat:
+            Metric:
+              Namespace: !Ref CriIdentifier
+              MetricName: bank_list_size
+              Dimensions:
+                - Name: service
+                  Value: !Sub "${CriIdentifier}-bank-list-retriever"
+                - Name: endpoint_profile
+                  Value: LIVE
+            Period: 60
+            Stat: Maximum
 
   StubBankListNotUpdatedAlarm:
     Type: AWS::CloudWatch::Alarm

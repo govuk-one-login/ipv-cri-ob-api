@@ -283,12 +283,18 @@ describe('template.yaml BankListUpdaterFunction VPC config', () => {
   })
 })
 
-describe('template.yaml bank list updater alarms', () => {
+describe('template.yaml bank list alarms', () => {
   const updaterProps = resources['BankListUpdaterFunction']?.['Properties'] as Record<
     string,
     Record<string, Record<string, unknown>>
   >
   const updaterServiceName = updaterProps['Environment']?.['Variables']?.['POWERTOOLS_SERVICE_NAME']
+  const retrieverProps = resources['BankListRetrieverFunction']?.['Properties'] as Record<
+    string,
+    Record<string, Record<string, unknown>>
+  >
+  const retrieverServiceName =
+    retrieverProps['Environment']?.['Variables']?.['POWERTOOLS_SERVICE_NAME']
 
   const profiles = [
     { profile: 'STUB', prefix: 'Stub', condition: 'StubAlarmsEnabled' },
@@ -390,20 +396,47 @@ describe('template.yaml bank list updater alarms', () => {
     describe(`${prefix}BankListEmptyAlarm`, () => {
       const alarm = resources[`${prefix}BankListEmptyAlarm`]!
       const props = alarm['Properties'] as Record<string, unknown>
+      const metrics = props['Metrics'] as Record<string, unknown>[]
 
       it(`has ${condition} condition`, () => {
         expect(alarm['Condition']).toBe(condition)
       })
 
-      it(`monitors bank_list_size for the ${profile} profile`, () => {
-        expect(props['Namespace']).toBe('CriIdentifier')
-        expect(props['MetricName']).toBe('bank_list_size')
-        expect(props['Dimensions']).toEqual(expectedDimensions)
+      it(`monitors bank_list_size stored by the updater for the ${profile} profile`, () => {
+        const stored = metrics.find((m) => m['Id'] === 'stored')!
+        expect(stored['ReturnData']).toBe(false)
+        expect(stored['MetricStat']).toEqual({
+          Metric: {
+            Namespace: 'CriIdentifier',
+            MetricName: 'bank_list_size',
+            Dimensions: expectedDimensions
+          },
+          Period: 60,
+          Stat: 'Maximum'
+        })
       })
 
-      it('alarms when the bank list size is 0', () => {
-        expect(props['Statistic']).toBe('Maximum')
-        expect(props['Period']).toBe(60)
+      it(`monitors bank_list_size served by the retriever for the ${profile} profile`, () => {
+        const served = metrics.find((m) => m['Id'] === 'served')!
+        expect(served['ReturnData']).toBe(false)
+        expect(served['MetricStat']).toEqual({
+          Metric: {
+            Namespace: 'CriIdentifier',
+            MetricName: 'bank_list_size',
+            Dimensions: [
+              { Name: 'service', Value: retrieverServiceName },
+              { Name: 'endpoint_profile', Value: profile }
+            ]
+          },
+          Period: 60,
+          Stat: 'Maximum'
+        })
+      })
+
+      it('alarms when either the stored or served bank list size is 0', () => {
+        const emptiest = metrics.find((m) => m['Id'] === 'emptiest')!
+        expect(emptiest['ReturnData']).toBe(true)
+        expect(emptiest['Expression']).toBe('MIN([stored, served])')
         expect(props['EvaluationPeriods']).toBe(1)
         expect(props['DatapointsToAlarm']).toBe(1)
         expect(props['Threshold']).toBe(1)
@@ -499,6 +532,20 @@ const endpointApiGw5xxAlarms = [
     resource: '/consents',
     method: 'POST',
     apiName: 'PrivateOpenBankingAPI'
+  },
+  {
+    name: 'BankListRetriever5XXApiGwErrorWarningAlarm',
+    threshold: 20,
+    resource: '/banks',
+    method: 'GET',
+    apiName: 'PrivateOpenBankingAPI'
+  },
+  {
+    name: 'BankListRetriever5XXApiGwErrorCriticalAlarm',
+    threshold: 80,
+    resource: '/banks',
+    method: 'GET',
+    apiName: 'PrivateOpenBankingAPI'
   }
 ]
 
@@ -544,7 +591,11 @@ describe.each(endpointApiGw5xxAlarms)(
 )
 
 const lambdaThrottleAlarms = [
-  { name: 'ConsentsLambdaFunctionThrottleAlarm', functionRef: 'ConsentsFunction' }
+  { name: 'ConsentsLambdaFunctionThrottleAlarm', functionRef: 'ConsentsFunction' },
+  {
+    name: 'BankListRetrieverLambdaFunctionThrottleAlarm',
+    functionRef: 'BankListRetrieverFunction'
+  }
 ]
 
 describe.each(lambdaThrottleAlarms)(
