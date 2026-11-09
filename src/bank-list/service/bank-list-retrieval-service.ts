@@ -4,6 +4,7 @@ import type { BankListResponse } from '@src/bank-list/model/bank-list-response'
 
 import { requireSessionContext } from '@common/service/session-context'
 import { logger } from '@govuk-one-login/cri-logger'
+import { emitBankListSize } from '@src/bank-list/model/metrics/bank-list-metrics'
 
 export type BankListRetrievalService = (request: { sessionId: string }) => Promise<BankListResponse>
 
@@ -26,10 +27,12 @@ export const createBankListRetrievalService = (
 
     if (!bankList) {
       logger.warn('No bank list available')
+      emitBankListSize({ profile, size: 0 })
     } else {
       logger.info('Returning bank list', {
         count: bankList.banks.length
       })
+      emitBankListSize({ profile, size: bankList.banks.length })
     }
     return {
       bankList
