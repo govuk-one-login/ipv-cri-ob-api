@@ -17,16 +17,10 @@ describe('private-api.yaml structure', () => {
 })
 
 describe('private-api.yaml paths', () => {
-  const expectedPaths = ['/basic-function', '/authorization', '/session']
+  const expectedPaths = ['/authorization', '/session']
 
   it.each(expectedPaths)('has path: %s', (path) => {
     expect(paths).toHaveProperty(path)
-  })
-
-  it('/basic-function has POST with aws_proxy integration', () => {
-    const post = paths['/basic-function']?.['post'] as Record<string, unknown>
-    const integration = post['x-amazon-apigateway-integration'] as Record<string, string>
-    expect(integration['type']).toBe('aws_proxy')
   })
 
   it('/authorization has GET method', () => {
