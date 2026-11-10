@@ -2072,6 +2072,69 @@ Resources:
             Period: 900
             Stat: Sum
 
+  EcospendTokenRotatorErrorAlarm:
+    Type: AWS::CloudWatch::Alarm
+    Condition: AlarmsEnabled
+    Properties:
+      AlarmName: !Sub "${AWS::StackName}-${Environment}-ecospend-token-rotator-error"
+      AlarmDescription: !Sub
+        - "Ecospend token rotator has failed 3 consecutive times in ${Environment}. If unresolved the Ecospend access token will expire. ${SupportManualURL}."
+        - SupportManualURL: !FindInMap [ StaticVariables, Urls, SupportManualURL ]
+      ActionsEnabled: true
+      AlarmActions:
+        - !ImportValue build-notifications-WarningAlertsTopicArn
+      OKActions:
+        - !ImportValue build-notifications-WarningAlertsTopicArn
+      InsufficientDataActions: [ ]
+      Namespace: !Ref CriIdentifier
+      MetricName: lambda_result
+      Dimensions:
+        - Name: service
+          Value: !Sub "${CriIdentifier}-ecospend-token-rotator"
+        - Name: lambda
+          Value: !Sub "${AWS::StackName}-ecospend-token-rotator"
+        - Name: result
+          Value: error
+      Statistic: Sum
+      Period: 60
+      EvaluationPeriods: 3
+      DatapointsToAlarm: 3
+      Threshold: 1
+      ComparisonOperator: GreaterThanOrEqualToThreshold
+      TreatMissingData: notBreaching
+
+  EcospendTokenRotatorNotRunningAlarm:
+    Type: AWS::CloudWatch::Alarm
+    Condition: AlarmsEnabled
+    Properties:
+      AlarmName: !Sub "${AWS::StackName}-${Environment}-ecospend-token-rotator-not-running"
+      AlarmDescription: !Sub
+        - "Ecospend token rotator has not run successfully for 3 minutes in ${Environment}. If unresolved the Ecospend access token will expire. ${SupportManualURL}."
+        - SupportManualURL: !FindInMap [ StaticVariables, Urls, SupportManualURL ]
+      ActionsEnabled: true
+      AlarmActions:
+        - !ImportValue build-notifications-WarningAlertsTopicArn
+      OKActions:
+        - !ImportValue build-notifications-WarningAlertsTopicArn
+      InsufficientDataActions: [ ]
+      Namespace: !Ref CriIdentifier
+      MetricName: lambda_result
+      Dimensions:
+        - Name: service
+          Value: !Sub "${CriIdentifier}-ecospend-token-rotator"
+        - Name: lambda
+          Value: !Sub "${AWS::StackName}-ecospend-token-rotator"
+        - Name: result
+          Value: success
+      Statistic: Sum
+      Period: 60
+      EvaluationPeriods: 3
+      DatapointsToAlarm: 3
+      Threshold: 1
+      ComparisonOperator: LessThanThreshold
+      TreatMissingData: breaching
+
+
   ####################################################################
   #                                                                  #
   # Local Dev Core Stub OAuth Client Parameters                      #

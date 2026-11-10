@@ -625,6 +625,88 @@ describe.each(lambdaThrottleAlarms)(
   }
 )
 
+describe('template.yaml EcospendTokenRotatorErrorAlarm', () => {
+  const props = resources['EcospendTokenRotatorErrorAlarm']?.['Properties'] as Record<
+    string,
+    unknown
+  >
+  const dimensions = props['Dimensions'] as Record<string, string>[]
+
+  it('has AlarmsEnabled condition', () => {
+    expect(resources['EcospendTokenRotatorErrorAlarm']?.['Condition']).toBe('AlarmsEnabled')
+  })
+
+  it('monitors lambda_result for error result', () => {
+    expect(props['MetricName']).toBe('lambda_result')
+    expect(dimensions.find((d) => d['Name'] === 'service')?.['Value']).toBe(
+      '${CriIdentifier}-ecospend-token-rotator'
+    )
+    expect(dimensions.find((d) => d['Name'] === 'lambda')?.['Value']).toBe(
+      '${AWS::StackName}-ecospend-token-rotator'
+    )
+    expect(dimensions.find((d) => d['Name'] === 'result')?.['Value']).toBe('error')
+  })
+
+  it('alarms after 3 consecutive errors', () => {
+    expect(props['Statistic']).toBe('Sum')
+    expect(props['Period']).toBe(60)
+    expect(props['EvaluationPeriods']).toBe(3)
+    expect(props['DatapointsToAlarm']).toBe(3)
+    expect(props['Threshold']).toBe(1)
+    expect(props['ComparisonOperator']).toBe('GreaterThanOrEqualToThreshold')
+  })
+
+  it('has TreatMissingData set to notBreaching', () => {
+    expect(props['TreatMissingData']).toBe('notBreaching')
+  })
+
+  it('has AlarmActions and OKActions configured', () => {
+    expect(props['AlarmActions']).toBeDefined()
+    expect(props['OKActions']).toBeDefined()
+  })
+})
+
+describe('template.yaml EcospendTokenRotatorNotRunningAlarm alarm', () => {
+  const props = resources['EcospendTokenRotatorNotRunningAlarm']?.['Properties'] as Record<
+    string,
+    unknown
+  >
+  const dimensions = props['Dimensions'] as Record<string, string>[]
+
+  it('has AlarmsEnabled condition', () => {
+    expect(resources['EcospendTokenRotatorNotRunningAlarm']?.['Condition']).toBe('AlarmsEnabled')
+  })
+
+  it('monitors lambda_result for success result', () => {
+    expect(props['MetricName']).toBe('lambda_result')
+    expect(dimensions.find((d) => d['Name'] === 'service')?.['Value']).toBe(
+      '${CriIdentifier}-ecospend-token-rotator'
+    )
+    expect(dimensions.find((d) => d['Name'] === 'lambda')?.['Value']).toBe(
+      '${AWS::StackName}-ecospend-token-rotator'
+    )
+    expect(dimensions.find((d) => d['Name'] === 'result')?.['Value']).toBe('success')
+  })
+
+  it('alarms when not running for 3 consecutive minutes', () => {
+    expect(props['Statistic']).toBe('Sum')
+    expect(props['Period']).toBe(60)
+    expect(props['EvaluationPeriods']).toBe(3)
+    expect(props['DatapointsToAlarm']).toBe(3)
+    expect(props['Threshold']).toBe(1)
+    expect(props['ComparisonOperator']).toBe('LessThanThreshold')
+  })
+
+  it('has TreatMissingData set to breaching', () => {
+    expect(props['TreatMissingData']).toBe('breaching')
+  })
+
+  it('has AlarmActions and OKActions configured', () => {
+    expect(props['AlarmActions']).toBeDefined()
+    expect(props['OKActions']).toBeDefined()
+  })
+})
+
 const canaryAlarms = [
   { name: 'IssueCredentialFunctionCanaryErrors', functionRef: 'IssueCredentialFunction' },
   { name: 'IssueCredentialFunctionCanary5xxErrors', resource: '/credential/issue' },
