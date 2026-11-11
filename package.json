@@ -36,7 +36,7 @@
     "@cucumber/cucumber": "13.3.0",
     "@cucumber/html-formatter": "23.1.0",
     "@smithy/signature-v4": "4.2.4",
-    "@types/aws-lambda": "8.10.162",
+    "@types/aws-lambda": "8.10.164",
     "@types/node": "24.19.2",
     "@vitest/coverage-v8": "4.1.12",
     "eslint-plugin-perfectionist": "5.9.1",
@@ -46,7 +46,7 @@
     "tsx": "4.23.15",
     "typescript": "7.0.2",
     "vitest": "4.1.12",
-    "yaml": "2.9.0"
+    "yaml": "2.9.1"
   },
   "dependencies": {
     "@aws-lambda-powertools/logger": "2.31.0",
