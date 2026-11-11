@@ -33,7 +33,7 @@ jobs:
     runs-on: ubuntu-latest
     steps:
       - name: Test image build and push
-        uses: govuk-one-login/devplatform-upload-action-ecr@d839fc3ead8c9d9f18f7a8cceb7ab4a3eab18a58 # v1.7.0
+        uses: govuk-one-login/devplatform-upload-action-ecr@256c057b61bb6795fccf00a439a895c678525863 # v1.7.1
         with:
           artifact-bucket-name: ''
           role-to-assume-arn: ${{ secrets.role_arn }}
@@ -44,7 +44,7 @@ jobs:
           container-sign-kms-key-arn: ${{ secrets.container_sign_kms_key }}
 
       - name: Traffic test image build and push
-        uses: govuk-one-login/devplatform-upload-action-ecr@d839fc3ead8c9d9f18f7a8cceb7ab4a3eab18a58 # v1.7.0
+        uses: govuk-one-login/devplatform-upload-action-ecr@256c057b61bb6795fccf00a439a895c678525863 # v1.7.1
         with:
           artifact-bucket-name: ''
           role-to-assume-arn: ${{ secrets.role_arn }}
@@ -64,7 +64,7 @@ jobs:
         uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
 
       - name: Setup Node
-        uses: actions/setup-node@820762786026740c76f36085b0efc47a31fe5020 # v7.0.0
+        uses: actions/setup-node@949feb2413d6458794dcd2491c4babbbce0c15c1 # v7.1.0
         with:
           node-version-file: '.nvmrc'
 
@@ -75,7 +75,7 @@ jobs:
           aws-role-arn: ${{ secrets.role_arn }}
 
       - name: SAM package and upload to S3
-        uses: govuk-one-login/devplatform-upload-action/sam@9320b8e71484f79c1b48139a86d214473d0f2709 # v4.3.0
+        uses: govuk-one-login/devplatform-upload-action/sam@6677f824e2e0899e207870cfc8224858d1dd6fac # v4.4.1
         with:
           aws-role-arn: ${{ secrets.role_arn}}
           artifact-bucket-name: ${{ secrets.artifact_bucket }}
