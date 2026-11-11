@@ -6,42 +6,54 @@ updates:
       interval: weekly
       day: monday
       time: '03:00'
+    cooldown:
+      default-days: 3
     pull-request-branch-name:
       separator: '-'
     target-branch: main
     labels:
       - dependabot
-    open-pull-requests-limit: 20
+    open-pull-requests-limit: 10
     ignore:
-      - dependency-name: 'node'
-        versions: ['24.x']
+      - dependency-name: '@types/node'
+        update-types: ['version-update:semver-major']
     groups:
       aws-sdk:
         patterns:
           - '@aws-sdk/*'
-      middy:
-        patterns:
-          - '@middy/*'
+          - '@aws-crypto/*'
+          - '@smithy/*'
       aws-lambda-powertools:
         patterns:
           - '@aws-lambda-powertools/*'
+      middy:
+        patterns:
+          - '@middy/*'
+      govuk-one-login:
+        patterns:
+          - '@govuk-one-login/*'
+      cucumber:
+        patterns:
+          - '@cucumber/*'
       vitest:
         patterns:
-          - '@vitest/*'
           - 'vitest'
-      eslint:
+          - '@vitest/*'
+      lint-format:
         patterns:
-          - '@eslint/js'
-          - 'eslint'
-          - 'eslint-plugin-*'
-      prettier:
+          - 'oxfmt'
+          - 'oxlint'
+          - 'oxlint-tsgolint'
+          - 'eslint-plugin-perfectionist'
+      esbuild:
         patterns:
-          - 'prettier'
-          - 'eslint-config-prettier'
-      typescript:
-        patterns:
-          - 'typescript'
-          - 'typescript-eslint'
+          - 'esbuild'
+      dev-dependencies:
+        dependency-type: development
+        update-types: [minor, patch]
+      production-dependencies:
+        dependency-type: production
+        update-types: [minor, patch]
     commit-message:
       prefix: BAU
   - package-ecosystem: 'docker'
@@ -50,9 +62,15 @@ updates:
       interval: weekly
       day: monday
       time: '03:00'
+    cooldown:
+      default-days: 3
     target-branch: main
     labels:
       - dependabot
+    groups:
+      docker:
+        patterns:
+          - '*'
     commit-message:
       prefix: BAU
   - package-ecosystem: 'github-actions'
@@ -61,8 +79,14 @@ updates:
       interval: weekly
       day: monday
       time: '03:00'
+    cooldown:
+      default-days: 3
     target-branch: main
     labels:
       - dependabot
+    groups:
+      github-actions:
+        patterns:
+          - '*'
     commit-message:
       prefix: BAU
