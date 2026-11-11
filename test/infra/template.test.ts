@@ -707,6 +707,41 @@ describe('template.yaml EcospendTokenRotatorNotRunningAlarm alarm', () => {
   })
 })
 
+describe('template.yaml WebhookDeadLetterQueueAlarm', () => {
+  const props = resources['WebhookDeadLetterQueueAlarm']?.['Properties'] as Record<string, unknown>
+  const dimensions = props['Dimensions'] as Record<string, string>[]
+
+  it('has AlarmsEnabled condition', () => {
+    expect(resources['WebhookDeadLetterQueueAlarm']?.['Condition']).toBe('AlarmsEnabled')
+  })
+
+  it('monitors visible messages on the webhook dead letter queue', () => {
+    expect(props['Namespace']).toBe('AWS/SQS')
+    expect(props['MetricName']).toBe('ApproximateNumberOfMessagesVisible')
+    expect(dimensions.find((d) => d['Name'] === 'QueueName')?.['Value']).toBe(
+      'WebhookDeadLetterQueue.QueueName'
+    )
+  })
+
+  it('alarms as soon as a message lands on the dead letter queue', () => {
+    expect(props['Statistic']).toBe('Maximum')
+    expect(props['Period']).toBe(60)
+    expect(props['EvaluationPeriods']).toBe(1)
+    expect(props['DatapointsToAlarm']).toBe(1)
+    expect(props['Threshold']).toBe(1)
+    expect(props['ComparisonOperator']).toBe('GreaterThanOrEqualToThreshold')
+  })
+
+  it('has TreatMissingData set to notBreaching', () => {
+    expect(props['TreatMissingData']).toBe('notBreaching')
+  })
+
+  it('has AlarmActions and OKActions configured', () => {
+    expect(props['AlarmActions']).toBeDefined()
+    expect(props['OKActions']).toBeDefined()
+  })
+})
+
 const canaryAlarms = [
   { name: 'IssueCredentialFunctionCanaryErrors', functionRef: 'IssueCredentialFunction' },
   { name: 'IssueCredentialFunctionCanary5xxErrors', resource: '/credential/issue' },
