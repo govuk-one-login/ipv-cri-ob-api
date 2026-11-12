@@ -55,3 +55,4 @@ repos:
         entry: npm run type-check
         language: system
         pass_filenames: false
+        files: \.ts$|tsconfig\.json$|package-lock\.json$

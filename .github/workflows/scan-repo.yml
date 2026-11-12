@@ -21,7 +21,10 @@ jobs:
     if: ${{ github.event_name != 'pull_request' }}
     permissions:
       contents: read
-    uses: ./.github/workflows/run-unit-tests.yml
+    uses: ./.github/workflows/run-tests.yml
+    with:
+      suites: '["unit"]'
+      coverage-suite: unit
 
   sonar:
     name: Sonar scan
