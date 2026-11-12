@@ -4,16 +4,21 @@ info:
   title: "Open Banking Credential Issuer Public API"
 paths:
   /webhooks:
-    summary: "Resource for Ecospend webhooks"
-    parameters:
-      - name: x-signature
-        in: header
-        required: true
-        description: "HMAC-SHA256 signature of the webhook body, hex encoded"
-        schema:
-          type: string
     post:
       summary: "POST request with a signed webhook payload"
+      parameters:
+        - name: x-signature
+          in: header
+          required: true
+          description: "HMAC-SHA256 signature of the webhook body, hex encoded"
+          schema:
+            type: string
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/WebhookRequest"
       responses:
         "200":
           description: "200 Webhook accepted"
@@ -23,16 +28,17 @@ paths:
           description: "401 Invalid signature"
         "500":
           description: "500 Internal server error"
-        "501":
-          description: "(TEMP) 501 Webhook ingestion not yet implemented"
-      x-amazon-apigateway-request-validator: "Validate Param only"
+      x-amazon-apigateway-request-validator: "Validate both"
       x-amazon-apigateway-integration:
-        type: "mock"
-        requestTemplates:
-          application/json: '{"statusCode": 501}'
+        httpMethod: "POST"
+        uri:
+          Fn::Sub: arn:${AWS::Partition}:apigateway:${AWS::Region}:lambda:path/2015-03-31/functions/${WebhookIngestFunction.Arn}:live/invocations
         responses:
           default:
-            statusCode: "501"
+            statusCode: "200"
+        passthroughBehavior: "when_no_match"
+        contentHandling: "CONVERT_TO_TEXT"
+        type: "aws_proxy"
 
   /health:
     get:
@@ -367,6 +373,14 @@ components:
         refresh_token:
           type: string
           description: "The refresh token is optional and not currently applicable"
+    WebhookRequest:
+      type: object
+      required:
+        - event_id
+      properties:
+        event_id:
+          type: string
+          format: uuid
     Error:
       title: "Error Schema"
       type: "object"
