@@ -1097,6 +1097,73 @@ Resources:
       SqsManagedSseEnabled: true
       VisibilityTimeout: 240
 
+  WebhookIngestFunction:
+    Type: AWS::Serverless::Function
+    Properties:
+      FunctionName: !Sub "${AWS::StackName}-webhook-ingest"
+      VpcConfig:
+        SecurityGroupIds:
+          - Fn::ImportValue:
+              !Sub "${VpcStackName}-AWSServicesEndpointSecurityGroupId"
+        SubnetIds:
+          - Fn::ImportValue:
+              !Sub "${VpcStackName}-ProtectedSubnetIdA"
+          - Fn::ImportValue:
+              !Sub "${VpcStackName}-ProtectedSubnetIdB"
+          - Fn::ImportValue:
+              !Sub "${VpcStackName}-ProtectedSubnetIdC"
+      Handler: ingest.handler
+      CodeUri: ../
+      Environment:
+        Variables:
+          POWERTOOLS_SERVICE_NAME: !Sub "${CriIdentifier}-webhook-ingest"
+          WEBHOOK_QUEUE_URL: !GetAtt WebhookQueue.QueueUrl
+      CodeSigningConfigArn: !If
+        - UseCodeSigning
+        - !Ref CodeSigningConfigArn
+        - !Ref AWS::NoValue
+      AutoPublishAlias: live
+      AutoPublishAliasAllProperties: true
+      DeploymentPreference:
+        Enabled: true
+        Type: !Ref LambdaDeploymentPreference
+        Role: !GetAtt CodeDeployServiceRole.Arn
+      Policies:
+        - AWSLambdaBasicExecutionRole
+        - AWSXrayWriteOnlyAccess
+        - SSMParameterReadPolicy:
+            ParameterName: !If
+              - UseParameterPrefix
+              - !Sub "${ParameterPrefix}/webhook-ingest/*"
+              - !Sub "${AWS::StackName}/webhook-ingest/*"
+      ProvisionedConcurrencyConfig:
+        !If
+        - AddProvisionedConcurrency
+        - ProvisionedConcurrentExecutions: !FindInMap [ EnvironmentConfiguration, !Ref Environment, provisionedConcurrentExecutions ]
+        - !Ref AWS::NoValue
+    Metadata:
+      BuildMethod: esbuild
+      BuildProperties:
+        Minify: false
+        Sourcemap: true
+        Target: node24
+        Format: esm
+        OutExtension:
+          - .js=.mjs
+        EntryPoints:
+          - src/webhook/handler/ingest.ts
+        External:
+          - "@aws-sdk/*"
+        Banner:
+          - js=import { createRequire } from 'module'; const require = createRequire(import.meta.url);
+
+  WebhookIngestFunctionAliasPermission:
+    Type: AWS::Lambda::Permission
+    Properties:
+      Action: lambda:InvokeFunction
+      FunctionName: !Ref WebhookIngestFunction.Alias
+      Principal: apigateway.amazonaws.com
+
   ####################################################################
   #                                                                  #
   # API config                                                       #
