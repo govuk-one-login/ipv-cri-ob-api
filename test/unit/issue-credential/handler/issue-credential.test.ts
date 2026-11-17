@@ -1,19 +1,14 @@
-import type * as CriMetricsModule from '@govuk-one-login/cri-metrics'
 import type { IssueCredentialService } from '@src/issue-credential/service/issue-credential-service'
 import type { APIGatewayProxyEvent, Context } from 'aws-lambda'
 
 import { SessionNotFoundError } from '@common/error/session-not-found-error'
-import { MetricUnit } from '@govuk-one-login/cri-metrics'
 import { IdentityScoreNotFoundError, PersonDetailsNotFoundError } from '@src/issue-credential/error'
 import { handler } from '@src/issue-credential/handler/issue-credential'
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest'
 
-import * as criMetrics from '@govuk-one-login/cri-metrics'
-
-vi.mock('@govuk-one-login/cri-metrics', async (importOriginal) => ({
-  ...(await importOriginal<typeof CriMetricsModule>()),
-  captureMetricWithDimensions: vi.fn()
-}))
+const { middlewareOrder } = await vi.hoisted(
+  () => import('@test-fixtures/middy/handler-middleware')
+)
 
 const { issueCredentialService } = vi.hoisted(() => ({
   issueCredentialService: vi.fn<IssueCredentialService>()
@@ -51,6 +46,17 @@ describe('issue-credential handler', () => {
 
   afterEach(() => {
     vi.clearAllMocks()
+  })
+
+  it('registers the middleware chain in order', () => {
+    expect(middlewareOrder).toEqual([
+      'latencyRecorder',
+      'resultRecorder',
+      'injectLambdaContext',
+      'logMetrics',
+      'httpHeaderNormalizer',
+      'errorResponder'
+    ])
   })
 
   it('passes the access token to the service', async () => {
@@ -110,41 +116,5 @@ describe('issue-credential handler', () => {
     const result = await handler(buildEvent(), buildContext())
 
     expect(result.statusCode).toBe(500)
-  })
-
-  it('emits lambda_result=success and lambda_latency_ms on the happy path', async () => {
-    issueCredentialService.mockResolvedValue({ credential: 'signed.jwt.value' })
-
-    await handler(buildEvent(), buildContext())
-
-    expect(criMetrics.captureMetricWithDimensions).toHaveBeenCalledWith(
-      'lambda_result',
-      { lambda: 'issue-credential-test', result: 'success' },
-      1,
-      MetricUnit.Count
-    )
-    expect(criMetrics.captureMetricWithDimensions).toHaveBeenCalledWith(
-      'lambda_latency_ms',
-      { lambda: 'issue-credential-test', start_state: expect.toBeOneOf(['cold', 'hot']) as string },
-      expect.any(Number),
-      MetricUnit.Milliseconds
-    )
-  })
-
-  it('emits lambda_result=error and lambda_latency_ms when the handler fails', async () => {
-    await handler(buildEvent({ headers: {} }), buildContext())
-
-    expect(criMetrics.captureMetricWithDimensions).toHaveBeenCalledWith(
-      'lambda_result',
-      { lambda: 'issue-credential-test', result: 'error' },
-      1,
-      MetricUnit.Count
-    )
-    expect(criMetrics.captureMetricWithDimensions).toHaveBeenCalledWith(
-      'lambda_latency_ms',
-      { lambda: 'issue-credential-test', start_state: expect.toBeOneOf(['cold', 'hot']) as string },
-      expect.any(Number),
-      MetricUnit.Milliseconds
-    )
   })
 })

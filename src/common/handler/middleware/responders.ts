@@ -10,12 +10,16 @@ import { logger } from '@govuk-one-login/cri-logger'
 
 const cfnCustomResourceEventResponder = (): MiddlewareObj<unknown, unknown> => ({
   after: async (request) => {
-    if (!isCfnCustomResourceEvent(request.event)) return
+    if (!isCfnCustomResourceEvent(request.event)) {
+      return
+    }
     logger.info('Deployment success')
     await putCustomResourceResponse(request.event, { status: 'SUCCESS' })
   },
   onError: async (request) => {
-    if (!isCfnCustomResourceEvent(request.event)) return
+    if (!isCfnCustomResourceEvent(request.event)) {
+      return
+    }
     const reason = request.error instanceof Error ? request.error.message : 'Unknown error'
     logger.error('Deployment failed', { reason })
     await putCustomResourceResponse(request.event, { status: 'FAILED', reason })

@@ -30,10 +30,10 @@ const latencyRecorder = <TEvent, TResult>(): MiddlewareObj<TEvent, TResult> => {
   }
 
   return {
-    after: emit,
     before: (request) => {
       startTimes.set(request, performance.now())
     },
+    after: emit,
     onError: emit
   }
 }
