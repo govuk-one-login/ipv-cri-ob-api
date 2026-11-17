@@ -7,6 +7,10 @@ import { SessionNotFoundError } from '@common/error/session-not-found-error'
 import { handler } from '@src/consents/handler/consents'
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest'
 
+const { middlewareOrder } = await vi.hoisted(
+  () => import('@test-fixtures/middy/handler-middleware')
+)
+
 const { consentsService } = vi.hoisted(() => ({
   consentsService: vi.fn<ConsentsService>()
 }))
@@ -55,6 +59,17 @@ describe('consents handler', () => {
 
   afterEach(() => {
     vi.clearAllMocks()
+  })
+
+  it('registers the middleware chain in order', () => {
+    expect(middlewareOrder).toEqual([
+      'latencyRecorder',
+      'resultRecorder',
+      'injectLambdaContext',
+      'logMetrics',
+      'httpHeaderNormalizer',
+      'errorResponder'
+    ])
   })
 
   it('passes the session-id and raw body to the service', async () => {
