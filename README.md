@@ -95,6 +95,25 @@ To skip canaries such as when releasing urgent changes to production, set the la
 Note: To update LambdaDeploymentPreference, update the LambdaCanaryDeployment pipeline parameter in the [identity-common-infra repository](https://github.com/govuk-one-login/identity-common-infra/tree/main/terraform/lime/open-banking). To update the LambdaDeploymentPreference for a stack in dev using sam deploy, parameter override needs to be set in the [deploy script](./deploy.sh).
 `--parameter-overrides LambdaDeploymentPreference=<define-strategy> \`
 
+## Deploy checks for async functions
+
+- Canary deployments validate API behaviour using live traffic. Scheduled (async) functions get no traffic during a deploy, so a broken version would only show up after the deploy completes.
+- A CloudFormation custom resource invokes the newly published version during the deploy, so the deploy succeeds or fails based on a real invocation.
+- CloudFormation waits for the function to PUT `SUCCESS` or `FAILED` to the event `ResponseURL`.
+  - `FAILED` fails the stack deploy and triggers a rollback.
+  - No response leaves the stack waiting until the custom resource times out which will also trigger a rollback.
+- The `cfnCustomResourceEventResponder` middleware (`src/common/handler/middleware/responders.ts`) sends the response.
+  - `after` sends `SUCCESS` in the case of an invoke with no errors.
+  - `onError` sends `FAILED` with the error message as the reason.
+  - The middleware does nothing for non-CloudFormation events.
+- Async function handlers decide what each event type does:
+  - `Create` and `Update` run the function's real work (e.g. `rotateAll({ force: true })` (ecospend token rotator)), so the check traverses the same code path as a scheduled invocation would.
+  - `Delete` defaults to a `SUCCESS` response, we're removing the resource in this case so there's no need to test anything.
+- Adding the check to an async function:
+  - Add `cfnCustomResourceEventResponder()` to the end of its middleware chain.
+  - Route `CloudFormationCustomResourceEvent`s in the handler using `isCfnCustomResourceEvent`.
+  - Add a `Custom::` resource with `ServiceToken: !Ref <Function>.Alias` and `Version: !Ref <Function>.Version`.
+
 ## Parameter prefix
 
 This allows a deploying stack to use parameters of another stack.

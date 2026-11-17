@@ -23,7 +23,7 @@ const cfnCustomResourceEventResponder = (): MiddlewareObj<unknown, unknown> => (
     const reason = request.error instanceof Error ? request.error.message : 'Unknown error'
     logger.error('Deployment failed', { reason })
     await putCustomResourceResponse(request.event, { status: 'FAILED', reason })
-    request.response = null
+    request.response = null // end middy processing here
   }
 })
 
