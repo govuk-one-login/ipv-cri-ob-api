@@ -46,7 +46,7 @@ repos:
         types_or: [javascript, ts]
       - id: oxfmt
         name: oxfmt
-        entry: npm run format:fix --
+        entry: npm run format:fix -- --no-error-on-unmatched-pattern
         language: system
         pass_filenames: true
         types_or: [javascript, ts, json, css, scss]
