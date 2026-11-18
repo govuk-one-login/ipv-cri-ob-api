@@ -17,7 +17,10 @@ export interface BankListUpdateResponse {
   updated: boolean
 }
 
-export type BankListUpdateService = (profile: EndpointProfile) => Promise<BankListUpdateResponse>
+export type BankListUpdateService = (options: {
+  force: boolean
+  profile: EndpointProfile
+}) => Promise<BankListUpdateResponse>
 
 interface BankListUpdateCollaborators {
   bankListProvider: BankListProvider
@@ -35,20 +38,20 @@ export const createBankListUpdateService = (
   config: BankListUpdateConfig,
   collaborators: BankListUpdateCollaborators
 ): BankListUpdateService => {
-  return async (profile) => {
-    const existingList = await collaborators.bankListRepository.getList(profile)
+  return async (options) => {
+    const existingList = await collaborators.bankListRepository.getList(options.profile)
     const now = nowSeconds()
 
-    if (existingList) {
+    if (existingList && !options.force) {
       const ageSeconds = now - existingList.refreshedAtSeconds
       if (ageSeconds < config.refreshAfterSeconds) {
-        emitBankListSize({ size: existingList.banks.length, profile })
+        emitBankListSize({ size: existingList.banks.length, profile: options.profile })
         return { updated: false }
       }
     }
 
     const rawConfig = await collaborators.externalConfigProvider.get(
-      `${config.bankListConfigPathPrefix}/${profile}`
+      `${config.bankListConfigPathPrefix}/${options.profile}`
     )
     const parsedConfig = bankListConfigSchema.safeParse(rawConfig)
     if (!parsedConfig.success) {
@@ -56,24 +59,24 @@ export const createBankListUpdateService = (
     }
     const bankListConfig: BankListConfig = parsedConfig.data
 
-    const accessToken = await collaborators.tokenRetrievalService.retrieveToken(profile)
-    if (!accessToken) throw new NoUsableTokenError(profile)
+    const accessToken = await collaborators.tokenRetrievalService.retrieveToken(options.profile)
+    if (!accessToken) throw new NoUsableTokenError(options.profile)
 
     const banks = await collaborators.bankListProvider.getBanks({
       accessToken,
-      profile,
+      profile: options.profile,
       ...bankListConfig
     })
 
     // Note: open question on if an empty list is a valid response to be saved or if we should reject this
     await collaborators.bankListRepository.replaceList({
-      profile,
+      profile: options.profile,
       banks,
       refreshedAtSeconds: now
     })
 
-    emitBankListSize({ size: banks.length, profile })
-    emitBankListUpdated({ profile })
+    emitBankListSize({ size: banks.length, profile: options.profile })
+    emitBankListUpdated({ profile: options.profile })
     return { updated: true }
   }
 }

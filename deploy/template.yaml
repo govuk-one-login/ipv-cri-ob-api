@@ -998,6 +998,12 @@ Resources:
       LogGroupName: !Sub "/aws/lambda/${AWS::StackName}-bank-list-retriever"
       RetentionInDays: !FindInMap [ EnvironmentConfiguration, !Ref Environment, logGroupRetentionInDays ]
 
+  BankListUpdaterAsyncDeploymentCheck:
+    Type: Custom::AsyncDeploymentCheck
+    Properties:
+      ServiceToken: !Ref BankListUpdaterFunction.Alias
+      Version: !Ref BankListUpdaterFunction.Version
+
   BankListRetrieverFunctionAliasPermission:
     Type: AWS::Lambda::Permission
     Properties:

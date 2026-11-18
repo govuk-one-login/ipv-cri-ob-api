@@ -35,9 +35,32 @@ describe('bank-list-update-coordinator', () => {
     await coordinator.updateAll()
 
     expect(bankListUpdateService).toHaveBeenCalledTimes(3)
-    expect(bankListUpdateService).toHaveBeenNthCalledWith(1, EndpointProfile.STUB)
-    expect(bankListUpdateService).toHaveBeenNthCalledWith(2, EndpointProfile.UAT)
-    expect(bankListUpdateService).toHaveBeenNthCalledWith(3, EndpointProfile.LIVE)
+    expect(bankListUpdateService).toHaveBeenNthCalledWith(1, {
+      profile: EndpointProfile.STUB,
+      force: false
+    })
+    expect(bankListUpdateService).toHaveBeenNthCalledWith(2, {
+      profile: EndpointProfile.UAT,
+      force: false
+    })
+    expect(bankListUpdateService).toHaveBeenNthCalledWith(3, {
+      profile: EndpointProfile.LIVE,
+      force: false
+    })
+  })
+
+  it('force updates every enabled profile when option is present', async () => {
+    const coordinator = createCoordinator([EndpointProfile.UAT, EndpointProfile.LIVE])
+    await coordinator.updateAll({ force: true })
+    expect(bankListUpdateService).toHaveBeenCalledTimes(2)
+    expect(bankListUpdateService).toHaveBeenNthCalledWith(1, {
+      profile: EndpointProfile.UAT,
+      force: true
+    })
+    expect(bankListUpdateService).toHaveBeenNthCalledWith(2, {
+      profile: EndpointProfile.LIVE,
+      force: true
+    })
   })
 
   it('logs the outcome of update checks', async () => {
@@ -69,8 +92,14 @@ describe('bank-list-update-coordinator', () => {
     await expect(coordinator.updateAll()).rejects.toThrow('Bank list update(s) failed for: STUB')
 
     expect(bankListUpdateService).toHaveBeenCalledTimes(2)
-    expect(bankListUpdateService).toHaveBeenNthCalledWith(1, EndpointProfile.STUB)
-    expect(bankListUpdateService).toHaveBeenNthCalledWith(2, EndpointProfile.UAT)
+    expect(bankListUpdateService).toHaveBeenNthCalledWith(1, {
+      profile: EndpointProfile.STUB,
+      force: false
+    })
+    expect(bankListUpdateService).toHaveBeenNthCalledWith(2, {
+      profile: EndpointProfile.UAT,
+      force: false
+    })
 
     expect(errorSpy).toHaveBeenCalledWith('Bank list update failed', {
       profile: EndpointProfile.STUB,

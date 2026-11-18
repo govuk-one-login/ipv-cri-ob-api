@@ -169,6 +169,31 @@ describe('template.yaml resources', () => {
   })
 })
 
+describe('template.yaml async deployment checks', () => {
+  const scheduledFunctions = Object.entries(resources)
+    .filter(([, resource]) => resource['Type'] === 'AWS::Serverless::Function')
+    .filter(([, resource]) => {
+      const props = resource['Properties'] as Record<string, unknown>
+      const events = (props['Events'] ?? {}) as Record<string, Record<string, unknown>>
+      return Object.values(events).some((event) => event['Type'] === 'Schedule')
+    })
+    .map(([name]) => name)
+
+  const deploymentChecks = Object.values(resources)
+    .filter((resource) => resource['Type'] === 'Custom::AsyncDeploymentCheck')
+    .map((resource) => resource['Properties'])
+
+  it.each(scheduledFunctions)(
+    '%s has an AsyncDeploymentCheck invoking its published version',
+    (functionName) => {
+      expect(deploymentChecks).toContainEqual({
+        ServiceToken: `${functionName}.Alias`,
+        Version: `${functionName}.Version`
+      })
+    }
+  )
+})
+
 describe('template.yaml outputs', () => {
   const expectedOutputs = [
     'StackName',

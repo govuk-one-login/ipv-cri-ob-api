@@ -102,7 +102,7 @@ describe('createBankListUpdateService', () => {
   it('retrieves and stores a list when none exists', async () => {
     vi.mocked(bankListRepository.getList).mockResolvedValue(undefined)
 
-    const result = await createService()(EndpointProfile.STUB)
+    const result = await createService()({ profile: EndpointProfile.STUB, force: false })
 
     expect(bankListRepository.getList).toHaveBeenCalledWith(EndpointProfile.STUB)
     expect(externalConfigProvider.get).toHaveBeenCalledWith(`${CONFIG_PATH_PREFIX}/STUB`)
@@ -117,7 +117,7 @@ describe('createBankListUpdateService', () => {
   it('resolves the profile, config and token before calling the provider', async () => {
     vi.mocked(bankListRepository.getList).mockResolvedValue(undefined)
 
-    await createService()(EndpointProfile.STUB)
+    await createService()({ profile: EndpointProfile.STUB, force: false })
 
     expect(tokenRetrievalService.retrieveToken).toHaveBeenCalledWith(EndpointProfile.STUB)
     expect(bankListProvider.getBanks).toHaveBeenCalledWith({
@@ -132,7 +132,7 @@ describe('createBankListUpdateService', () => {
     vi.mocked(bankListRepository.getList).mockResolvedValue(undefined)
     vi.mocked(externalConfigProvider.get).mockResolvedValue({ 'endpoint-url': ENDPOINT_URL })
 
-    await createService()(EndpointProfile.STUB)
+    await createService()({ profile: EndpointProfile.STUB, force: false })
 
     expect(bankListProvider.getBanks).toHaveBeenCalledWith({
       accessToken: ACCESS_TOKEN,
@@ -148,12 +148,27 @@ describe('createBankListUpdateService', () => {
       })
     )
 
-    const result = await createService()(EndpointProfile.STUB)
+    const result = await createService()({ profile: EndpointProfile.STUB, force: false })
 
     expect(externalConfigProvider.get).not.toHaveBeenCalled()
     expect(bankListProvider.getBanks).not.toHaveBeenCalled()
     expect(bankListRepository.replaceList).not.toHaveBeenCalled()
     expect(result).toEqual({ updated: false })
+  })
+
+  it('forces an update when the list is younger than the refresh threshold and force is true', async () => {
+    vi.mocked(bankListRepository.getList).mockResolvedValue(
+      buildBankListEntity({
+        refreshedAtSeconds: NOW_EPOCH_SECONDS - REFRESH_AFTER_SECONDS + 1
+      })
+    )
+
+    const result = await createService()({ profile: EndpointProfile.STUB, force: true })
+
+    expect(externalConfigProvider.get).toHaveBeenCalled()
+    expect(bankListProvider.getBanks).toHaveBeenCalled()
+    expect(bankListRepository.replaceList).toHaveBeenCalled()
+    expect(result).toEqual({ updated: true })
   })
 
   it('refreshes a list exactly at the refresh threshold', async () => {
@@ -163,7 +178,7 @@ describe('createBankListUpdateService', () => {
       })
     )
 
-    const result = await createService()(EndpointProfile.STUB)
+    const result = await createService()({ profile: EndpointProfile.STUB, force: false })
 
     expect(bankListRepository.replaceList).toHaveBeenCalledWith({
       banks: oneBank,
@@ -180,7 +195,7 @@ describe('createBankListUpdateService', () => {
       })
     )
 
-    const result = await createService()(EndpointProfile.STUB)
+    const result = await createService()({ profile: EndpointProfile.STUB, force: false })
 
     expect(bankListRepository.replaceList).toHaveBeenCalledWith({
       banks: oneBank,
@@ -200,7 +215,7 @@ describe('createBankListUpdateService', () => {
       new Error('Unexpected ecospend bank list response body')
     )
 
-    await expect(createService()(EndpointProfile.STUB)).rejects.toThrow(
+    await expect(createService()({ profile: EndpointProfile.STUB, force: false })).rejects.toThrow(
       'Unexpected ecospend bank list response body'
     )
 
@@ -214,7 +229,7 @@ describe('createBankListUpdateService', () => {
       new Error('Bank list replacement failed')
     )
 
-    await expect(createService()(EndpointProfile.STUB)).rejects.toThrow(
+    await expect(createService()({ profile: EndpointProfile.STUB, force: false })).rejects.toThrow(
       'Bank list replacement failed'
     )
   })
@@ -223,7 +238,9 @@ describe('createBankListUpdateService', () => {
     vi.mocked(bankListRepository.getList).mockResolvedValue(undefined)
     vi.mocked(externalConfigProvider.get).mockRejectedValue(new Error('SSM unavailable'))
 
-    await expect(createService()(EndpointProfile.STUB)).rejects.toThrow('SSM unavailable')
+    await expect(createService()({ profile: EndpointProfile.STUB, force: false })).rejects.toThrow(
+      'SSM unavailable'
+    )
     expect(bankListProvider.getBanks).not.toHaveBeenCalled()
     expect(bankListRepository.replaceList).not.toHaveBeenCalled()
   })
@@ -239,9 +256,9 @@ describe('createBankListUpdateService', () => {
       vi.mocked(bankListRepository.getList).mockResolvedValue(undefined)
       vi.mocked(externalConfigProvider.get).mockResolvedValue(externalConfig)
 
-      await expect(createService()(EndpointProfile.STUB)).rejects.toThrow(
-        'Invalid bank list config: endpoint-url'
-      )
+      await expect(
+        createService()({ profile: EndpointProfile.STUB, force: false })
+      ).rejects.toThrow('Invalid bank list config: endpoint-url')
 
       expect(bankListProvider.getBanks).not.toHaveBeenCalled()
       expect(bankListRepository.replaceList).not.toHaveBeenCalled()
@@ -252,7 +269,9 @@ describe('createBankListUpdateService', () => {
     vi.mocked(bankListRepository.getList).mockResolvedValue(undefined)
     vi.mocked(tokenRetrievalService.retrieveToken).mockResolvedValue(undefined)
 
-    await expect(createService()(EndpointProfile.STUB)).rejects.toThrow(NoUsableTokenError)
+    await expect(createService()({ profile: EndpointProfile.STUB, force: false })).rejects.toThrow(
+      NoUsableTokenError
+    )
 
     expect(bankListProvider.getBanks).not.toHaveBeenCalled()
     expect(bankListRepository.replaceList).not.toHaveBeenCalled()
@@ -268,7 +287,7 @@ describe('createBankListUpdateService', () => {
       )
       vi.mocked(bankListProvider.getBanks).mockResolvedValue(twoBanks)
 
-      await createService()(EndpointProfile.STUB)
+      await createService()({ profile: EndpointProfile.STUB, force: false })
 
       expect(captureMetricWithDimensions).toHaveBeenCalledWith(
         'bank_list_size',
@@ -288,7 +307,7 @@ describe('createBankListUpdateService', () => {
         })
       )
 
-      await createService()(EndpointProfile.STUB)
+      await createService()({ profile: EndpointProfile.STUB, force: false })
 
       expect(captureMetricWithDimensions).toHaveBeenCalledWith(
         'bank_list_size',
@@ -310,7 +329,9 @@ describe('createBankListUpdateService', () => {
       )
       vi.mocked(bankListProvider.getBanks).mockRejectedValue(new Error('crumbs'))
 
-      await expect(createService()(EndpointProfile.STUB)).rejects.toThrow('crumbs')
+      await expect(
+        createService()({ profile: EndpointProfile.STUB, force: false })
+      ).rejects.toThrow('crumbs')
 
       expect(captureMetricWithDimensions).not.toHaveBeenCalled()
     })
