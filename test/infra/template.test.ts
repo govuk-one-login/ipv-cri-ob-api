@@ -188,6 +188,7 @@ describe('template.yaml async deployment checks', () => {
     (functionName) => {
       expect(deploymentChecks).toContainEqual({
         ServiceToken: `${functionName}.Alias`,
+        ServiceTimeout: 300,
         Version: `${functionName}.Version`
       })
     }

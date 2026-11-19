@@ -821,6 +821,7 @@ Resources:
     Type: Custom::AsyncDeploymentCheck
     Properties:
       ServiceToken: !Ref EcospendTokenRotatorFunction.Alias
+      ServiceTimeout: 300
       Version: !Ref EcospendTokenRotatorFunction.Version
 
   ####################################################################
@@ -1002,6 +1003,7 @@ Resources:
     Type: Custom::AsyncDeploymentCheck
     Properties:
       ServiceToken: !Ref BankListUpdaterFunction.Alias
+      ServiceTimeout: 300
       Version: !Ref BankListUpdaterFunction.Version
 
   BankListRetrieverFunctionAliasPermission:

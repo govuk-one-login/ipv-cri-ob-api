@@ -112,7 +112,7 @@ Note: To update LambdaDeploymentPreference, update the LambdaCanaryDeployment pi
 - Adding the check to an async function:
   - Add `cfnCustomResourceEventResponder()` to the end of its middleware chain.
   - Route `CloudFormationCustomResourceEvent`s in the handler using `isCfnCustomResourceEvent`.
-  - Add a `Custom::AsyncDeploymentCheck` resource with `ServiceToken: !Ref <Function>.Alias` and `Version: !Ref <Function>.Version`.
+  - Add a `Custom::AsyncDeploymentCheck` resource with `ServiceToken: !Ref <Function>.Alias`, `ServiceTimeout: 300` and `Version: !Ref <Function>.Version`.
 
 ## Parameter prefix
 
