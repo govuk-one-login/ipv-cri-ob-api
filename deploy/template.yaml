@@ -821,6 +821,7 @@ Resources:
     Type: Custom::AsyncDeploymentCheck
     Properties:
       ServiceToken: !Ref EcospendTokenRotatorFunction.Alias
+      ServiceTimeout: 300
       Version: !Ref EcospendTokenRotatorFunction.Version
 
   ####################################################################
@@ -997,6 +998,15 @@ Resources:
     Properties:
       LogGroupName: !Sub "/aws/lambda/${AWS::StackName}-bank-list-retriever"
       RetentionInDays: !FindInMap [ EnvironmentConfiguration, !Ref Environment, logGroupRetentionInDays ]
+
+  BankListUpdaterAsyncDeploymentCheck:
+    Type: Custom::AsyncDeploymentCheck
+    DependsOn:
+      - EcospendTokenRotatorAsyncDeploymentCheck
+    Properties:
+      ServiceToken: !Ref BankListUpdaterFunction.Alias
+      ServiceTimeout: 300
+      Version: !Ref BankListUpdaterFunction.Version
 
   BankListRetrieverFunctionAliasPermission:
     Type: AWS::Lambda::Permission

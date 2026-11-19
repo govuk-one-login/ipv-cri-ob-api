@@ -1,10 +1,12 @@
-import type { ScheduledEvent } from 'aws-lambda'
+import type { CloudFormationCustomResourceEvent, ScheduledEvent } from 'aws-lambda'
 
 import { createBaseHttpClient } from '@common/client/base-http-client'
 import { dynamoDBDocumentClient } from '@common/client/dynamodb-client'
 import { ssmConfigProvider } from '@common/client/ssm-config-provider'
 import { latencyRecorder, resultRecorder } from '@common/handler/middleware/recorders'
+import { cfnCustomResourceEventResponder } from '@common/handler/middleware/responders'
 import { EndpointProfile } from '@common/model/endpoint-profile'
+import { isCfnCustomResourceEvent } from '@common/util/cfn-custom-resource'
 import { requireEnv } from '@common/util/env'
 import { parseProfiles } from '@common/util/parse-profiles'
 import { injectLambdaContext, logger } from '@govuk-one-login/cri-logger'
@@ -17,6 +19,8 @@ import { createBankListUpdateCoordinator } from '@src/bank-list/service/bank-lis
 import { createBankListUpdateService } from '@src/bank-list/service/bank-list-update-service'
 
 import middy from '@middy/core'
+
+type BankListUpdaterEvent = CloudFormationCustomResourceEvent | ScheduledEvent
 
 const REFRESH_AFTER_SECONDS = 55 * 60
 
@@ -57,15 +61,22 @@ const bankListUpdateCoordinator = createBankListUpdateCoordinator(
   { bankListUpdateService }
 )
 
-const lambdaHandler = async (_event: ScheduledEvent): Promise<void> => {
-  logger.info('Bank list updater invoked', { profiles: enabledProfiles })
+const lambdaHandler = async (event: BankListUpdaterEvent): Promise<void> => {
+  logger.info('Lambda invoked', { profiles: enabledProfiles })
+
+  if (isCfnCustomResourceEvent(event)) {
+    if (event.RequestType === 'Delete') return
+    await bankListUpdateCoordinator.updateAll({ force: true })
+    return
+  }
 
   await bankListUpdateCoordinator.updateAll()
 }
 
-export const handler = middy<ScheduledEvent, void>()
+export const handler = middy<BankListUpdaterEvent, void>()
   .use(latencyRecorder()) // latencyRecorder is first
   .use(resultRecorder())
   .use(injectLambdaContext(logger, { resetKeys: true }))
   .use(logMetrics(metrics, { captureColdStartMetric: true }))
+  .use(cfnCustomResourceEventResponder())
   .handler(lambdaHandler)

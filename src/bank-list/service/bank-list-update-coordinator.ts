@@ -5,7 +5,7 @@ import { logger } from '@govuk-one-login/cri-logger'
 import { getErrorMessage } from '@src/bank-list/util/get-error-message'
 
 export type BankListUpdateCoordinator = {
-  updateAll: () => Promise<void>
+  updateAll: (options?: { force: boolean }) => Promise<void>
 }
 
 interface BankListUpdateCoordinatorCollaborators {
@@ -25,9 +25,10 @@ export const createBankListUpdateCoordinator = (
   config: BankListUpdateCoordinatorConfig,
   collaborators: BankListUpdateCoordinatorCollaborators
 ): BankListUpdateCoordinator => ({
-  updateAll: async (): Promise<void> => {
+  updateAll: async (options): Promise<void> => {
+    const force = options?.force ?? false
     const results = await Promise.allSettled(
-      config.profiles.map((profile) => collaborators.bankListUpdateService(profile))
+      config.profiles.map((profile) => collaborators.bankListUpdateService({ profile, force }))
     )
 
     const failures: BankListUpdateCoordinatorFailure[] = []
