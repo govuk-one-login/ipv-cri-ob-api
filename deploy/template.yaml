@@ -1001,6 +1001,8 @@ Resources:
 
   BankListUpdaterAsyncDeploymentCheck:
     Type: Custom::AsyncDeploymentCheck
+    DependsOn:
+      - EcospendTokenRotatorAsyncDeploymentCheck
     Properties:
       ServiceToken: !Ref BankListUpdaterFunction.Alias
       ServiceTimeout: 300
