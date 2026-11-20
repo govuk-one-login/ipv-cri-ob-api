@@ -38,7 +38,9 @@ export default defineConfig({
             TOKEN_ROTATOR_CREDENTIALS_PATH: '/test-prefix/token-rotator/credentials',
             TOKEN_ROTATOR_DB_TABLE_NAME: 'test-token-rotator-table',
             TOKEN_ROTATOR_REFRESH_WINDOW_SECONDS: '300',
-            VC_DOMAIN: 'review-ob.unit-test.account.gov.uk'
+            VC_DOMAIN: 'review-ob.unit-test.account.gov.uk',
+            WEBHOOK_DEDUPLICATION_DB_TABLE_NAME: 'test-deduplication-table',
+            WEBHOOK_QUEUE_URL: 'https://sqs.example.test/webhook'
           },
           include: ['test/unit/**/*.test.ts'],
           name: 'unit',
