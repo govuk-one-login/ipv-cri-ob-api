@@ -17,7 +17,7 @@ describe('public-api.yaml structure', () => {
 })
 
 describe('public-api.yaml paths', () => {
-  const expectedPaths = ['/health', '/.well-known/jwks.json', '/token']
+  const expectedPaths = ['/health', '/.well-known/jwks.json', '/token', '/webhooks']
 
   it.each(expectedPaths)('has path: %s', (path) => {
     expect(paths).toHaveProperty(path)
@@ -48,6 +48,18 @@ describe('public-api.yaml components', () => {
     expect(schemas).toHaveProperty('JWKSFile')
     expect(schemas).toHaveProperty('TokenResponse')
     expect(schemas).toHaveProperty('Error')
+    expect(schemas).toHaveProperty('WebhookRequest')
+  })
+
+  it('WebhookRequest requires event_id as a uuid string', () => {
+    const webhookRequest = (schemas as Record<string, unknown>)['WebhookRequest'] as Record<
+      string,
+      unknown
+    >
+    expect(webhookRequest['required']).toContain('event_id')
+    const properties = webhookRequest['properties'] as Record<string, Record<string, string>>
+    expect(properties['event_id']?.['type']).toBe('string')
+    expect(properties['event_id']?.['format']).toBe('uuid')
   })
 })
 
@@ -57,9 +69,35 @@ describe('public-api.yaml request validators', () => {
   it('defines Validate both', () => {
     expect(validators).toHaveProperty('Validate both')
   })
+})
 
-  it('defines Validate Param only', () => {
-    expect(validators).toHaveProperty('Validate Param only')
+describe('public-api.yaml /webhooks', () => {
+  const post = paths['/webhooks']?.['post'] as Record<string, unknown>
+
+  it('uses aws_proxy integration', () => {
+    const integration = post['x-amazon-apigateway-integration'] as Record<string, string>
+    expect(integration['type']).toBe('aws_proxy')
+  })
+
+  it('applies Validate both request validator', () => {
+    expect(post['x-amazon-apigateway-request-validator']).toBe('Validate both')
+  })
+
+  it('has a required requestBody referencing WebhookRequest schema', () => {
+    const requestBody = post['requestBody'] as Record<string, unknown>
+    expect(requestBody['required']).toBe(true)
+    const schema = (requestBody['content'] as Record<string, Record<string, unknown>>)?.[
+      'application/json'
+    ]?.['schema'] as Record<string, string>
+    expect(schema['$ref']).toBe('#/components/schemas/WebhookRequest')
+  })
+
+  it('requires x-signature header parameter', () => {
+    const parameters = post['parameters'] as Record<string, unknown>[]
+    const sig = parameters.find((p) => p['name'] === 'x-signature')
+    expect(sig).toBeDefined()
+    expect(sig!['in']).toBe('header')
+    expect(sig!['required']).toBe(true)
   })
 })
 

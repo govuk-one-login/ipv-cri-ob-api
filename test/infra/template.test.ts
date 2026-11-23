@@ -108,7 +108,9 @@ describe('template.yaml resources', () => {
     'PrivateAPIUsagePlan',
     'LoggingKmsKey',
     'CodeDeployServiceRole',
-    'JWKSBucketRole'
+    'JWKSBucketRole',
+    'WebhookIngestFunction',
+    'WebhookIngestFunctionLogGroup'
   ]
 
   it.each(expectedResources)('has resource: %s', (resource) => {
@@ -297,6 +299,36 @@ describe('template.yaml LoggingKmsKey policy', () => {
     expect(condition).toHaveProperty('ArnLike')
     const arnLike = condition['ArnLike'] as Record<string, unknown>
     expect(arnLike['kms:EncryptionContext:aws:logs:arn']).toBeDefined()
+  })
+})
+
+describe('template.yaml WebhookIngestFunction', () => {
+  const props = resources['WebhookIngestFunction']?.['Properties'] as Record<string, unknown>
+
+  it('has VpcConfig with SecurityGroupIds and SubnetIds', () => {
+    const vpcConfig = props['VpcConfig'] as Record<string, unknown>
+    expect(vpcConfig).toHaveProperty('SecurityGroupIds')
+    expect(vpcConfig).toHaveProperty('SubnetIds')
+  })
+
+  it('has required environment variables', () => {
+    const vars = (props['Environment'] as Record<string, Record<string, unknown>>)?.['Variables']
+    expect(vars).toHaveProperty('POWERTOOLS_SERVICE_NAME')
+    expect(vars).toHaveProperty('WEBHOOK_QUEUE_URL')
+    expect(vars).toHaveProperty('WEBHOOK_DEDUPLICATION_DB_TABLE_NAME')
+  })
+})
+
+describe('template.yaml PublicAPI /webhooks method settings', () => {
+  it('has a dedicated method setting for /webhooks POST with throttling', () => {
+    const props = resources['PublicAPI']?.['Properties'] as Record<string, unknown>
+    const methodSettings = props['MethodSettings'] as Record<string, unknown>[]
+    const webhookSetting = methodSettings.find(
+      (s) => s['ResourcePath'] === '/~1webhooks' && s['HttpMethod'] === 'POST'
+    )
+    expect(webhookSetting).toBeDefined()
+    expect(webhookSetting!['ThrottlingRateLimit']).toBe(200)
+    expect(webhookSetting!['ThrottlingBurstLimit']).toBe(400)
   })
 })
 
