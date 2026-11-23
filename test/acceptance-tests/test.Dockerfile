@@ -1,4 +1,4 @@
-FROM amazonlinux:2023@sha256:82085f72b15db462da227bd8a45c925c72f9d6f25965d22f1c31c47e0a803d80
+FROM amazonlinux:2023@sha256:9cf762f5099b606bcd851391317af7cd75b11363c4816ebcb5e91292dd5736a7
 
 RUN dnf install -y nodejs24 awscli && dnf clean all
 
