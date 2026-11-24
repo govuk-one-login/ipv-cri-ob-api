@@ -186,25 +186,933 @@ Conditions:
       - Fn::Not:
           - Condition: IsProduction
 Resources:
-  CodeDeployServiceRole:
-    Type: AWS::IAM::Role
+  PublicAPI:
+    Type: AWS::Serverless::Api
     Properties:
-      AssumeRolePolicyDocument:
+      AccessLogSetting:
+        DestinationArn:
+          Fn::GetAtt:
+            - PublicAPILogGroup
+            - Arn
+        Format: '{"requestId":"$context.requestId","ip":"$context.identity.sourceIp","requestTime":"$context.requestTime","httpMethod":"$context.httpMethod","path":"$context.path","routeKey":"$context.routeKey","status":"$context.status","protocol":"$context.protocol","responseLatency":"$context.responseLatency","responseLength":"$context.responseLength"}'
+      DefinitionBody:
+        openapi: 3.0.1
+        info:
+          version: "0.1"
+          title: Open Banking Credential Issuer Public API
+        paths:
+          /webhooks:
+            post:
+              summary: POST request with a signed webhook payload
+              parameters:
+                - name: x-signature
+                  in: header
+                  required: true
+                  description: HMAC-SHA256 signature of the webhook body, hex encoded
+                  schema:
+                    type: string
+              requestBody:
+                required: true
+                content:
+                  application/json:
+                    schema:
+                      $ref: "#/components/schemas/WebhookRequest"
+              responses:
+                "200":
+                  description: 200 Webhook accepted
+                "400":
+                  description: 400 Invalid webhook payload or missing x-signature header
+                "401":
+                  description: 401 Invalid signature
+                "500":
+                  description: 500 Internal server error
+              x-amazon-apigateway-request-validator: Validate both
+              x-amazon-apigateway-integration:
+                httpMethod: POST
+                uri:
+                  Fn::Sub: arn:${AWS::Partition}:apigateway:${AWS::Region}:lambda:path/2015-03-31/functions/${WebhookIngestFunction.Arn}:live/invocations
+                responses:
+                  default:
+                    statusCode: "200"
+                passthroughBehavior: when_no_match
+                contentHandling: CONVERT_TO_TEXT
+                type: aws_proxy
+          /health:
+            get:
+              responses:
+                "200":
+                  description: 200 response
+              x-amazon-apigateway-integration:
+                type: mock
+                requestTemplates:
+                  application/json: '{"statusCode": 200}'
+                responses:
+                  default:
+                    statusCode: "200"
+          /.well-known/jwks.json:
+            get:
+              operationId: getWellKnownJwksJson
+              summary: Retrieve the public encryption keys issued by Open Banking CRI.
+              description: Return the current valid public keys as a JSON Web Key Set used to Encrypt JAR(s) requests for Open Banking CRI
+              tags:
+                - Backend - Open Banking CRI
+              responses:
+                "200":
+                  description: OK - key ring returned
+                  headers:
+                    Cache-Control:
+                      schema:
+                        type: string
+                    Content-Type:
+                      schema:
+                        type: string
+                    Strict-Transport-Security:
+                      schema:
+                        type: string
+                    X-Content-Type-Options:
+                      schema:
+                        type: string
+                    X-Frame-Options:
+                      schema:
+                        type: string
+                  content:
+                    application/json:
+                      schema:
+                        $ref: "#/components/schemas/JWKSFile"
+                "400":
+                  description: 400 response
+                  headers:
+                    Cache-Control:
+                      schema:
+                        type: string
+                    Content-Type:
+                      schema:
+                        type: string
+                    Strict-Transport-Security:
+                      schema:
+                        type: string
+                    X-Content-Type-Options:
+                      schema:
+                        type: string
+                    X-Frame-Options:
+                      schema:
+                        type: string
+                "500":
+                  description: Internal Server Error
+                  headers:
+                    Cache-Control:
+                      schema:
+                        type: string
+                    Content-Type:
+                      schema:
+                        type: string
+                    Strict-Transport-Security:
+                      schema:
+                        type: string
+                    X-Content-Type-Options:
+                      schema:
+                        type: string
+                    X-Frame-Options:
+                      schema:
+                        type: string
+              x-amazon-apigateway-integration:
+                httpMethod: GET
+                credentials:
+                  Fn::GetAtt:
+                    - JWKSBucketRole
+                    - Arn
+                uri:
+                  Fn::Sub: arn:aws:apigateway:${AWS::Region}:s3:path/govuk-one-login-ob-published-keys-${Environment}/jwks.json
+                responses:
+                  default:
+                    statusCode: "200"
+                    responseParameters:
+                      method.response.header.Cache-Control: "'max-age=300'"
+                passthroughBehavior: when_no_match
+                contentHandling: CONVERT_TO_TEXT
+                type: aws
+          /token:
+            post:
+              requestBody:
+                content:
+                  application/x-www-form-urlencoded:
+                    schema:
+                      required:
+                        - grant_type
+                        - code
+                        - client_assertion_type
+                        - client_assertion
+                        - redirect_uri
+                      properties:
+                        grant_type:
+                          type: string
+                          pattern: authorization_code
+                          example: authorization_code
+                        code:
+                          type: string
+                          minLength: 1
+                        client_assertion_type:
+                          type: string
+                          pattern: urn:ietf:params:oauth:client-assertion-type:jwt-bearer
+                          example: urn:ietf:params:oauth:client-assertion-type:jwt-bearer
+                        client_assertion:
+                          type: string
+                          pattern: "[a-zA-Z0-9_=]+\\.[a-zA-Z0-9_=]+\\.[a-zA-Z0-9_\\-\\+\\/=]+"
+                        redirect_uri:
+                          type: string
+                          format: uri
+                          example: https://di-ipv-core-stub.london.cloudapps.digital/callback
+                    examples:
+                      "201":
+                        summary: Example body to receive a HTTP 201 response
+                        value:
+                          grant_type: string
+                          code: 1fbc5730-9d17-416d-b2ca-0be90e1e93f5
+                          client_assertion_type: string
+                          client_assertion: string
+                          redirect_uri: https://di-ipv-core-stub.london.cloudapps.digital/callback
+                      "400":
+                        summary: Example body to receive a HTTP 400 response
+                        value:
+                          grant_type: string
+                          code: fad21bea-bce9-4aa7-8889-d50c7d26616e
+                          client_assertion_type: string
+                          client_assertion: string
+                          redirect_uri: string
+                      "500":
+                        summary: Example body to receive a HTTP 500 response
+                        value:
+                          grant_type: string
+                          code: f27b8afc-90ef-4e0f-83ad-00a2f5692590
+                          client_assertion_type: string
+                          client_assertion: string
+                          redirect_uri: string
+              responses:
+                "201":
+                  description: 201 response
+                  content:
+                    application/json:
+                      schema:
+                        $ref: "#/components/schemas/TokenResponse"
+                      examples:
+                        "201":
+                          value:
+                            access_token: 1fbc5730-9d17-416d-b2ca-0be90e1e93f5
+                            token_type: Bearer
+                            expires_in: "3600"
+                            refresh_token: uuid
+                "400":
+                  description: 400 response
+                  content:
+                    application/json:
+                      schema:
+                        $ref: "#/components/schemas/Error"
+                "500":
+                  description: 500 response
+                  content:
+                    application/json:
+                      schema:
+                        $ref: "#/components/schemas/Error"
+              security:
+                - api_key:
+                    Fn::If:
+                      - IsDeployedFromPipeline
+                      - []
+                      - Ref: AWS::NoValue
+              x-amazon-apigateway-request-validator: Validate both
+              x-amazon-apigateway-integration:
+                httpMethod: POST
+                uri:
+                  Fn::Sub: arn:${AWS::Partition}:apigateway:${AWS::Region}:lambda:path/2015-03-31/functions/arn:${AWS::Partition}:lambda:${AWS::Region}:${AWS::AccountId}:function:${OAuth.Outputs.LambdaAccessTokenFunctionName}:live/invocations
+                responses:
+                  default:
+                    statusCode: "200"
+                passthroughBehavior: when_no_match
+                contentHandling: CONVERT_TO_TEXT
+                type: aws_proxy
+          /credential/issue:
+            summary: Resource for the Open Banking API
+            description: This API is expected to be called by the IPV core backend directly as the final part of the OpenId/Oauth Flow
+            parameters:
+              - name: Authorization
+                in: header
+                required: true
+                description: "A valid access_token (e.g.: Authorization: Bearer <access-token-value>)."
+                schema:
+                  type: string
+            post:
+              summary: POST request using a valid access token
+              responses:
+                "200":
+                  description: 200 Ok
+                  content:
+                    application/jwt:
+                      schema:
+                        $ref: "#/components/schemas/VcResponse"
+                "400":
+                  description: 400 Bad Response
+                  content:
+                    application/json:
+                      schema:
+                        $ref: "#/components/schemas/Error"
+                "401":
+                  description: 401 Unauthorised
+                  content:
+                    application/json:
+                      schema:
+                        $ref: "#/components/schemas/Error"
+                "500":
+                  description: 500 Internal server error
+                  content:
+                    application/json:
+                      schema:
+                        $ref: "#/components/schemas/Error"
+              security:
+                - api_key:
+                    Fn::If:
+                      - IsDeployedFromPipeline
+                      - []
+                      - Ref: AWS::NoValue
+              x-amazon-apigateway-request-validator: Validate both
+              x-amazon-apigateway-integration:
+                httpMethod: POST
+                uri:
+                  Fn::Sub: arn:${AWS::Partition}:apigateway:${AWS::Region}:lambda:path/2015-03-31/functions/${IssueCredentialFunction.Arn}:live/invocations
+                responses:
+                  default:
+                    statusCode: "200"
+                passthroughBehavior: when_no_match
+                contentHandling: CONVERT_TO_TEXT
+                type: aws_proxy
+        components:
+          schemas:
+            JWKSFile:
+              type: object
+              required:
+                - keys
+              additionalProperties: true
+              properties:
+                keys:
+                  type: array
+                  description: The value of the `keys` parameter is an array of JWK values. By default, the order of the JWK values within the array does not imply an order of preference among them, although applications of JWK Sets can choose to assign a meaning to the order for their purposes, if desired.
+                  items:
+                    type: object
+                    additionalProperties: true
+                    description: A JSON Web Key (JWK) as defined by [RFC7517](https://www.rfc-editor.org/rfc/rfc7517)
+                    properties:
+                      kty:
+                        type: string
+                        description: The `kty` (key type) parameter identifies the cryptographic algorithm family used with the key, such as `RSA or `EC`
+                      use:
+                        type: string
+                        enum:
+                          - sig
+                          - enc
+                        description: The "use" (public key use) parameter identifies the intended use of the public key.  The "use" parameter is employed to indicate whether a public key is used for encrypting data or verifying the signature on data. Valid values are `sig` (signature) and `enc` (encryption).
+                      alg:
+                        type: string
+                        description: The `alg` (algorithm) parameter identifies the algorithm intended for use with the key.
+                      kid:
+                        type: string
+                        description: The `kid` (key ID) parameter is used to match a specific key. This is used, for instance, to choose among a set of keys within a JWK Set during key rollover.  The structure of the `kid` value is unspecified.
+                      e:
+                        type: string
+                        description: public exponent
+                      "n":
+                        type: string
+                        description: public modulus
+                    required:
+                      - kty
+            VcResponse:
+              title: Vc
+              type: string
+              format: application/jwt
+              pattern: ^[A-Za-z0-9_-]+\.[A-Za-z0-9_-]+\.[A-Za-z0-9_-]+$
+            TokenResponse:
+              title: AccessToken
+              required:
+                - access_token
+                - expires_in
+              type: object
+              properties:
+                access_token:
+                  type: string
+                  description: The access token for the given token request
+                token_type:
+                  type: string
+                  description: The authentication scheme
+                  example: Bearer
+                expires_in:
+                  type: string
+                  description: The token expiration time in seconds
+                  example: "3600"
+                refresh_token:
+                  type: string
+                  description: The refresh token is optional and not currently applicable
+            WebhookRequest:
+              type: object
+              required:
+                - event_id
+              properties:
+                event_id:
+                  type: string
+                  format: uuid
+            Error:
+              title: Error Schema
+              type: object
+              properties:
+                message:
+                  type: string
+        x-amazon-apigateway-request-validators:
+          Validate both:
+            validateRequestBody: true
+            validateRequestParameters: true
+          Validate Param only:
+            validateRequestParameters: true
+            validateRequestBody: false
+      Description: Public Open Banking CRI API
+      EndpointConfiguration:
+        Type: REGIONAL
+      MethodSettings:
+        - DataTraceEnabled:
+            Fn::If:
+              - IsProduction
+              - false
+              - true
+          HttpMethod: "*"
+          LoggingLevel: INFO
+          MetricsEnabled: true
+          ResourcePath: /*
+          ThrottlingBurstLimit: 400
+          ThrottlingRateLimit: 200
+        - DataTraceEnabled:
+            Fn::If:
+              - IsProduction
+              - false
+              - true
+          HttpMethod: POST
+          LoggingLevel: INFO
+          MetricsEnabled: true
+          ResourcePath: /~1webhooks
+          ThrottlingBurstLimit: 400
+          ThrottlingRateLimit: 200
+      Name:
+        Fn::Sub: ${AWS::StackName}-PublicOpenBankingAPI
+      OpenApiVersion: 3.0.1
+      StageName:
+        Ref: Environment
+      Tags:
+        CustomPolicy: "true"
+        FMSRegionalPolicy: "false"
+      TracingEnabled: true
+  LoggingKmsKey:
+    Type: AWS::KMS::Key
+    Properties:
+      EnableKeyRotation: true
+      KeyPolicy:
         Statement:
           - Action:
-              - sts:AssumeRole
+              - kms:*
+            Effect: Allow
+            Principal:
+              AWS:
+                Fn::Sub: arn:aws:iam::${AWS::AccountId}:root
+            Resource: "*"
+          - Action:
+              - kms:Encrypt*
+              - kms:Decrypt*
+              - kms:ReEncrypt*
+              - kms:GenerateDataKey*
+              - kms:Describe*
+            Condition:
+              ArnLike:
+                kms:EncryptionContext:aws:logs:arn:
+                  Fn::Sub: arn:aws:logs:${AWS::Region}:${AWS::AccountId}:*
             Effect: Allow
             Principal:
               Service:
-                - codedeploy.amazonaws.com
+                Fn::Sub: logs.${AWS::Region}.amazonaws.com
+            Resource: "*"
         Version: "2012-10-17"
-      ManagedPolicyArns:
-        - arn:aws:iam::aws:policy/service-role/AWSCodeDeployRoleForLambda
-      PermissionsBoundary:
-        Fn::If:
-          - UsePermissionsBoundary
-          - Ref: PermissionsBoundary
-          - Ref: AWS::NoValue
+  PublicAPILogGroup:
+    Type: AWS::Logs::LogGroup
+    Properties:
+      KmsKeyId:
+        Fn::GetAtt:
+          - LoggingKmsKey
+          - Arn
+      LogGroupName:
+        Fn::Sub:
+          - /aws/apigateway/${AWS::StackName}-${Api}-public-AccessLogs
+          - Api:
+              Ref: PublicAPI
+      RetentionInDays:
+        Ref: LogGroupRetentionInDays
+  PublicAPIUsagePlan:
+    Type: AWS::ApiGateway::UsagePlan
+    Properties:
+      ApiStages:
+        - ApiId:
+            Ref: PublicAPI
+          Stage:
+            Ref: Environment
+      Quota:
+        Limit: 500000
+        Period: DAY
+      Throttle:
+        BurstLimit: 400
+        RateLimit: 200
+    Condition: IsDeployedFromPipeline
+    DependsOn:
+      - PublicAPIStage
+  LinkUsagePlanApiKey1:
+    Type: AWS::ApiGateway::UsagePlanKey
+    Properties:
+      KeyId:
+        Fn::ImportValue: core-infrastructure-ApiKey1
+      KeyType: API_KEY
+      UsagePlanId:
+        Ref: PublicAPIUsagePlan
+    Condition: IsDeployedFromPipeline
+  LinkUsagePlanApiKey2:
+    Type: AWS::ApiGateway::UsagePlanKey
+    Properties:
+      KeyId:
+        Fn::ImportValue: core-infrastructure-ApiKey2
+      KeyType: API_KEY
+      UsagePlanId:
+        Ref: PublicAPIUsagePlan
+    Condition: IsDeployedFromPipeline
+  PrivateAPI:
+    Type: AWS::Serverless::Api
+    Properties:
+      AccessLogSetting:
+        DestinationArn:
+          Fn::GetAtt:
+            - PrivateAPILogGroup
+            - Arn
+        Format: '{"requestId":"$context.requestId","ip":"$context.identity.sourceIp","requestTime":"$context.requestTime","httpMethod":"$context.httpMethod","path":"$context.path","routeKey":"$context.routeKey","status":"$context.status","protocol":"$context.protocol","responseLatency":"$context.responseLatency","responseLength":"$context.responseLength"}'
+      Auth:
+        ResourcePolicy:
+          CustomStatements:
+            - Action: execute-api:Invoke
+              Effect: Allow
+              Principal: "*"
+              Resource:
+                - execute-api:/*
+            - Fn::If:
+                - IsDeployedFromPipeline
+                - Action: execute-api:Invoke
+                  Condition:
+                    StringNotEquals:
+                      aws:SourceVpce:
+                        - Fn::ImportValue:
+                            Fn::Sub: ${VpcStackName}-ExecuteApiGatewayEndpointId
+                  Effect: Deny
+                  Principal: "*"
+                  Resource:
+                    - execute-api:/*
+                - Ref: AWS::NoValue
+      DefinitionBody:
+        openapi: 3.0.1
+        info:
+          version: "0.1"
+          title: Open Banking Credential Issuer Private API
+        paths:
+          /banks:
+            get:
+              summary: GET the list of banks available for the caller's session
+              parameters:
+                - $ref: "#/components/parameters/SessionHeader"
+              responses:
+                "200":
+                  description: 200 response
+                  content:
+                    application/json:
+                      schema:
+                        $ref: "#/components/schemas/BankList"
+                "204":
+                  description: 204 response
+                "400":
+                  description: 400 response
+                  content:
+                    application/json:
+                      schema:
+                        $ref: "#/components/schemas/Error"
+                "401":
+                  description: 401 response
+                  content:
+                    application/json:
+                      schema:
+                        $ref: "#/components/schemas/Error"
+                "500":
+                  description: 500 response
+                  content:
+                    application/json:
+                      schema:
+                        $ref: "#/components/schemas/Error"
+              x-amazon-apigateway-request-validator: Validate both
+              x-amazon-apigateway-integration:
+                httpMethod: POST
+                uri:
+                  Fn::Sub: arn:${AWS::Partition}:apigateway:${AWS::Region}:lambda:path/2015-03-31/functions/${BankListRetrieverFunction.Arn}:live/invocations
+                type: aws_proxy
+          /consents:
+            post:
+              summary: POST a consent for the caller's session
+              parameters:
+                - $ref: "#/components/parameters/SessionHeader"
+              requestBody:
+                required: true
+                content:
+                  application/json:
+                    schema:
+                      $ref: "#/components/schemas/ConsentsRequest"
+              responses:
+                "200":
+                  description: 200 response (unexpired consent reused)
+                  content:
+                    application/json:
+                      schema:
+                        $ref: "#/components/schemas/CachedConsent"
+                "201":
+                  description: 201 response (new consent was created)
+                  content:
+                    application/json:
+                      schema:
+                        $ref: "#/components/schemas/Consent"
+                "400":
+                  description: 400 response
+                  content:
+                    application/json:
+                      schema:
+                        $ref: "#/components/schemas/Error"
+                "401":
+                  description: 401 response
+                  content:
+                    application/json:
+                      schema:
+                        $ref: "#/components/schemas/Error"
+                "500":
+                  description: 500 response
+                  content:
+                    application/json:
+                      schema:
+                        $ref: "#/components/schemas/Error"
+              x-amazon-apigateway-request-validator: Validate both
+              x-amazon-apigateway-integration:
+                httpMethod: POST
+                uri:
+                  Fn::Sub: arn:${AWS::Partition}:apigateway:${AWS::Region}:lambda:path/2015-03-31/functions/${ConsentsFunction.Arn}:live/invocations
+                type: aws_proxy
+          /authorization:
+            get:
+              parameters:
+                - $ref: "#/components/parameters/SessionHeader"
+              responses:
+                "200":
+                  description: 200 response
+                  content:
+                    application/json:
+                      schema:
+                        $ref: "#/components/schemas/AuthorizationResponse"
+                "400":
+                  description: 400 response
+                  content:
+                    application/json:
+                      schema:
+                        $ref: "#/components/schemas/Error"
+                "403":
+                  description: 403 response
+                  content:
+                    application/json:
+                      schema:
+                        $ref: "#/components/schemas/Error"
+                "500":
+                  description: 500 response
+                  content:
+                    application/json:
+                      schema:
+                        $ref: "#/components/schemas/Error"
+              x-amazon-apigateway-request-validator: Validate both
+              x-amazon-apigateway-integration:
+                type: aws_proxy
+                httpMethod: POST
+                uri:
+                  Fn::Sub: arn:${AWS::Partition}:apigateway:${AWS::Region}:lambda:path/2015-03-31/functions/arn:${AWS::Partition}:lambda:${AWS::Region}:${AWS::AccountId}:function:${OAuth.Outputs.LambdaAuthorizationFunctionName}:live/invocations
+                passthroughBehavior: when_no_match
+          /session:
+            post:
+              summary: IP address of the client.
+              parameters:
+                - in: header
+                  name: X-Forwarded-For
+                  schema:
+                    type: string
+                    format: string
+                  required: false
+              requestBody:
+                content:
+                  application/json:
+                    schema:
+                      $ref: "#/components/schemas/Authorization"
+                    examples:
+                      "201":
+                        description: Example body to receive a HTTP 201 response
+                        value:
+                          session_id: 1fbc5730-9d17-416d-b2ca-0be90e1e93f5
+                      "400":
+                        description: Example body to receive a HTTP 400 response
+                        value:
+                          session_id: fad21bea-bce9-4aa7-8889-d50c7d26616e
+                      "500":
+                        description: Example body to receive a HTTP 500 response
+                        value:
+                          session_id: f27b8afc-90ef-4e0f-83ad-00a2f5692590
+                required: true
+              responses:
+                "201":
+                  description: 201 response
+                  content:
+                    application/json:
+                      schema:
+                        $ref: "#/components/schemas/Session"
+                      examples:
+                        "201":
+                          summary: An example of a successful response message
+                          value:
+                            session_id: 1fbc5730-9d17-416d-b2ca-0be90e1e93f5
+                            state: string
+                            redirect_uri: string
+                "400":
+                  description: 400 response
+                  content:
+                    application/json:
+                      schema:
+                        $ref: "#/components/schemas/Error"
+                "500":
+                  description: 500 response
+                  content:
+                    application/json:
+                      schema:
+                        $ref: "#/components/schemas/Error"
+              x-amazon-apigateway-request-validator: Validate both
+              x-amazon-apigateway-integration:
+                httpMethod: POST
+                uri:
+                  Fn::Sub: arn:${AWS::Partition}:apigateway:${AWS::Region}:lambda:path/2015-03-31/functions/arn:${AWS::Partition}:lambda:${AWS::Region}:${AWS::AccountId}:function:${OAuth.Outputs.LambdaSessionFunctionName}:live/invocations
+                responses:
+                  default:
+                    statusCode: "200"
+                passthroughBehavior: when_no_match
+                contentHandling: CONVERT_TO_TEXT
+                type: aws_proxy
+        components:
+          parameters:
+            SessionHeader:
+              name: session-id
+              in: header
+              description: A UUID generated by the Session API to act as a primary key for the Session in DynamoDB
+              required: true
+              schema:
+                type: string
+          schemas:
+            EmptyBody:
+              type: object
+              nullable: true
+            Authorization:
+              required:
+                - client_id
+                - request
+              type: object
+              properties:
+                client_id:
+                  type: string
+                  minLength: 1
+                  example: ipv-core-stub
+                request:
+                  type: string
+            AuthorizationResponse:
+              required:
+                - redirect_uri
+                - code
+                - state
+              type: object
+              properties:
+                code:
+                  type: string
+                  example: 1fbc5730-9d17-416d-b2ca-0be90e1e93f5
+                state:
+                  type: string
+                  example: state
+                  minLength: 1
+                redirect_uri:
+                  type: string
+                  format: uri
+                  example: https://di-ipv-core-stub.london.cloudapps.digital/callback
+            Error:
+              title: Error Schema
+              type: object
+              properties:
+                message:
+                  type: string
+            Session:
+              required:
+                - session_id
+                - state
+                - redirect_uri
+              type: object
+              properties:
+                session_id:
+                  type: string
+                state:
+                  type: string
+                redirect_uri:
+                  type: string
+            BankList:
+              required:
+                - banks
+                - profile
+                - refreshedAtSeconds
+              type: object
+              properties:
+                banks:
+                  type: array
+                  items:
+                    $ref: "#/components/schemas/Bank"
+                profile:
+                  type: string
+                  enum:
+                    - LIVE
+                    - STUB
+                    - UAT
+                refreshedAtSeconds:
+                  type: integer
+                  format: int64
+            Bank:
+              required:
+                - bankId
+                - friendlyName
+                - serviceStatus
+              type: object
+              properties:
+                bankId:
+                  type: string
+                friendlyName:
+                  type: string
+                serviceStatus:
+                  type: boolean
+            ConsentsRequest:
+              required:
+                - bank_id
+                - return_url
+              type: object
+              properties:
+                bank_id:
+                  type: string
+                  minLength: 1
+                  example: example-bank
+                return_url:
+                  description: The http or https URL the bank redirects the user back to. This must match what is set in the Ecospend client used for the deployment account, which rejects any other value.
+                  type: string
+                  format: uri
+                  example: https://review-ob.dev.account.gov.uk/return
+            Consent:
+              required:
+                - id
+                - url
+                - urlExpiresAtSeconds
+              type: object
+              properties:
+                id:
+                  description: The Ecospend consent id
+                  type: string
+                  example: 1fbc5730-9d17-416d-b2ca-0be90e1e93f5
+                url:
+                  description: The bank consent URL the user is sent to. Valid for 4 minutes
+                  type: string
+                  format: uri
+                urlExpiresAtSeconds:
+                  description: Epoch seconds at which the bank consent URL stops being valid
+                  type: integer
+                  format: int64
+            CachedConsent:
+              allOf:
+                - $ref: "#/components/schemas/Consent"
+                - required:
+                    - cached
+                  type: object
+                  properties:
+                    cached:
+                      type: boolean
+                      enum:
+                        - true
+        x-amazon-apigateway-request-validators:
+          Validate both:
+            validateRequestBody: true
+            validateRequestParameters: true
+          Validate Param only:
+            validateRequestParameters: true
+            validateRequestBody: false
+      Description: Private Open Banking CRI API
+      EndpointConfiguration:
+        Type:
+          Fn::If:
+            - IsDeployedFromPipeline
+            - PRIVATE
+            - REGIONAL
+      MethodSettings:
+        - DataTraceEnabled:
+            Fn::If:
+              - IsProduction
+              - false
+              - true
+          HttpMethod: "*"
+          LoggingLevel: INFO
+          MetricsEnabled: true
+          ResourcePath: /*
+          ThrottlingBurstLimit: 400
+          ThrottlingRateLimit: 200
+      Name:
+        Fn::Sub: ${AWS::StackName}-PrivateOpenBankingAPI
+      OpenApiVersion: 3.0.1
+      StageName:
+        Ref: Environment
+      Tags:
+        CustomPolicy: "true"
+        FMSRegionalPolicy: "false"
+      TracingEnabled: true
+  PrivateAPILogGroup:
+    Type: AWS::Logs::LogGroup
+    Properties:
+      KmsKeyId:
+        Fn::GetAtt:
+          - LoggingKmsKey
+          - Arn
+      LogGroupName:
+        Fn::Sub:
+          - /aws/apigateway/${AWS::StackName}-${Api}-private-AccessLogs
+          - Api:
+              Ref: PrivateAPI
+      RetentionInDays:
+        Ref: LogGroupRetentionInDays
+  PrivateAPIUsagePlan:
+    Type: AWS::ApiGateway::UsagePlan
+    Properties:
+      ApiStages:
+        - ApiId:
+            Ref: PrivateAPI
+          Stage:
+            Ref: Environment
+      Quota:
+        Limit: 500000
+        Period: DAY
+      Throttle:
+        BurstLimit: 400
+        RateLimit: 200
+    Condition: IsDeployedFromPipeline
+    DependsOn:
+      - PrivateAPIStage
   OAuth:
     Type: AWS::Serverless::Application
     Properties:
@@ -663,70 +1571,6 @@ Resources:
         Fn::Sub: /aws/lambda/${AWS::StackName}-bank-list-retriever
       RetentionInDays:
         Ref: LogGroupRetentionInDays
-  BankListRetrieverFunctionCanaryErrors:
-    Type: AWS::CloudWatch::Alarm
-    Properties:
-      ActionsEnabled: true
-      AlarmActions:
-        - Fn::ImportValue: build-notifications-WarningAlertsTopicArn
-      AlarmDescription: Errors returned from BankListRetrieverFunction
-      AlarmName:
-        Fn::Sub: ${AWS::StackName}-${Environment}-BankListRetrieverFunction-canary-errors
-      ComparisonOperator: GreaterThanOrEqualToThreshold
-      DatapointsToAlarm: 2
-      Dimensions:
-        - Name: FunctionName
-          Value:
-            Ref: BankListRetrieverFunction
-        - Name: ExecutedVersion
-          Value:
-            Fn::GetAtt:
-              - BankListRetrieverFunction.Version
-              - Version
-      EvaluationPeriods: 3
-      MetricName: Errors
-      Namespace: AWS/Lambda
-      OKActions:
-        - Fn::ImportValue: build-notifications-WarningAlertsTopicArn
-      Period: 60
-      Statistic: Sum
-      Threshold: 1
-      TreatMissingData: notBreaching
-      Unit: Count
-    Condition: UseCanaryDeploymentAlarms
-  BankListRetrieverFunctionCanary5xxErrors:
-    Type: AWS::CloudWatch::Alarm
-    Properties:
-      ActionsEnabled: true
-      AlarmActions:
-        - Fn::ImportValue: build-notifications-WarningAlertsTopicArn
-      AlarmDescription: 5XX responses from GET /banks
-      AlarmName:
-        Fn::Sub: ${AWS::StackName}-${Environment}-BankListRetrieverFunction-canary-5xx
-      ComparisonOperator: GreaterThanOrEqualToThreshold
-      DatapointsToAlarm: 2
-      Dimensions:
-        - Name: ApiName
-          Value:
-            Fn::Sub: ${AWS::StackName}-PrivateOpenBankingAPI
-        - Name: Method
-          Value: GET
-        - Name: Resource
-          Value: /banks
-        - Name: Stage
-          Value:
-            Ref: Environment
-      EvaluationPeriods: 3
-      MetricName: 5XXError
-      Namespace: AWS/ApiGateway
-      OKActions:
-        - Fn::ImportValue: build-notifications-WarningAlertsTopicArn
-      Period: 60
-      Statistic: Sum
-      Threshold: 1
-      TreatMissingData: notBreaching
-      Unit: Count
-    Condition: UseCanaryDeploymentAlarms
   BankListRetrieverFunction:
     Type: AWS::Serverless::Function
     Properties:
@@ -899,6 +1743,89 @@ Resources:
       FunctionName:
         Ref: BankListRetrieverFunction.Alias
       Principal: apigateway.amazonaws.com
+  BankListRetrieverFunctionCanaryErrors:
+    Type: AWS::CloudWatch::Alarm
+    Properties:
+      ActionsEnabled: true
+      AlarmActions:
+        - Fn::ImportValue: build-notifications-WarningAlertsTopicArn
+      AlarmDescription: Errors returned from BankListRetrieverFunction
+      AlarmName:
+        Fn::Sub: ${AWS::StackName}-${Environment}-BankListRetrieverFunction-canary-errors
+      ComparisonOperator: GreaterThanOrEqualToThreshold
+      DatapointsToAlarm: 2
+      Dimensions:
+        - Name: FunctionName
+          Value:
+            Ref: BankListRetrieverFunction
+        - Name: ExecutedVersion
+          Value:
+            Fn::GetAtt:
+              - BankListRetrieverFunction.Version
+              - Version
+      EvaluationPeriods: 3
+      MetricName: Errors
+      Namespace: AWS/Lambda
+      OKActions:
+        - Fn::ImportValue: build-notifications-WarningAlertsTopicArn
+      Period: 60
+      Statistic: Sum
+      Threshold: 1
+      TreatMissingData: notBreaching
+      Unit: Count
+    Condition: UseCanaryDeploymentAlarms
+  BankListRetrieverFunctionCanary5xxErrors:
+    Type: AWS::CloudWatch::Alarm
+    Properties:
+      ActionsEnabled: true
+      AlarmActions:
+        - Fn::ImportValue: build-notifications-WarningAlertsTopicArn
+      AlarmDescription: 5XX responses from GET /banks
+      AlarmName:
+        Fn::Sub: ${AWS::StackName}-${Environment}-BankListRetrieverFunction-canary-5xx
+      ComparisonOperator: GreaterThanOrEqualToThreshold
+      DatapointsToAlarm: 2
+      Dimensions:
+        - Name: ApiName
+          Value:
+            Fn::Sub: ${AWS::StackName}-PrivateOpenBankingAPI
+        - Name: Method
+          Value: GET
+        - Name: Resource
+          Value: /banks
+        - Name: Stage
+          Value:
+            Ref: Environment
+      EvaluationPeriods: 3
+      MetricName: 5XXError
+      Namespace: AWS/ApiGateway
+      OKActions:
+        - Fn::ImportValue: build-notifications-WarningAlertsTopicArn
+      Period: 60
+      Statistic: Sum
+      Threshold: 1
+      TreatMissingData: notBreaching
+      Unit: Count
+    Condition: UseCanaryDeploymentAlarms
+  CodeDeployServiceRole:
+    Type: AWS::IAM::Role
+    Properties:
+      AssumeRolePolicyDocument:
+        Statement:
+          - Action:
+              - sts:AssumeRole
+            Effect: Allow
+            Principal:
+              Service:
+                - codedeploy.amazonaws.com
+        Version: "2012-10-17"
+      ManagedPolicyArns:
+        - arn:aws:iam::aws:policy/service-role/AWSCodeDeployRoleForLambda
+      PermissionsBoundary:
+        Fn::If:
+          - UsePermissionsBoundary
+          - Ref: PermissionsBoundary
+          - Ref: AWS::NoValue
   StubBankListEndpointParameter:
     Type: AWS::SSM::Parameter
     Properties:
@@ -921,50 +1848,6 @@ Resources:
                 - Ref: Environment
                 - STUB
     Condition: CreateStubEndpointProfileResources
-  UatBankListEndpointParameter:
-    Type: AWS::SSM::Parameter
-    Properties:
-      Description: Bank list endpoint for UAT
-      Name:
-        Fn::Sub:
-          - /${Prefix}/bank-list/UAT/endpoint-url
-          - Prefix:
-              Fn::If:
-                - UseParameterPrefix
-                - Ref: ParameterPrefix
-                - Ref: AWS::StackName
-      Type: String
-      Value:
-        Fn::Sub:
-          - ${BaseUrl}/api/v2.0/banks
-          - BaseUrl:
-              Fn::FindInMap:
-                - EndpointProfiles
-                - Ref: Environment
-                - UAT
-    Condition: CreateUatEndpointProfileResources
-  LiveBankListEndpointParameter:
-    Type: AWS::SSM::Parameter
-    Properties:
-      Description: Bank list endpoint for LIVE
-      Name:
-        Fn::Sub:
-          - /${Prefix}/bank-list/LIVE/endpoint-url
-          - Prefix:
-              Fn::If:
-                - UseParameterPrefix
-                - Ref: ParameterPrefix
-                - Ref: AWS::StackName
-      Type: String
-      Value:
-        Fn::Sub:
-          - ${BaseUrl}/api/v2.0/banks
-          - BaseUrl:
-              Fn::FindInMap:
-                - EndpointProfiles
-                - Ref: Environment
-                - LIVE
-    Condition: CreateLiveEndpointProfileResources
   StubBankListSizeDropAlarm:
     Type: AWS::CloudWatch::Alarm
     Properties:
@@ -1065,6 +1948,28 @@ Resources:
       Threshold: 1
       TreatMissingData: breaching
     Condition: CreateStubEndpointProfileResources
+  UatBankListEndpointParameter:
+    Type: AWS::SSM::Parameter
+    Properties:
+      Description: Bank list endpoint for UAT
+      Name:
+        Fn::Sub:
+          - /${Prefix}/bank-list/UAT/endpoint-url
+          - Prefix:
+              Fn::If:
+                - UseParameterPrefix
+                - Ref: ParameterPrefix
+                - Ref: AWS::StackName
+      Type: String
+      Value:
+        Fn::Sub:
+          - ${BaseUrl}/api/v2.0/banks
+          - BaseUrl:
+              Fn::FindInMap:
+                - EndpointProfiles
+                - Ref: Environment
+                - UAT
+    Condition: CreateUatEndpointProfileResources
   UatBankListSizeDropAlarm:
     Type: AWS::CloudWatch::Alarm
     Properties:
@@ -1165,6 +2070,28 @@ Resources:
       Threshold: 1
       TreatMissingData: breaching
     Condition: CreateUatEndpointProfileResources
+  LiveBankListEndpointParameter:
+    Type: AWS::SSM::Parameter
+    Properties:
+      Description: Bank list endpoint for LIVE
+      Name:
+        Fn::Sub:
+          - /${Prefix}/bank-list/LIVE/endpoint-url
+          - Prefix:
+              Fn::If:
+                - UseParameterPrefix
+                - Ref: ParameterPrefix
+                - Ref: AWS::StackName
+      Type: String
+      Value:
+        Fn::Sub:
+          - ${BaseUrl}/api/v2.0/banks
+          - BaseUrl:
+              Fn::FindInMap:
+                - EndpointProfiles
+                - Ref: Environment
+                - LIVE
+    Condition: CreateLiveEndpointProfileResources
   LiveBankListSizeDropAlarm:
     Type: AWS::CloudWatch::Alarm
     Properties:
@@ -1293,70 +2220,6 @@ Resources:
         Fn::Sub: /aws/lambda/${AWS::StackName}-consents
       RetentionInDays:
         Ref: LogGroupRetentionInDays
-  ConsentsFunctionCanaryErrors:
-    Type: AWS::CloudWatch::Alarm
-    Properties:
-      ActionsEnabled: true
-      AlarmActions:
-        - Fn::ImportValue: build-notifications-WarningAlertsTopicArn
-      AlarmDescription: Errors returned from ConsentsFunction
-      AlarmName:
-        Fn::Sub: ${AWS::StackName}-${Environment}-ConsentsFunction-canary-errors
-      ComparisonOperator: GreaterThanOrEqualToThreshold
-      DatapointsToAlarm: 2
-      Dimensions:
-        - Name: FunctionName
-          Value:
-            Ref: ConsentsFunction
-        - Name: ExecutedVersion
-          Value:
-            Fn::GetAtt:
-              - ConsentsFunction.Version
-              - Version
-      EvaluationPeriods: 3
-      MetricName: Errors
-      Namespace: AWS/Lambda
-      OKActions:
-        - Fn::ImportValue: build-notifications-WarningAlertsTopicArn
-      Period: 60
-      Statistic: Sum
-      Threshold: 1
-      TreatMissingData: notBreaching
-      Unit: Count
-    Condition: UseCanaryDeploymentAlarms
-  ConsentsFunctionCanary5xxErrors:
-    Type: AWS::CloudWatch::Alarm
-    Properties:
-      ActionsEnabled: true
-      AlarmActions:
-        - Fn::ImportValue: build-notifications-WarningAlertsTopicArn
-      AlarmDescription: 5XX responses from POST /consents
-      AlarmName:
-        Fn::Sub: ${AWS::StackName}-${Environment}-ConsentsFunction-canary-5xx
-      ComparisonOperator: GreaterThanOrEqualToThreshold
-      DatapointsToAlarm: 2
-      Dimensions:
-        - Name: ApiName
-          Value:
-            Fn::Sub: ${AWS::StackName}-PrivateOpenBankingAPI
-        - Name: Method
-          Value: POST
-        - Name: Resource
-          Value: /consents
-        - Name: Stage
-          Value:
-            Ref: Environment
-      EvaluationPeriods: 3
-      MetricName: 5XXError
-      Namespace: AWS/ApiGateway
-      OKActions:
-        - Fn::ImportValue: build-notifications-WarningAlertsTopicArn
-      Period: 60
-      Statistic: Sum
-      Threshold: 1
-      TreatMissingData: notBreaching
-      Unit: Count
-    Condition: UseCanaryDeploymentAlarms
   ConsentsFunction:
     Type: AWS::Serverless::Function
     Properties:
@@ -1557,6 +2420,70 @@ Resources:
       FunctionName:
         Ref: ConsentsFunction.Alias
       Principal: apigateway.amazonaws.com
+  ConsentsFunctionCanaryErrors:
+    Type: AWS::CloudWatch::Alarm
+    Properties:
+      ActionsEnabled: true
+      AlarmActions:
+        - Fn::ImportValue: build-notifications-WarningAlertsTopicArn
+      AlarmDescription: Errors returned from ConsentsFunction
+      AlarmName:
+        Fn::Sub: ${AWS::StackName}-${Environment}-ConsentsFunction-canary-errors
+      ComparisonOperator: GreaterThanOrEqualToThreshold
+      DatapointsToAlarm: 2
+      Dimensions:
+        - Name: FunctionName
+          Value:
+            Ref: ConsentsFunction
+        - Name: ExecutedVersion
+          Value:
+            Fn::GetAtt:
+              - ConsentsFunction.Version
+              - Version
+      EvaluationPeriods: 3
+      MetricName: Errors
+      Namespace: AWS/Lambda
+      OKActions:
+        - Fn::ImportValue: build-notifications-WarningAlertsTopicArn
+      Period: 60
+      Statistic: Sum
+      Threshold: 1
+      TreatMissingData: notBreaching
+      Unit: Count
+    Condition: UseCanaryDeploymentAlarms
+  ConsentsFunctionCanary5xxErrors:
+    Type: AWS::CloudWatch::Alarm
+    Properties:
+      ActionsEnabled: true
+      AlarmActions:
+        - Fn::ImportValue: build-notifications-WarningAlertsTopicArn
+      AlarmDescription: 5XX responses from POST /consents
+      AlarmName:
+        Fn::Sub: ${AWS::StackName}-${Environment}-ConsentsFunction-canary-5xx
+      ComparisonOperator: GreaterThanOrEqualToThreshold
+      DatapointsToAlarm: 2
+      Dimensions:
+        - Name: ApiName
+          Value:
+            Fn::Sub: ${AWS::StackName}-PrivateOpenBankingAPI
+        - Name: Method
+          Value: POST
+        - Name: Resource
+          Value: /consents
+        - Name: Stage
+          Value:
+            Ref: Environment
+      EvaluationPeriods: 3
+      MetricName: 5XXError
+      Namespace: AWS/ApiGateway
+      OKActions:
+        - Fn::ImportValue: build-notifications-WarningAlertsTopicArn
+      Period: 60
+      Statistic: Sum
+      Threshold: 1
+      TreatMissingData: notBreaching
+      Unit: Count
+    Condition: UseCanaryDeploymentAlarms
   StubConsentsEndpointParameter:
     Type: AWS::SSM::Parameter
     Properties:
@@ -1630,70 +2557,6 @@ Resources:
         Fn::Sub: /aws/lambda/${AWS::StackName}-issue-credential
       RetentionInDays:
         Ref: LogGroupRetentionInDays
-  IssueCredentialFunctionCanaryErrors:
-    Type: AWS::CloudWatch::Alarm
-    Properties:
-      ActionsEnabled: true
-      AlarmActions:
-        - Fn::ImportValue: build-notifications-WarningAlertsTopicArn
-      AlarmDescription: Errors returned from IssueCredentialFunction
-      AlarmName:
-        Fn::Sub: ${AWS::StackName}-${Environment}-IssueCredentialFunction-canary-errors
-      ComparisonOperator: GreaterThanOrEqualToThreshold
-      DatapointsToAlarm: 2
-      Dimensions:
-        - Name: FunctionName
-          Value:
-            Ref: IssueCredentialFunction
-        - Name: ExecutedVersion
-          Value:
-            Fn::GetAtt:
-              - IssueCredentialFunction.Version
-              - Version
-      EvaluationPeriods: 3
-      MetricName: Errors
-      Namespace: AWS/Lambda
-      OKActions:
-        - Fn::ImportValue: build-notifications-WarningAlertsTopicArn
-      Period: 60
-      Statistic: Sum
-      Threshold: 1
-      TreatMissingData: notBreaching
-      Unit: Count
-    Condition: UseCanaryDeploymentAlarms
-  IssueCredentialFunctionCanary5xxErrors:
-    Type: AWS::CloudWatch::Alarm
-    Properties:
-      ActionsEnabled: true
-      AlarmActions:
-        - Fn::ImportValue: build-notifications-WarningAlertsTopicArn
-      AlarmDescription: 5XX responses from POST /credential/issue
-      AlarmName:
-        Fn::Sub: ${AWS::StackName}-${Environment}-IssueCredentialFunction-canary-5xx
-      ComparisonOperator: GreaterThanOrEqualToThreshold
-      DatapointsToAlarm: 2
-      Dimensions:
-        - Name: ApiName
-          Value:
-            Fn::Sub: ${AWS::StackName}-PublicOpenBankingAPI
-        - Name: Method
-          Value: POST
-        - Name: Resource
-          Value: /credential/issue
-        - Name: Stage
-          Value:
-            Ref: Environment
-      EvaluationPeriods: 3
-      MetricName: 5XXError
-      Namespace: AWS/ApiGateway
-      OKActions:
-        - Fn::ImportValue: build-notifications-WarningAlertsTopicArn
-      Period: 60
-      Statistic: Sum
-      Threshold: 1
-      TreatMissingData: notBreaching
-      Unit: Count
-    Condition: UseCanaryDeploymentAlarms
   IssueCredentialFunction:
     Type: AWS::Serverless::Function
     Properties:
@@ -1909,35 +2772,70 @@ Resources:
       FunctionName:
         Ref: IssueCredentialFunction.Alias
       Principal: apigateway.amazonaws.com
-  LoggingKmsKey:
-    Type: AWS::KMS::Key
+  IssueCredentialFunctionCanaryErrors:
+    Type: AWS::CloudWatch::Alarm
     Properties:
-      EnableKeyRotation: true
-      KeyPolicy:
-        Statement:
-          - Action:
-              - kms:*
-            Effect: Allow
-            Principal:
-              AWS:
-                Fn::Sub: arn:aws:iam::${AWS::AccountId}:root
-            Resource: "*"
-          - Action:
-              - kms:Encrypt*
-              - kms:Decrypt*
-              - kms:ReEncrypt*
-              - kms:GenerateDataKey*
-              - kms:Describe*
-            Condition:
-              ArnLike:
-                kms:EncryptionContext:aws:logs:arn:
-                  Fn::Sub: arn:aws:logs:${AWS::Region}:${AWS::AccountId}:*
-            Effect: Allow
-            Principal:
-              Service:
-                Fn::Sub: logs.${AWS::Region}.amazonaws.com
-            Resource: "*"
-        Version: "2012-10-17"
+      ActionsEnabled: true
+      AlarmActions:
+        - Fn::ImportValue: build-notifications-WarningAlertsTopicArn
+      AlarmDescription: Errors returned from IssueCredentialFunction
+      AlarmName:
+        Fn::Sub: ${AWS::StackName}-${Environment}-IssueCredentialFunction-canary-errors
+      ComparisonOperator: GreaterThanOrEqualToThreshold
+      DatapointsToAlarm: 2
+      Dimensions:
+        - Name: FunctionName
+          Value:
+            Ref: IssueCredentialFunction
+        - Name: ExecutedVersion
+          Value:
+            Fn::GetAtt:
+              - IssueCredentialFunction.Version
+              - Version
+      EvaluationPeriods: 3
+      MetricName: Errors
+      Namespace: AWS/Lambda
+      OKActions:
+        - Fn::ImportValue: build-notifications-WarningAlertsTopicArn
+      Period: 60
+      Statistic: Sum
+      Threshold: 1
+      TreatMissingData: notBreaching
+      Unit: Count
+    Condition: UseCanaryDeploymentAlarms
+  IssueCredentialFunctionCanary5xxErrors:
+    Type: AWS::CloudWatch::Alarm
+    Properties:
+      ActionsEnabled: true
+      AlarmActions:
+        - Fn::ImportValue: build-notifications-WarningAlertsTopicArn
+      AlarmDescription: 5XX responses from POST /credential/issue
+      AlarmName:
+        Fn::Sub: ${AWS::StackName}-${Environment}-IssueCredentialFunction-canary-5xx
+      ComparisonOperator: GreaterThanOrEqualToThreshold
+      DatapointsToAlarm: 2
+      Dimensions:
+        - Name: ApiName
+          Value:
+            Fn::Sub: ${AWS::StackName}-PublicOpenBankingAPI
+        - Name: Method
+          Value: POST
+        - Name: Resource
+          Value: /credential/issue
+        - Name: Stage
+          Value:
+            Ref: Environment
+      EvaluationPeriods: 3
+      MetricName: 5XXError
+      Namespace: AWS/ApiGateway
+      OKActions:
+        - Fn::ImportValue: build-notifications-WarningAlertsTopicArn
+      Period: 60
+      Statistic: Sum
+      Threshold: 1
+      TreatMissingData: notBreaching
+      Unit: Count
+    Condition: UseCanaryDeploymentAlarms
   JWKSBucketRole:
     Type: AWS::IAM::Role
     Properties:
@@ -1960,849 +2858,283 @@ Resources:
                   - s3:Get*
                 Effect: Allow
                 Resource:
-                  - Fn::Sub: arn:aws:s3:::govuk-one-login-ob-published-keys-${Environment}/jwks.json
+                  - Fn::Sub:
+                      - arn:aws:s3:::${Bucket}/${Key}
+                      - Bucket:
+                          Fn::Sub: govuk-one-login-ob-published-keys-${Environment}
+                        Key: jwks.json
             Version: "2012-10-17"
-          PolicyName: AccessJWKSJson
+          PolicyName: ReadObject
       Tags:
         - Key: key_consumer_type
           Value: use
-  PublicAPILogGroup:
-    Type: AWS::Logs::LogGroup
+  WebhookDeduplicationTable:
+    Type: AWS::DynamoDB::Table
     Properties:
-      KmsKeyId:
-        Fn::GetAtt:
-          - LoggingKmsKey
-          - Arn
-      LogGroupName:
-        Fn::Sub: /aws/apigateway/${AWS::StackName}-${PublicAPI}-public-AccessLogs
-      RetentionInDays:
-        Ref: LogGroupRetentionInDays
-  PublicAPI:
-    Type: AWS::Serverless::Api
-    Properties:
-      AccessLogSetting:
-        DestinationArn:
-          Fn::GetAtt:
-            - PublicAPILogGroup
-            - Arn
-        Format: '{"requestId":"$context.requestId","ip":"$context.identity.sourceIp","requestTime":"$context.requestTime","httpMethod":"$context.httpMethod","path":"$context.path","routeKey":"$context.routeKey","status":"$context.status","protocol":"$context.protocol","responseLatency":"$context.responseLatency","responseLength":"$context.responseLength"}'
-      DefinitionBody:
-        openapi: 3.0.1
-        info:
-          version: "0.1"
-          title: Open Banking Credential Issuer Public API
-        paths:
-          /health:
-            get:
-              responses:
-                "200":
-                  description: 200 response
-              x-amazon-apigateway-integration:
-                type: mock
-                requestTemplates:
-                  application/json: '{"statusCode": 200}'
-                responses:
-                  default:
-                    statusCode: "200"
-          /.well-known/jwks.json:
-            get:
-              operationId: getWellKnownJwksJson
-              summary: Retrieve the public encryption keys issued by Open Banking CRI.
-              description: Return the current valid public keys as a JSON Web Key Set used to Encrypt JAR(s) requests for Open Banking CRI
-              tags:
-                - Backend - Open Banking CRI
-              responses:
-                "200":
-                  description: OK - key ring returned
-                  headers:
-                    Cache-Control:
-                      schema:
-                        type: string
-                    Content-Type:
-                      schema:
-                        type: string
-                    Strict-Transport-Security:
-                      schema:
-                        type: string
-                    X-Content-Type-Options:
-                      schema:
-                        type: string
-                    X-Frame-Options:
-                      schema:
-                        type: string
-                  content:
-                    application/json:
-                      schema:
-                        $ref: "#/components/schemas/JWKSFile"
-                "400":
-                  description: 400 response
-                  headers:
-                    Cache-Control:
-                      schema:
-                        type: string
-                    Content-Type:
-                      schema:
-                        type: string
-                    Strict-Transport-Security:
-                      schema:
-                        type: string
-                    X-Content-Type-Options:
-                      schema:
-                        type: string
-                    X-Frame-Options:
-                      schema:
-                        type: string
-                "500":
-                  description: Internal Server Error
-                  headers:
-                    Cache-Control:
-                      schema:
-                        type: string
-                    Content-Type:
-                      schema:
-                        type: string
-                    Strict-Transport-Security:
-                      schema:
-                        type: string
-                    X-Content-Type-Options:
-                      schema:
-                        type: string
-                    X-Frame-Options:
-                      schema:
-                        type: string
-              x-amazon-apigateway-integration:
-                httpMethod: GET
-                credentials:
-                  Fn::GetAtt:
-                    - JWKSBucketRole
-                    - Arn
-                uri:
-                  Fn::Sub: arn:aws:apigateway:${AWS::Region}:s3:path/govuk-one-login-ob-published-keys-${Environment}/jwks.json
-                responses:
-                  default:
-                    statusCode: "200"
-                    responseParameters:
-                      method.response.header.Cache-Control: "'max-age=300'"
-                passthroughBehavior: when_no_match
-                contentHandling: CONVERT_TO_TEXT
-                type: aws
-          /token:
-            post:
-              requestBody:
-                content:
-                  application/x-www-form-urlencoded:
-                    schema:
-                      required:
-                        - grant_type
-                        - code
-                        - client_assertion_type
-                        - client_assertion
-                        - redirect_uri
-                      properties:
-                        grant_type:
-                          type: string
-                          pattern: authorization_code
-                          example: authorization_code
-                        code:
-                          type: string
-                          minLength: 1
-                        client_assertion_type:
-                          type: string
-                          pattern: urn:ietf:params:oauth:client-assertion-type:jwt-bearer
-                          example: urn:ietf:params:oauth:client-assertion-type:jwt-bearer
-                        client_assertion:
-                          type: string
-                          pattern: "[a-zA-Z0-9_=]+\\.[a-zA-Z0-9_=]+\\.[a-zA-Z0-9_\\-\\+\\/=]+"
-                        redirect_uri:
-                          type: string
-                          format: uri
-                          example: https://di-ipv-core-stub.london.cloudapps.digital/callback
-                    examples:
-                      "201":
-                        summary: Example body to receive a HTTP 201 response
-                        value:
-                          grant_type: string
-                          code: 1fbc5730-9d17-416d-b2ca-0be90e1e93f5
-                          client_assertion_type: string
-                          client_assertion: string
-                          redirect_uri: https://di-ipv-core-stub.london.cloudapps.digital/callback
-                      "400":
-                        summary: Example body to receive a HTTP 400 response
-                        value:
-                          grant_type: string
-                          code: fad21bea-bce9-4aa7-8889-d50c7d26616e
-                          client_assertion_type: string
-                          client_assertion: string
-                          redirect_uri: string
-                      "500":
-                        summary: Example body to receive a HTTP 500 response
-                        value:
-                          grant_type: string
-                          code: f27b8afc-90ef-4e0f-83ad-00a2f5692590
-                          client_assertion_type: string
-                          client_assertion: string
-                          redirect_uri: string
-              responses:
-                "201":
-                  description: 201 response
-                  content:
-                    application/json:
-                      schema:
-                        $ref: "#/components/schemas/TokenResponse"
-                      examples:
-                        "201":
-                          value:
-                            access_token: 1fbc5730-9d17-416d-b2ca-0be90e1e93f5
-                            token_type: Bearer
-                            expires_in: "3600"
-                            refresh_token: uuid
-                "400":
-                  description: 400 response
-                  content:
-                    application/json:
-                      schema:
-                        $ref: "#/components/schemas/Error"
-                "500":
-                  description: 500 response
-                  content:
-                    application/json:
-                      schema:
-                        $ref: "#/components/schemas/Error"
-              security:
-                - api_key:
-                    Fn::If:
-                      - IsDeployedFromPipeline
-                      - []
-                      - Ref: AWS::NoValue
-              x-amazon-apigateway-request-validator: Validate both
-              x-amazon-apigateway-integration:
-                httpMethod: POST
-                uri:
-                  Fn::Sub: arn:${AWS::Partition}:apigateway:${AWS::Region}:lambda:path/2015-03-31/functions/arn:${AWS::Partition}:lambda:${AWS::Region}:${AWS::AccountId}:function:${OAuth.Outputs.LambdaAccessTokenFunctionName}:live/invocations
-                responses:
-                  default:
-                    statusCode: "200"
-                passthroughBehavior: when_no_match
-                contentHandling: CONVERT_TO_TEXT
-                type: aws_proxy
-          /credential/issue:
-            summary: Resource for the Open Banking API
-            description: This API is expected to be called by the IPV core backend directly as the final part of the OpenId/Oauth Flow
-            parameters:
-              - name: Authorization
-                in: header
-                required: true
-                description: "A valid access_token (e.g.: Authorization: Bearer <access-token-value>)."
-                schema:
-                  type: string
-            post:
-              summary: POST request using a valid access token
-              responses:
-                "200":
-                  description: 200 Ok
-                  content:
-                    application/jwt:
-                      schema:
-                        $ref: "#/components/schemas/VcResponse"
-                "400":
-                  description: 400 Bad Response
-                  content:
-                    application/json:
-                      schema:
-                        $ref: "#/components/schemas/Error"
-                "401":
-                  description: 401 Unauthorised
-                  content:
-                    application/json:
-                      schema:
-                        $ref: "#/components/schemas/Error"
-                "500":
-                  description: 500 Internal server error
-                  content:
-                    application/json:
-                      schema:
-                        $ref: "#/components/schemas/Error"
-              security:
-                - api_key:
-                    Fn::If:
-                      - IsDeployedFromPipeline
-                      - []
-                      - Ref: AWS::NoValue
-              x-amazon-apigateway-request-validator: Validate both
-              x-amazon-apigateway-integration:
-                httpMethod: POST
-                uri:
-                  Fn::Sub: arn:${AWS::Partition}:apigateway:${AWS::Region}:lambda:path/2015-03-31/functions/${IssueCredentialFunction.Arn}:live/invocations
-                responses:
-                  default:
-                    statusCode: "200"
-                passthroughBehavior: when_no_match
-                contentHandling: CONVERT_TO_TEXT
-                type: aws_proxy
-        components:
-          schemas:
-            JWKSFile:
-              type: object
-              required:
-                - keys
-              additionalProperties: true
-              properties:
-                keys:
-                  type: array
-                  description: The value of the `keys` parameter is an array of JWK values. By default, the order of the JWK values within the array does not imply an order of preference among them, although applications of JWK Sets can choose to assign a meaning to the order for their purposes, if desired.
-                  items:
-                    type: object
-                    additionalProperties: true
-                    description: A JSON Web Key (JWK) as defined by [RFC7517](https://www.rfc-editor.org/rfc/rfc7517)
-                    properties:
-                      kty:
-                        type: string
-                        description: The `kty` (key type) parameter identifies the cryptographic algorithm family used with the key, such as `RSA or `EC`
-                      use:
-                        type: string
-                        enum:
-                          - sig
-                          - enc
-                        description: The "use" (public key use) parameter identifies the intended use of the public key.  The "use" parameter is employed to indicate whether a public key is used for encrypting data or verifying the signature on data. Valid values are `sig` (signature) and `enc` (encryption).
-                      alg:
-                        type: string
-                        description: The `alg` (algorithm) parameter identifies the algorithm intended for use with the key.
-                      kid:
-                        type: string
-                        description: The `kid` (key ID) parameter is used to match a specific key. This is used, for instance, to choose among a set of keys within a JWK Set during key rollover.  The structure of the `kid` value is unspecified.
-                      e:
-                        type: string
-                        description: public exponent
-                      "n":
-                        type: string
-                        description: public modulus
-                    required:
-                      - kty
-            VcResponse:
-              title: Vc
-              type: string
-              format: application/jwt
-              pattern: ^[A-Za-z0-9_-]+\.[A-Za-z0-9_-]+\.[A-Za-z0-9_-]+$
-            TokenResponse:
-              title: AccessToken
-              required:
-                - access_token
-                - expires_in
-              type: object
-              properties:
-                access_token:
-                  type: string
-                  description: The access token for the given token request
-                token_type:
-                  type: string
-                  description: The authentication scheme
-                  example: Bearer
-                expires_in:
-                  type: string
-                  description: The token expiration time in seconds
-                  example: "3600"
-                refresh_token:
-                  type: string
-                  description: The refresh token is optional and not currently applicable
-            Error:
-              title: Error Schema
-              type: object
-              properties:
-                message:
-                  type: string
-        x-amazon-apigateway-request-validators:
-          Validate both:
-            validateRequestBody: true
-            validateRequestParameters: true
-          Validate Param only:
-            validateRequestParameters: true
-            validateRequestBody: false
-      Description: Public Open Banking CRI API
-      EndpointConfiguration:
-        Type: REGIONAL
-      MethodSettings:
-        - DataTraceEnabled:
-            Fn::If:
-              - IsProduction
-              - false
-              - true
-          HttpMethod: "*"
-          LoggingLevel: INFO
-          MetricsEnabled: true
-          ResourcePath: /*
-          ThrottlingBurstLimit: 400
-          ThrottlingRateLimit: 200
-      Name:
-        Fn::Sub: ${AWS::StackName}-PublicOpenBankingAPI
-      OpenApiVersion: 3.0.1
-      StageName:
-        Ref: Environment
-      Tags:
-        CustomPolicy: "true"
-        FMSRegionalPolicy: "false"
-      TracingEnabled: true
-  PublicAPIUsagePlan:
-    Type: AWS::ApiGateway::UsagePlan
-    Properties:
-      ApiStages:
-        - ApiId:
-            Ref: PublicAPI
-          Stage:
-            Ref: Environment
-      Quota:
-        Limit: 500000
-        Period: DAY
-      Throttle:
-        BurstLimit: 400
-        RateLimit: 200
-    Condition: IsDeployedFromPipeline
-    DependsOn:
-      - PublicAPIStage
-  LinkUsagePlanApiKey1:
-    Type: AWS::ApiGateway::UsagePlanKey
-    Properties:
-      KeyId:
-        Fn::ImportValue: core-infrastructure-ApiKey1
-      KeyType: API_KEY
-      UsagePlanId:
-        Ref: PublicAPIUsagePlan
-    Condition: IsDeployedFromPipeline
-  LinkUsagePlanApiKey2:
-    Type: AWS::ApiGateway::UsagePlanKey
-    Properties:
-      KeyId:
-        Fn::ImportValue: core-infrastructure-ApiKey2
-      KeyType: API_KEY
-      UsagePlanId:
-        Ref: PublicAPIUsagePlan
-    Condition: IsDeployedFromPipeline
-  PrivateAPILogGroup:
-    Type: AWS::Logs::LogGroup
-    Properties:
-      KmsKeyId:
-        Fn::GetAtt:
-          - LoggingKmsKey
-          - Arn
-      LogGroupName:
-        Fn::Sub: /aws/apigateway/${AWS::StackName}-${PrivateAPI}-private-AccessLogs
-      RetentionInDays:
-        Ref: LogGroupRetentionInDays
-  PrivateAPI:
-    Type: AWS::Serverless::Api
-    Properties:
-      AccessLogSetting:
-        DestinationArn:
-          Fn::GetAtt:
-            - PrivateAPILogGroup
-            - Arn
-        Format: '{"requestId":"$context.requestId","ip":"$context.identity.sourceIp","requestTime":"$context.requestTime","httpMethod":"$context.httpMethod","path":"$context.path","routeKey":"$context.routeKey","status":"$context.status","protocol":"$context.protocol","responseLatency":"$context.responseLatency","responseLength":"$context.responseLength"}'
-      Auth:
-        ResourcePolicy:
-          CustomStatements:
-            - Action: execute-api:Invoke
-              Effect: Allow
-              Principal: "*"
-              Resource:
-                - execute-api:/*
-            - Fn::If:
-                - IsDeployedFromPipeline
-                - Action: execute-api:Invoke
-                  Condition:
-                    StringNotEquals:
-                      aws:SourceVpce:
-                        - Fn::ImportValue:
-                            Fn::Sub: ${VpcStackName}-ExecuteApiGatewayEndpointId
-                  Effect: Deny
-                  Principal: "*"
-                  Resource:
-                    - execute-api:/*
-                - Ref: AWS::NoValue
-      DefinitionBody:
-        openapi: 3.0.1
-        info:
-          version: "0.1"
-          title: Open Banking Credential Issuer Private API
-        paths:
-          /banks:
-            get:
-              summary: GET the list of banks available for the caller's session
-              parameters:
-                - $ref: "#/components/parameters/SessionHeader"
-              responses:
-                "200":
-                  description: 200 response
-                  content:
-                    application/json:
-                      schema:
-                        $ref: "#/components/schemas/BankList"
-                "204":
-                  description: 204 response
-                "400":
-                  description: 400 response
-                  content:
-                    application/json:
-                      schema:
-                        $ref: "#/components/schemas/Error"
-                "401":
-                  description: 401 response
-                  content:
-                    application/json:
-                      schema:
-                        $ref: "#/components/schemas/Error"
-                "500":
-                  description: 500 response
-                  content:
-                    application/json:
-                      schema:
-                        $ref: "#/components/schemas/Error"
-              x-amazon-apigateway-request-validator: Validate both
-              x-amazon-apigateway-integration:
-                httpMethod: POST
-                uri:
-                  Fn::Sub: arn:${AWS::Partition}:apigateway:${AWS::Region}:lambda:path/2015-03-31/functions/${BankListRetrieverFunction.Arn}:live/invocations
-                type: aws_proxy
-          /consents:
-            post:
-              summary: POST a consent for the caller's session
-              parameters:
-                - $ref: "#/components/parameters/SessionHeader"
-              requestBody:
-                required: true
-                content:
-                  application/json:
-                    schema:
-                      $ref: "#/components/schemas/ConsentsRequest"
-              responses:
-                "200":
-                  description: 200 response (unexpired consent reused)
-                  content:
-                    application/json:
-                      schema:
-                        $ref: "#/components/schemas/CachedConsent"
-                "201":
-                  description: 201 response (new consent was created)
-                  content:
-                    application/json:
-                      schema:
-                        $ref: "#/components/schemas/Consent"
-                "400":
-                  description: 400 response
-                  content:
-                    application/json:
-                      schema:
-                        $ref: "#/components/schemas/Error"
-                "401":
-                  description: 401 response
-                  content:
-                    application/json:
-                      schema:
-                        $ref: "#/components/schemas/Error"
-                "500":
-                  description: 500 response
-                  content:
-                    application/json:
-                      schema:
-                        $ref: "#/components/schemas/Error"
-              x-amazon-apigateway-request-validator: Validate both
-              x-amazon-apigateway-integration:
-                httpMethod: POST
-                uri:
-                  Fn::Sub: arn:${AWS::Partition}:apigateway:${AWS::Region}:lambda:path/2015-03-31/functions/${ConsentsFunction.Arn}:live/invocations
-                type: aws_proxy
-          /authorization:
-            get:
-              parameters:
-                - $ref: "#/components/parameters/SessionHeader"
-              responses:
-                "200":
-                  description: 200 response
-                  content:
-                    application/json:
-                      schema:
-                        $ref: "#/components/schemas/AuthorizationResponse"
-                "400":
-                  description: 400 response
-                  content:
-                    application/json:
-                      schema:
-                        $ref: "#/components/schemas/Error"
-                "403":
-                  description: 403 response
-                  content:
-                    application/json:
-                      schema:
-                        $ref: "#/components/schemas/Error"
-                "500":
-                  description: 500 response
-                  content:
-                    application/json:
-                      schema:
-                        $ref: "#/components/schemas/Error"
-              x-amazon-apigateway-request-validator: Validate both
-              x-amazon-apigateway-integration:
-                type: aws_proxy
-                httpMethod: POST
-                uri:
-                  Fn::Sub: arn:${AWS::Partition}:apigateway:${AWS::Region}:lambda:path/2015-03-31/functions/arn:${AWS::Partition}:lambda:${AWS::Region}:${AWS::AccountId}:function:${OAuth.Outputs.LambdaAuthorizationFunctionName}:live/invocations
-                passthroughBehavior: when_no_match
-          /session:
-            post:
-              summary: IP address of the client.
-              parameters:
-                - in: header
-                  name: X-Forwarded-For
-                  schema:
-                    type: string
-                    format: string
-                  required: false
-              requestBody:
-                content:
-                  application/json:
-                    schema:
-                      $ref: "#/components/schemas/Authorization"
-                    examples:
-                      "201":
-                        description: Example body to receive a HTTP 201 response
-                        value:
-                          session_id: 1fbc5730-9d17-416d-b2ca-0be90e1e93f5
-                      "400":
-                        description: Example body to receive a HTTP 400 response
-                        value:
-                          session_id: fad21bea-bce9-4aa7-8889-d50c7d26616e
-                      "500":
-                        description: Example body to receive a HTTP 500 response
-                        value:
-                          session_id: f27b8afc-90ef-4e0f-83ad-00a2f5692590
-                required: true
-              responses:
-                "201":
-                  description: 201 response
-                  content:
-                    application/json:
-                      schema:
-                        $ref: "#/components/schemas/Session"
-                      examples:
-                        "201":
-                          summary: An example of a successful response message
-                          value:
-                            session_id: 1fbc5730-9d17-416d-b2ca-0be90e1e93f5
-                            state: string
-                            redirect_uri: string
-                "400":
-                  description: 400 response
-                  content:
-                    application/json:
-                      schema:
-                        $ref: "#/components/schemas/Error"
-                "500":
-                  description: 500 response
-                  content:
-                    application/json:
-                      schema:
-                        $ref: "#/components/schemas/Error"
-              x-amazon-apigateway-request-validator: Validate both
-              x-amazon-apigateway-integration:
-                httpMethod: POST
-                uri:
-                  Fn::Sub: arn:${AWS::Partition}:apigateway:${AWS::Region}:lambda:path/2015-03-31/functions/arn:${AWS::Partition}:lambda:${AWS::Region}:${AWS::AccountId}:function:${OAuth.Outputs.LambdaSessionFunctionName}:live/invocations
-                responses:
-                  default:
-                    statusCode: "200"
-                passthroughBehavior: when_no_match
-                contentHandling: CONVERT_TO_TEXT
-                type: aws_proxy
-        components:
-          parameters:
-            SessionHeader:
-              name: session-id
-              in: header
-              description: A UUID generated by the Session API to act as a primary key for the Session in DynamoDB
-              required: true
-              schema:
-                type: string
-          schemas:
-            EmptyBody:
-              type: object
-              nullable: true
-            Authorization:
-              required:
-                - client_id
-                - request
-              type: object
-              properties:
-                client_id:
-                  type: string
-                  minLength: 1
-                  example: ipv-core-stub
-                request:
-                  type: string
-            AuthorizationResponse:
-              required:
-                - redirect_uri
-                - code
-                - state
-              type: object
-              properties:
-                code:
-                  type: string
-                  example: 1fbc5730-9d17-416d-b2ca-0be90e1e93f5
-                state:
-                  type: string
-                  example: state
-                  minLength: 1
-                redirect_uri:
-                  type: string
-                  format: uri
-                  example: https://di-ipv-core-stub.london.cloudapps.digital/callback
-            Error:
-              title: Error Schema
-              type: object
-              properties:
-                message:
-                  type: string
-            Session:
-              required:
-                - session_id
-                - state
-                - redirect_uri
-              type: object
-              properties:
-                session_id:
-                  type: string
-                state:
-                  type: string
-                redirect_uri:
-                  type: string
-            BankList:
-              required:
-                - banks
-                - profile
-                - refreshedAtSeconds
-              type: object
-              properties:
-                banks:
-                  type: array
-                  items:
-                    $ref: "#/components/schemas/Bank"
-                profile:
-                  type: string
-                  enum:
-                    - LIVE
-                    - STUB
-                    - UAT
-                refreshedAtSeconds:
-                  type: integer
-                  format: int64
-            Bank:
-              required:
-                - bankId
-                - friendlyName
-                - serviceStatus
-              type: object
-              properties:
-                bankId:
-                  type: string
-                friendlyName:
-                  type: string
-                serviceStatus:
-                  type: boolean
-            ConsentsRequest:
-              required:
-                - bank_id
-                - return_url
-              type: object
-              properties:
-                bank_id:
-                  type: string
-                  minLength: 1
-                  example: example-bank
-                return_url:
-                  description: The http or https URL the bank redirects the user back to. This must match what is set in the Ecospend client used for the deployment account, which rejects any other value.
-                  type: string
-                  format: uri
-                  example: https://review-ob.dev.account.gov.uk/return
-            Consent:
-              required:
-                - id
-                - url
-                - urlExpiresAtSeconds
-              type: object
-              properties:
-                id:
-                  description: The Ecospend consent id
-                  type: string
-                  example: 1fbc5730-9d17-416d-b2ca-0be90e1e93f5
-                url:
-                  description: The bank consent URL the user is sent to. Valid for 4 minutes
-                  type: string
-                  format: uri
-                urlExpiresAtSeconds:
-                  description: Epoch seconds at which the bank consent URL stops being valid
-                  type: integer
-                  format: int64
-            CachedConsent:
-              allOf:
-                - $ref: "#/components/schemas/Consent"
-                - required:
-                    - cached
-                  type: object
-                  properties:
-                    cached:
-                      type: boolean
-                      enum:
-                        - true
-        x-amazon-apigateway-request-validators:
-          Validate both:
-            validateRequestBody: true
-            validateRequestParameters: true
-          Validate Param only:
-            validateRequestParameters: true
-            validateRequestBody: false
-      Description: Private Open Banking CRI API
-      EndpointConfiguration:
-        Type:
+      AttributeDefinitions:
+        - AttributeName: eventId
+          AttributeType: S
+      BillingMode: PAY_PER_REQUEST
+      KeySchema:
+        - AttributeName: eventId
+          KeyType: HASH
+      PointInTimeRecoverySpecification:
+        PointInTimeRecoveryEnabled:
           Fn::If:
-            - IsDeployedFromPipeline
-            - PRIVATE
-            - REGIONAL
-      MethodSettings:
-        - DataTraceEnabled:
-            Fn::If:
-              - IsProduction
-              - false
-              - true
-          HttpMethod: "*"
-          LoggingLevel: INFO
-          MetricsEnabled: true
-          ResourcePath: /*
-          ThrottlingBurstLimit: 400
-          ThrottlingRateLimit: 200
-      Name:
-        Fn::Sub: ${AWS::StackName}-PrivateOpenBankingAPI
-      OpenApiVersion: 3.0.1
-      StageName:
-        Ref: Environment
-      Tags:
-        CustomPolicy: "true"
-        FMSRegionalPolicy: "false"
-      TracingEnabled: true
-  PrivateAPIUsagePlan:
-    Type: AWS::ApiGateway::UsagePlan
+            - IsProduction
+            - true
+            - false
+      SSESpecification:
+        SSEEnabled: true
+      TimeToLiveSpecification:
+        AttributeName: ttl
+        Enabled: true
+  WebhookStatusTable:
+    Type: AWS::DynamoDB::Table
     Properties:
-      ApiStages:
-        - ApiId:
-            Ref: PrivateAPI
-          Stage:
+      AttributeDefinitions:
+        - AttributeName: consentId
+          AttributeType: S
+      BillingMode: PAY_PER_REQUEST
+      KeySchema:
+        - AttributeName: consentId
+          KeyType: HASH
+      PointInTimeRecoverySpecification:
+        PointInTimeRecoveryEnabled:
+          Fn::If:
+            - IsProduction
+            - true
+            - false
+      SSESpecification:
+        SSEEnabled: true
+      TimeToLiveSpecification:
+        AttributeName: ttl
+        Enabled: true
+  WebhookDeadLetterQueue:
+    Type: AWS::SQS::Queue
+    Properties:
+      MessageRetentionPeriod: 604800
+      SqsManagedSseEnabled: true
+  WebhookQueue:
+    Type: AWS::SQS::Queue
+    Properties:
+      MessageRetentionPeriod: 3600
+      RedrivePolicy:
+        deadLetterTargetArn:
+          Fn::GetAtt:
+            - WebhookDeadLetterQueue
+            - Arn
+        maxReceiveCount: 5
+      SqsManagedSseEnabled: true
+      VisibilityTimeout: 240
+  WebhookIngestFunctionLogGroup:
+    Type: AWS::Logs::LogGroup
+    Properties:
+      LogGroupName:
+        Fn::Sub: /aws/lambda/${AWS::StackName}-webhook-ingest
+      RetentionInDays:
+        Ref: LogGroupRetentionInDays
+  WebhookIngestFunction:
+    Type: AWS::Serverless::Function
+    Properties:
+      Architectures:
+        - arm64
+      AutoPublishAlias: live
+      CodeSigningConfigArn:
+        Fn::If:
+          - UseCodeSigning
+          - Ref: CodeSigningConfigArn
+          - Ref: AWS::NoValue
+      CodeUri: ../
+      Environment:
+        Variables:
+          AWS_LAMBDA_EXEC_WRAPPER: /opt/dynatrace
+          AWS_STACK_NAME:
+            Ref: AWS::StackName
+          DT_CLUSTER:
+            Fn::Sub:
+              - "{{resolve:secretsmanager:${SecretArn}:SecretString:DT_CLUSTER_ID}}"
+              - SecretArn:
+                  Fn::FindInMap:
+                    - EnvironmentConfiguration
+                    - Ref: Environment
+                    - dynatraceSecretArn
+          DT_CONNECTION_AUTH_TOKEN:
+            Fn::Sub:
+              - "{{resolve:secretsmanager:${SecretArn}:SecretString:DT_CONNECTION_AUTH_TOKEN}}"
+              - SecretArn:
+                  Fn::FindInMap:
+                    - EnvironmentConfiguration
+                    - Ref: Environment
+                    - dynatraceSecretArn
+          DT_CONNECTION_BASE_URL:
+            Fn::Sub:
+              - "{{resolve:secretsmanager:${SecretArn}:SecretString:DT_CONNECTION_BASE_URL}}"
+              - SecretArn:
+                  Fn::FindInMap:
+                    - EnvironmentConfiguration
+                    - Ref: Environment
+                    - dynatraceSecretArn
+          DT_LOG_COLLECTION_AUTH_TOKEN:
+            Fn::Sub:
+              - "{{resolve:secretsmanager:${SecretArn}:SecretString:DT_LOG_COLLECTION_AUTH_TOKEN}}"
+              - SecretArn:
+                  Fn::FindInMap:
+                    - EnvironmentConfiguration
+                    - Ref: Environment
+                    - dynatraceSecretArn
+          DT_TENANT:
+            Fn::Sub:
+              - "{{resolve:secretsmanager:${SecretArn}:SecretString:DT_TENANT}}"
+              - SecretArn:
+                  Fn::FindInMap:
+                    - EnvironmentConfiguration
+                    - Ref: Environment
+                    - dynatraceSecretArn
+          ENVIRONMENT:
             Ref: Environment
-      Quota:
-        Limit: 500000
-        Period: DAY
-      Throttle:
-        BurstLimit: 400
-        RateLimit: 200
+          LOG_FULL_ERRORS:
+            Fn::FindInMap:
+              - EnvironmentConfiguration
+              - Ref: Environment
+              - logFullErrors
+          PARAMETER_PREFIX:
+            Fn::If:
+              - UseParameterPrefix
+              - Ref: ParameterPrefix
+              - Ref: AWS::StackName
+          POWERTOOLS_LOG_LEVEL: INFO
+          POWERTOOLS_METRICS_NAMESPACE:
+            Ref: CriIdentifier
+          POWERTOOLS_SERVICE_NAME:
+            Fn::Sub: ${CriIdentifier}-webhook-ingest
+          WEBHOOK_DEDUPLICATION_DB_TABLE_NAME:
+            Ref: WebhookDeduplicationTable
+          WEBHOOK_QUEUE_URL:
+            Fn::GetAtt:
+              - WebhookQueue
+              - QueueUrl
+      FunctionName:
+        Fn::Sub: ${AWS::StackName}-webhook-ingest
+      Handler: webhook-ingest.handler
+      Layers:
+        - Fn::FindInMap:
+            - EnvironmentConfiguration
+            - Ref: Environment
+            - dynatraceLayer
+      MemorySize:
+        Fn::FindInMap:
+          - EnvironmentConfiguration
+          - Ref: Environment
+          - memorySize
+      PermissionsBoundary:
+        Fn::If:
+          - UsePermissionsBoundary
+          - Ref: PermissionsBoundary
+          - Ref: AWS::NoValue
+      Policies:
+        - AWSLambdaBasicExecutionRole
+        - AWSXrayWriteOnlyAccess
+        - SQSSendMessagePolicy:
+            QueueName:
+              Fn::GetAtt:
+                - WebhookQueue
+                - QueueName
+        - Statement:
+            - Action:
+                - dynamodb:GetItem
+                - dynamodb:PutItem
+              Effect: Allow
+              Resource:
+                Fn::GetAtt:
+                  - WebhookDeduplicationTable
+                  - Arn
+        - SSMParameterReadPolicy:
+            ParameterName:
+              Fn::Sub:
+                - ${Prefix}/webhook-ingest/*
+                - Prefix:
+                    Fn::If:
+                      - UseParameterPrefix
+                      - Ref: ParameterPrefix
+                      - Ref: AWS::StackName
+      ProvisionedConcurrencyConfig:
+        Fn::If:
+          - AddProvisionedConcurrency
+          - ProvisionedConcurrentExecutions:
+              Fn::FindInMap:
+                - EnvironmentConfiguration
+                - Ref: Environment
+                - provisionedConcurrentExecutions
+          - Ref: AWS::NoValue
+      Runtime: nodejs24.x
+      Timeout: 40
+      Tracing: Active
+      VpcConfig:
+        SecurityGroupIds:
+          - Fn::ImportValue:
+              Fn::Sub: ${VpcStackName}-AWSServicesEndpointSecurityGroupId
+        SubnetIds:
+          - Fn::ImportValue:
+              Fn::Sub: ${VpcStackName}-ProtectedSubnetIdA
+          - Fn::ImportValue:
+              Fn::Sub: ${VpcStackName}-ProtectedSubnetIdB
+          - Fn::ImportValue:
+              Fn::Sub: ${VpcStackName}-ProtectedSubnetIdC
+      AutoPublishAliasAllProperties: true
+      LoggingConfig:
+        LogGroup:
+          Ref: WebhookIngestFunctionLogGroup
+    Metadata:
+      BuildMethod: esbuild
+      BuildProperties:
+        Banner:
+          - js=import { createRequire } from 'module'; const require = createRequire(import.meta.url);
+        EntryPoints:
+          - src/webhooks/handler/webhook-ingest.ts
+        External:
+          - "@aws-sdk/*"
+        Format: esm
+        Minify: false
+        OutExtension:
+          - .js=.mjs
+        Sourcemap: true
+        Target: node24
+  WebhookIngestFunctionAliasPermission:
+    Type: AWS::Lambda::Permission
+    Properties:
+      Action: lambda:InvokeFunction
+      FunctionName:
+        Ref: WebhookIngestFunction.Alias
+      Principal: apigateway.amazonaws.com
+  WebhookDeadLetterQueueAlarm:
+    Type: AWS::CloudWatch::Alarm
+    Properties:
+      ActionsEnabled: true
+      AlarmActions:
+        - Fn::ImportValue: build-notifications-WarningAlertsTopicArn
+      AlarmDescription:
+        Fn::Sub: Webhook messages have failed processing and landed on the dead letter queue in ${Environment}.
+      AlarmName:
+        Fn::Sub: ${AWS::StackName}-${Environment}-webhook-dlq-not-empty
+      ComparisonOperator: GreaterThanOrEqualToThreshold
+      DatapointsToAlarm: 1
+      Dimensions:
+        - Name: QueueName
+          Value:
+            Fn::GetAtt:
+              - WebhookDeadLetterQueue
+              - QueueName
+      EvaluationPeriods: 1
+      MetricName: ApproximateNumberOfMessagesVisible
+      Namespace: AWS/SQS
+      OKActions:
+        - Fn::ImportValue: build-notifications-WarningAlertsTopicArn
+      Period: 60
+      Statistic: Maximum
+      Threshold: 1
+      TreatMissingData: notBreaching
     Condition: IsDeployedFromPipeline
-    DependsOn:
-      - PrivateAPIStage
   APIGW5XXErrors:
     Type: AWS::CloudWatch::Alarm
     Properties:
@@ -2824,18 +3156,6 @@ Resources:
           Id: total
           Label: Total 5XX errors
           ReturnData: true
-        - Id: public
-          MetricStat:
-            Metric:
-              Dimensions:
-                - Name: ApiName
-                  Value:
-                    Fn::Sub: ${AWS::StackName}-PublicOpenBankingAPI
-              MetricName: 5XXError
-              Namespace: AWS/ApiGateway
-            Period: 300
-            Stat: Sum
-          ReturnData: false
         - Id: private
           MetricStat:
             Metric:
@@ -2843,6 +3163,18 @@ Resources:
                 - Name: ApiName
                   Value:
                     Fn::Sub: ${AWS::StackName}-PrivateOpenBankingAPI
+              MetricName: 5XXError
+              Namespace: AWS/ApiGateway
+            Period: 300
+            Stat: Sum
+          ReturnData: false
+        - Id: public
+          MetricStat:
+            Metric:
+              Dimensions:
+                - Name: ApiName
+                  Value:
+                    Fn::Sub: ${AWS::StackName}-PublicOpenBankingAPI
               MetricName: 5XXError
               Namespace: AWS/ApiGateway
             Period: 300
@@ -2886,40 +3218,46 @@ Resources:
       TreatMissingData: notBreaching
     Condition: IsDeployedFromPipeline
 Outputs:
+  StackName:
+    Description: CloudFormation stack name
+    Value:
+      Ref: AWS::StackName
   PublicApiGatewayId:
-    Description: Public Open Banking CRI API gateway ID
+    Description: CRI Open Banking Public API Gateway ID
     Value:
       Ref: PublicAPI
     Export:
       Name:
         Fn::Sub: ${AWS::StackName}-PublicAPIGatewayID
   PublicApiBaseUrl:
-    Description: Base url of the Public Open Banking CRI API gateway
+    Description: Base url of the Public Open Banking API Gateway
     Value:
-      Fn::Sub: https://${PublicAPI}.execute-api.${AWS::Region}.amazonaws.com/${Environment}
+      Fn::Sub:
+        - https://${Api}.execute-api.${AWS::Region}.amazonaws.com/${Environment}
+        - Api:
+            Ref: PublicAPI
     Export:
       Name:
-        Fn::Sub: ${AWS::StackName}-PublicAPIBaseUrl
-  IpvCoreBackApiKeyId:
-    Description: The ID of the API key used by IPV Core to access the public API gateway
-    Value:
-      Ref: LinkUsagePlanApiKey1
-    Condition: IsDeployedFromPipeline
+        Fn::Sub: ${AWS::StackName}-PublicApiBaseUrl
   PrivateApiGatewayId:
-    Description: Private Open Banking CRI API gateway ID
+    Description: CRI Open Banking Private API Gateway ID
     Value:
       Ref: PrivateAPI
     Export:
       Name:
         Fn::Sub: ${AWS::StackName}-PrivateAPIGatewayID
   PrivateApiBaseUrl:
-    Description: Base url of the Private Open Banking CRI API gateway
+    Description: Base url of the Private Open Banking API Gateway
     Value:
-      Fn::Sub: https://${PrivateAPI}.execute-api.${AWS::Region}.amazonaws.com/${Environment}
+      Fn::Sub:
+        - https://${Api}.execute-api.${AWS::Region}.amazonaws.com/${Environment}
+        - Api:
+            Ref: PrivateAPI
     Export:
       Name:
         Fn::Sub: ${AWS::StackName}-PrivateAPIBaseUrl
-  StackName:
-    Description: CloudFormation stack name
+  IpvCoreBackApiKeyId:
+    Description: The ID of the API key used by IPV Core to access the public API gateway
     Value:
-      Ref: AWS::StackName
+      Ref: LinkUsagePlanApiKey1
+    Condition: IsDeployedFromPipeline

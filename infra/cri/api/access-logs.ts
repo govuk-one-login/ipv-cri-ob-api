@@ -1,9 +1,16 @@
-import type { CriStack } from '@infra/constructs/cri-stack'
+import type { CriStack } from '@infra/cri/stack'
+import type { CfnApi } from 'aws-cdk-lib/aws-sam'
 
 import { Fn } from 'aws-cdk-lib'
 import { CfnKey } from 'aws-cdk-lib/aws-kms'
+import { CfnLogGroup } from 'aws-cdk-lib/aws-logs'
 
-export const accessLogFormat = JSON.stringify({
+export type CriAccessLogsConfig = {
+  api: CfnApi
+  label: string // e.g. Public -> …-public-AccessLogs
+}
+
+const accessLogFormat = JSON.stringify({
   requestId: '$context.requestId',
   ip: '$context.identity.sourceIp',
   requestTime: '$context.requestTime',
@@ -16,8 +23,11 @@ export const accessLogFormat = JSON.stringify({
   responseLength: '$context.responseLength'
 })
 
-export const apiLoggingKey = (stack: CriStack) =>
-  new CfnKey(stack, 'LoggingKmsKey', {
+const accessLogKeyId = 'LoggingKmsKey'
+
+const accessLogKey = (stack: CriStack) =>
+  (stack.node.tryFindChild(accessLogKeyId) as CfnKey | undefined) ??
+  new CfnKey(stack, accessLogKeyId, {
     enableKeyRotation: true,
     keyPolicy: {
       Statement: [
@@ -50,3 +60,17 @@ export const apiLoggingKey = (stack: CriStack) =>
       Version: '2012-10-17'
     }
   })
+
+export const criAccessLogs = (stack: CriStack, id: string, config: CriAccessLogsConfig) => {
+  const { api, label } = config
+
+  const logGroup = new CfnLogGroup(stack, id, {
+    kmsKeyId: accessLogKey(stack).attrArn,
+    logGroupName: Fn.sub(
+      `/aws/apigateway/\${AWS::StackName}-\${Api}-${label.toLowerCase()}-AccessLogs`,
+      { Api: api.ref }
+    ),
+    retentionInDays: stack.parameters.logGroupRetentionInDays.valueAsNumber
+  })
+  api.accessLogSetting = { destinationArn: logGroup.attrArn, format: accessLogFormat }
+}

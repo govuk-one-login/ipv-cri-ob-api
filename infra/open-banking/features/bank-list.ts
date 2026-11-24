@@ -1,40 +1,46 @@
-import type { OAuth } from '@infra/features/oauth'
-import type { TokenRotator } from '@infra/features/token-rotator'
-import type { OpenBankingStack } from '@infra/stack'
+import type { CriApi } from '@infra/cri/api/api'
+import type { OAuth } from '@infra/open-banking/features/oauth'
+import type { OpenBankingStack } from '@infra/open-banking/stack'
+import type { CfnTable } from 'aws-cdk-lib/aws-dynamodb'
 
-import { esbuildMetadata } from '@infra/config/esbuild'
-import { endpointProfileDimension } from '@infra/config/lime-endpoint-profiles'
-import { criAlarm } from '@infra/constructs/cri-alarm'
-import { criFunction } from '@infra/constructs/cri-function'
-import { criTable } from '@infra/constructs/cri-table'
+import { criAlarm } from '@infra/cri/alarm'
+import { criApiInvokePermission } from '@infra/cri/api/api'
+import { criCanaryDeployment } from '@infra/cri/canary-deployment'
+import { criDynamoTable } from '@infra/cri/dynamo-table'
+import { criFunction } from '@infra/cri/function'
+import { criSsmParameter } from '@infra/cri/ssm-parameter'
+import { endpointProfileDimension } from '@infra/lime/endpoint-profiles'
 import { Fn } from 'aws-cdk-lib'
 
-import * as ssm from 'aws-cdk-lib/aws-ssm'
+type BankListCollaborators = {
+  oauthCommon: OAuth
+  privateApi: CriApi
+  tokenTable: CfnTable
+}
 
-export const bankList = (
-  stack: OpenBankingStack,
-  { ecospendTokens, oauthCommon }: { ecospendTokens: TokenRotator; oauthCommon: OAuth }
-) => {
-  const bankListTable = criTable(stack, 'BankListTable', { partitionKey: 'profile' })
+export const bankList = (stack: OpenBankingStack, collaborators: BankListCollaborators) => {
+  const bankListTable = criDynamoTable(stack, 'BankListTable', { partitionKey: 'profile' })
 
   criFunction(stack, 'BankListUpdaterFunction', {
-    codeUri: '../',
+    entry: 'src/bank-list/handler/bank-list-updater.ts',
     environment: {
       BANK_LIST_DB_TABLE_NAME: bankListTable.ref,
       ENDPOINT_PROFILES: stack.endpointProfiles.enabled,
-      TOKEN_ROTATOR_DB_TABLE_NAME: ecospendTokens.table.ref
+      TOKEN_ROTATOR_DB_TABLE_NAME: collaborators.tokenTable.ref
     },
     events: {
       ScheduledUpdate: { properties: { schedule: 'rate(1 minute)' }, type: 'Schedule' }
     },
-    handler: 'bank-list-updater.handler',
     maximumRetryAttempts: 0,
-    metadata: esbuildMetadata('src/bank-list/handler/bank-list-updater.ts'),
     name: 'bank-list-updater',
     policies: [
       {
         statement: [
-          { Action: 'dynamodb:GetItem', Effect: 'Allow', Resource: ecospendTokens.table.attrArn },
+          {
+            Action: 'dynamodb:GetItem',
+            Effect: 'Allow',
+            Resource: collaborators.tokenTable.attrArn
+          },
           {
             Action: ['dynamodb:GetItem', 'dynamodb:PutItem'],
             Effect: 'Allow',
@@ -44,44 +50,42 @@ export const bankList = (
       },
       stack.parameterReadPolicy('bank-list/*')
     ],
-    runtime: 'nodejs24.x',
     subnets: 'protected'
   })
 
-  criFunction(stack, 'BankListRetrieverFunction', {
-    canaryDeployment: { api: 'private', method: 'GET', path: '/banks' },
-    codeUri: '../',
+  const retrieverFunction = criFunction(stack, 'BankListRetrieverFunction', {
+    entry: 'src/bank-list/handler/bank-list-retriever.ts',
     environment: {
       BANK_LIST_DB_TABLE_NAME: bankListTable.ref,
-      SESSION_DB_TABLE_NAME: oauthCommon.sessionTableName
+      SESSION_DB_TABLE_NAME: collaborators.oauthCommon.sessionTableName
     },
-    handler: 'bank-list-retriever.handler',
-    invokedByApiGateway: true,
-    metadata: esbuildMetadata('src/bank-list/handler/bank-list-retriever.ts'),
     name: 'bank-list-retriever',
     policies: [
-      { dynamoDbReadPolicy: { tableName: oauthCommon.sessionTableName } },
-      { kmsDecryptPolicy: { keyId: oauthCommon.customerManagedKeyId } },
+      { dynamoDbReadPolicy: { tableName: collaborators.oauthCommon.sessionTableName } },
+      { kmsDecryptPolicy: { keyId: collaborators.oauthCommon.customerManagedKeyId } },
       {
         statement: [
           { Action: 'dynamodb:GetItem', Effect: 'Allow', Resource: bankListTable.attrArn }
         ]
       }
     ],
-    runtime: 'nodejs24.x',
     subnets: 'private'
   })
-
-  stack.endpointProfiles.forEachProfile(({ condition, idPrefix, profile }) => {
-    new ssm.CfnParameter(stack, `${idPrefix}BankListEndpointParameter`, {
-      description: `Bank list endpoint for ${profile}`,
-      name: stack.parameterName(`bank-list/${profile}/endpoint-url`),
-      type: 'String',
-      value: Fn.sub('${BaseUrl}/api/v2.0/banks', { BaseUrl: stack.endpointProfiles.url(profile) })
-    }).cfnOptions.condition = condition
+  criApiInvokePermission(stack, retrieverFunction)
+  criCanaryDeployment(stack, retrieverFunction, {
+    api: collaborators.privateApi,
+    method: 'GET',
+    path: '/banks'
   })
 
   stack.endpointProfiles.forEachProfile(({ condition, idPrefix, profile }) => {
+    criSsmParameter(stack, `${idPrefix}BankListEndpointParameter`, {
+      condition,
+      description: `Bank list endpoint for ${profile}`,
+      path: `bank-list/${profile}/endpoint-url`,
+      value: Fn.sub('${BaseUrl}/api/v2.0/banks', { BaseUrl: stack.endpointProfiles.url(profile) })
+    })
+
     const metric = (metricName: string) => ({
       dimensions: [
         { name: 'service', value: Fn.sub('${CriIdentifier}-bank-list-updater') },

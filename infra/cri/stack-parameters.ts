@@ -1,11 +1,11 @@
 import type { Stack } from 'aws-cdk-lib'
 
-import { environments } from '@infra/constructs/cri-environment'
+import { environments } from '@infra/cri/environment'
 import { CfnParameter } from 'aws-cdk-lib'
 
-export type CriStackParameters = ReturnType<typeof createCriStackParameters>
+export type CriStackParameters = ReturnType<typeof criStackParameters>
 
-export const createCriStackParameters = (stack: Stack) => ({
+export const criStackParameters = (stack: Stack) => ({
   auditEventNamePrefix: new CfnParameter(stack, 'AuditEventNamePrefix', {
     default: '/common-cri-parameters/AuditEventNamePrefix',
     description: 'The audit event name prefix',

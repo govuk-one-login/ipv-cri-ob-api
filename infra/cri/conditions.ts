@@ -1,12 +1,12 @@
-import type { CriStack } from '@infra/constructs/cri-stack'
-import type { CriStackParameters } from '@infra/constructs/cri-stack-parameters'
+import type { CriStack } from '@infra/cri/stack'
+import type { CriStackParameters } from '@infra/cri/stack-parameters'
 import type { Stack } from 'aws-cdk-lib'
 
 import { CfnCondition, Fn } from 'aws-cdk-lib'
 
-export type CriConditions = ReturnType<typeof createCriConditions>
+export type CriConditions = ReturnType<typeof criConditions>
 
-export const createCriConditions = (
+export const criConditions = (
   stack: Stack,
   parameters: CriStackParameters,
   environmentValue: CriStack['environmentValue']

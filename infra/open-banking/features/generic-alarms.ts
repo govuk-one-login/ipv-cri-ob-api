@@ -1,13 +1,14 @@
-import type { ApiBoundary } from '@infra/constructs/cri-api'
-import type { CriStack } from '@infra/constructs/cri-stack'
+import type { CriApi } from '@infra/cri/api/api'
+import type { CriStack } from '@infra/cri/stack'
 
-import { criAlarm } from '@infra/constructs/cri-alarm'
-import { apiName } from '@infra/constructs/cri-api'
+import { criAlarm } from '@infra/cri/alarm'
 import { Fn } from 'aws-cdk-lib'
 
-const apiBoundaries: ApiBoundary[] = ['public', 'private']
+type GenericAlarmsCollaborators = {
+  apis: Record<string, CriApi>
+}
 
-export const genericAlarms = (stack: CriStack) => {
+export const genericAlarms = (stack: CriStack, { apis }: GenericAlarmsCollaborators) => {
   criAlarm(stack, 'APIGW5XXErrors', {
     comparisonOperator: 'GreaterThanThreshold',
     condition: stack.conditions.isDeployedFromPipeline,
@@ -16,11 +17,11 @@ export const genericAlarms = (stack: CriStack) => {
     evaluationPeriods: 3,
     metrics: [
       { expression: 'SUM(METRICS())', id: 'total', label: 'Total 5XX errors', returnData: true },
-      ...apiBoundaries.map((boundary) => ({
-        id: boundary,
+      ...Object.entries(apis).map(([id, api]) => ({
+        id,
         metricStat: {
           metric: {
-            dimensions: [{ name: 'ApiName', value: apiName(stack, boundary) }],
+            dimensions: [{ name: 'ApiName', value: api.name }],
             metricName: '5XXError',
             namespace: 'AWS/ApiGateway'
           },

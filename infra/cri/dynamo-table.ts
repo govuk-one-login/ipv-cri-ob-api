@@ -1,17 +1,17 @@
-import type { CriStack } from '@infra/constructs/cri-stack'
+import type { CriStack } from '@infra/cri/stack'
 
 import { Fn } from 'aws-cdk-lib'
 import { CfnTable } from 'aws-cdk-lib/aws-dynamodb'
 
-export type CriTableConfig = {
-  globalSecondaryIndexes?: CriTableIndex[]
+export type CriDynamoTableConfig = {
+  globalSecondaryIndexes?: CriDynamoTableIndex[]
   partitionKey: string
   sortKey?: string
   tableName?: string
   ttlAttribute?: string
 }
 
-export type CriTableIndex = {
+export type CriDynamoTableIndex = {
   indexName: string
   partitionKey: string
   projection: CfnTable.ProjectionProperty
@@ -23,7 +23,11 @@ const keySchema = (partitionKey: string, sortKey?: string): CfnTable.KeySchemaPr
   ...(sortKey ? [{ attributeName: sortKey, keyType: 'RANGE' }] : [])
 ]
 
-export const criTable = (stack: CriStack, id: string, config: CriTableConfig): CfnTable => {
+export const criDynamoTable = (
+  stack: CriStack,
+  id: string,
+  config: CriDynamoTableConfig
+): CfnTable => {
   const indexes = config.globalSecondaryIndexes ?? []
   const keyAttributes = new Set(
     [

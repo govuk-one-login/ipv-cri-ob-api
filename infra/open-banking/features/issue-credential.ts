@@ -1,19 +1,28 @@
-import type { OAuth } from '@infra/features/oauth'
-import type { OpenBankingStack } from '@infra/stack'
+import type { CriApi } from '@infra/cri/api/api'
+import type { OAuth } from '@infra/open-banking/features/oauth'
+import type { OpenBankingStack } from '@infra/open-banking/stack'
 
-import { esbuildMetadata } from '@infra/config/esbuild'
-import { criFunction } from '@infra/constructs/cri-function'
+import { criApiInvokePermission } from '@infra/cri/api/api'
+import { auditProducer } from '@infra/cri/audit'
+import { criCanaryDeployment } from '@infra/cri/canary-deployment'
+import { criFunction } from '@infra/cri/function'
 import { Fn } from 'aws-cdk-lib'
+
+type IssueCredentialCollaborators = {
+  oauthCommon: OAuth
+  publicApi: CriApi
+}
 
 export const issueCredential = (
   stack: OpenBankingStack,
-  { oauthCommon }: { oauthCommon: OAuth }
+  { oauthCommon, publicApi }: IssueCredentialCollaborators
 ) => {
-  criFunction(stack, 'IssueCredentialFunction', {
-    audit: true,
-    canaryDeployment: { api: 'public', method: 'POST', path: '/credential/issue' },
-    codeUri: '../',
+  const audit = auditProducer(stack)
+
+  const issueCredentialFunction = criFunction(stack, 'IssueCredentialFunction', {
+    entry: 'src/issue-credential/handler/issue-credential.ts',
     environment: {
+      ...audit.environment,
       IDENTITY_SCORE_DB_TABLE_NAME: 'blah', // TODO create the identity score database
       JWT_TTL_SECONDS: '7200',
       KMS_SIGNING_KEY_ID: Fn.importValue('core-infrastructure-CriVcSigningKey1Id'),
@@ -21,11 +30,9 @@ export const issueCredential = (
       SESSION_DB_TABLE_NAME: oauthCommon.sessionTableName,
       VC_DOMAIN: stack.environmentValue('vcDomain')
     },
-    handler: 'issue-credential.handler',
-    invokedByApiGateway: true,
-    metadata: esbuildMetadata('src/issue-credential/handler/issue-credential.ts'),
     name: 'issue-credential',
     policies: [
+      ...audit.policies,
       { dynamoDbReadPolicy: { tableName: oauthCommon.sessionTableName } },
       { dynamoDbReadPolicy: { tableName: oauthCommon.personIdentityTableName } },
       { kmsDecryptPolicy: { keyId: oauthCommon.customerManagedKeyId } },
@@ -40,7 +47,12 @@ export const issueCredential = (
       }
     ],
     provisionedConcurrency: true,
-    runtime: 'nodejs24.x',
     subnets: 'private'
+  })
+  criApiInvokePermission(stack, issueCredentialFunction)
+  criCanaryDeployment(stack, issueCredentialFunction, {
+    api: publicApi,
+    method: 'POST',
+    path: '/credential/issue'
   })
 }

@@ -1,4 +1,4 @@
-import { OpenBankingStack } from '@infra/stack'
+import { OpenBankingStack } from '@infra/open-banking/stack'
 import { App } from 'aws-cdk-lib'
 import { mkdtempSync, rmSync, writeFileSync } from 'node:fs'
 import { tmpdir } from 'node:os'

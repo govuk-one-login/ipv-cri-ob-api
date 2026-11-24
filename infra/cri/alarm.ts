@@ -1,4 +1,4 @@
-import type { CriStack } from '@infra/constructs/cri-stack'
+import type { CriStack } from '@infra/cri/stack'
 import type { CfnCondition } from 'aws-cdk-lib'
 import type { CfnAlarmProps } from 'aws-cdk-lib/aws-cloudwatch'
 

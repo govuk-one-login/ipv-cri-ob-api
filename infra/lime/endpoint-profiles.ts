@@ -1,17 +1,22 @@
-import type { Environment } from '@infra/constructs/cri-environment'
-import type { CriStack } from '@infra/constructs/cri-stack'
+import type { Environment } from '@infra/cri/environment'
+import type { CriStack } from '@infra/cri/stack'
 
-import { byEnvironment, environments } from '@infra/constructs/cri-environment'
+import { byEnvironment, environments } from '@infra/cri/environment'
 import { CfnCondition, CfnMapping, Fn } from 'aws-cdk-lib'
 
 export const endpointProfiles = ['STUB', 'UAT', 'LIVE'] as const
 
 export type EndpointProfile = (typeof endpointProfiles)[number]
 
-export type EndpointProfiles = ReturnType<typeof createEndpointProfiles>
-
-// the profiles enabled in an environment, each with its base URL
 export type EndpointProfileUrls = Partial<Record<EndpointProfile, string>>
+
+export type LimeEndpointProfiles = ReturnType<typeof limeEndpointProfiles>
+
+type EndpointProfileContext = {
+  condition: CfnCondition
+  idPrefix: string
+  profile: EndpointProfile
+}
 
 // the metric dimension the CRI publishes endpoint profile metrics with
 export const endpointProfileDimension = (profile: EndpointProfile) => ({
@@ -21,7 +26,7 @@ export const endpointProfileDimension = (profile: EndpointProfile) => ({
 
 const pascalCase = (profile: EndpointProfile) => profile.charAt(0) + profile.slice(1).toLowerCase()
 
-export const createEndpointProfiles = (
+export const limeEndpointProfiles = (
   stack: CriStack,
   urls: Record<Environment, EndpointProfileUrls>
 ) => {
@@ -53,13 +58,7 @@ export const createEndpointProfiles = (
 
   return {
     enabled: mapping.findInMap(environment.valueAsString, 'enabled'), // e.g. STUB|UAT
-    forEachProfile: (
-      create: (each: {
-        condition: CfnCondition
-        idPrefix: string
-        profile: EndpointProfile
-      }) => void
-    ) => {
+    forEachProfile: (create: (context: EndpointProfileContext) => void) => {
       for (const profile of endpointProfiles) {
         create({ condition: conditions[profile], idPrefix: pascalCase(profile), profile })
       }

@@ -1,14 +1,18 @@
-import type { OpenBankingStack } from '@infra/stack'
+import type { CriApi } from '@infra/cri/api/api'
+import type { OpenBankingStack } from '@infra/open-banking/stack'
 
-import { apiName } from '@infra/constructs/cri-api'
+import { criSsmParameter } from '@infra/cri/ssm-parameter'
 import { CfnCondition, Fn } from 'aws-cdk-lib'
 import { CfnApplication } from 'aws-cdk-lib/aws-sam'
 
-import * as ssm from 'aws-cdk-lib/aws-ssm'
-
 export type OAuth = ReturnType<typeof oauth>
 
-export const oauth = (stack: OpenBankingStack) => {
+type OAuthCollaborators = {
+  privateApi: CriApi
+  publicApi: CriApi
+}
+
+export const oauth = (stack: OpenBankingStack, { privateApi, publicApi }: OAuthCollaborators) => {
   const { conditions, parameters } = stack
   const criUrl = Fn.sub('https://${domain}', { domain: stack.environmentValue('vcDomain') })
 
@@ -22,8 +26,8 @@ export const oauth = (stack: OpenBankingStack) => {
       AuditEventNamePrefix: parameters.auditEventNamePrefix.valueAsString,
       CriAudience: criUrl,
       CriIdentifier: parameters.criIdentifier.valueAsString,
-      CriPrivateApiGwName: apiName(stack, 'private'),
-      CriPublicApiGwName: apiName(stack, 'public'),
+      CriPrivateApiGwName: privateApi.name,
+      CriPublicApiGwName: publicApi.name,
       CriVcIssuer: criUrl,
       Environment: parameters.environment.valueAsString,
       IPVCoreRedirectURI: 'https://cri.core.build.stubs.account.gov.uk/callback',
@@ -40,17 +44,17 @@ export const oauth = (stack: OpenBankingStack) => {
   const output = (name: string) => app.getAtt(`Outputs.${name}`).toString()
   const stackName = output('StackName')
 
-  new ssm.CfnParameter(stack, 'OAuthCommonStackNameParam', {
+  criSsmParameter(stack, 'OAuthCommonStackNameParam', {
+    condition: new CfnCondition(stack, 'CreateTestResourcesParam', {
+      expression: Fn.conditionAnd(
+        conditions.isDeployedFromPipeline,
+        Fn.conditionNot(conditions.isProduction)
+      )
+    }),
     description:
       'The stack currently used for OAuth (oauth-common). Only required for test-resources.',
-    name: '/common-cri/oauth-common/stack-name',
-    type: 'String',
+    sharedName: '/common-cri/oauth-common/stack-name',
     value: stackName
-  }).cfnOptions.condition = new CfnCondition(stack, 'CreateTestResourcesParam', {
-    expression: Fn.conditionAnd(
-      conditions.isDeployedFromPipeline,
-      Fn.conditionNot(conditions.isProduction)
-    )
   })
 
   return {

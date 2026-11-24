@@ -1,19 +1,18 @@
-import type { OpenBankingStack } from '@infra/stack'
+import type { OpenBankingStack } from '@infra/open-banking/stack'
 
-import { esbuildMetadata } from '@infra/config/esbuild'
-import { criFunction } from '@infra/constructs/cri-function'
-import { criTable } from '@infra/constructs/cri-table'
+import { criDynamoTable } from '@infra/cri/dynamo-table'
+import { criFunction } from '@infra/cri/function'
 
 export type TokenRotator = ReturnType<typeof tokenRotator>
 
 export const tokenRotator = (stack: OpenBankingStack) => {
-  const table = criTable(stack, 'TokenRotatorTable', {
+  const table = criDynamoTable(stack, 'TokenRotatorTable', {
     partitionKey: 'id',
     ttlAttribute: 'ttl'
   })
 
   criFunction(stack, 'EcospendTokenRotatorFunction', {
-    codeUri: '../',
+    entry: 'src/ecospend-token/handler/ecospend-token-rotator.ts',
     environment: {
       ENDPOINT_PROFILES: stack.endpointProfiles.enabled,
       TOKEN_ROTATOR_CREDENTIALS_PATH: stack.parameterName('ecospend-token-rotator'),
@@ -23,9 +22,7 @@ export const tokenRotator = (stack: OpenBankingStack) => {
     events: {
       ScheduledRotation: { properties: { schedule: 'rate(1 minute)' }, type: 'Schedule' }
     },
-    handler: 'ecospend-token-rotator.handler',
     maximumRetryAttempts: 0,
-    metadata: esbuildMetadata('src/ecospend-token/handler/ecospend-token-rotator.ts'),
     name: 'ecospend-token-rotator',
     policies: [
       {
@@ -39,7 +36,6 @@ export const tokenRotator = (stack: OpenBankingStack) => {
       },
       stack.parameterReadPolicy('ecospend-token-rotator/*')
     ],
-    runtime: 'nodejs24.x',
     subnets: 'protected'
   })
 

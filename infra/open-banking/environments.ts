@@ -1,6 +1,6 @@
-import type { EndpointProfileUrls } from '@infra/config/lime-endpoint-profiles'
-import type { Environment } from '@infra/constructs/cri-environment'
-import type { CriEnvironmentConfig } from '@infra/constructs/cri-stack'
+import type { Environment } from '@infra/cri/environment'
+import type { CriEnvironmentConfig } from '@infra/cri/stack'
+import type { EndpointProfileUrls } from '@infra/lime/endpoint-profiles'
 
 export type EnvironmentConfig = { endpointProfiles: EndpointProfileUrls } & CriEnvironmentConfig
 
