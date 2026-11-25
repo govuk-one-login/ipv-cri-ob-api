@@ -8,7 +8,7 @@ type GenericAlarmsCollaborators = {
   apis: Record<string, CriApi>
 }
 
-export const genericAlarms = (stack: CriStack, { apis }: GenericAlarmsCollaborators) => {
+export const genericAlarms = (stack: CriStack, collaborators: GenericAlarmsCollaborators) => {
   criAlarm(stack, 'APIGW5XXErrors', {
     comparisonOperator: 'GreaterThanThreshold',
     condition: stack.conditions.isDeployedFromPipeline,
@@ -17,7 +17,7 @@ export const genericAlarms = (stack: CriStack, { apis }: GenericAlarmsCollaborat
     evaluationPeriods: 3,
     metrics: [
       { expression: 'SUM(METRICS())', id: 'total', label: 'Total 5XX errors', returnData: true },
-      ...Object.entries(apis).map(([id, api]) => ({
+      ...Object.entries(collaborators.apis).map(([id, api]) => ({
         id,
         metricStat: {
           metric: {

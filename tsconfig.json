@@ -26,6 +26,7 @@
       "@src/*": ["./src/*"],
       "@lib/*": ["./src/lib/*"],
       "@common/*": ["./src/common/*"],
+      "@infra/*": ["./infra/*"],
       "@test-fixtures/*": ["./test/fixtures/*"]
     }
   },

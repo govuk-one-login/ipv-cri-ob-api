@@ -1,22 +1,15 @@
+import { criApp } from '@infra/cri/app'
 import { OpenBankingStack } from '@infra/open-banking/stack'
-import { App } from 'aws-cdk-lib'
 import { mkdtempSync, rmSync, writeFileSync } from 'node:fs'
 import { tmpdir } from 'node:os'
 import { join, resolve } from 'node:path'
 import { stringify } from 'yaml'
 
-// disable CDK built in validation. `cfn-lint` checks the template in pre-commit
-process.env['CDK_VALIDATION'] = 'false'
-
 const outputPath = resolve(import.meta.dirname, '..', process.argv[2] ?? 'deploy/template.cdk.yaml')
 const assemblyDir = mkdtempSync(join(tmpdir(), 'cdk-'))
 
 try {
-  const app = new App({
-    analyticsReporting: false,
-    context: { 'aws:cdk:enable-path-metadata': false },
-    outdir: assemblyDir
-  })
+  const app = criApp({ outdir: assemblyDir })
   const stack = new OpenBankingStack(app, 'OpenBanking')
   const { template } = app.synth().getStackByName(stack.stackName)
 

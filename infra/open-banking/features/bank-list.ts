@@ -1,98 +1,85 @@
-import type { CriApi } from '@infra/cri/api/api'
-import type { OAuth } from '@infra/open-banking/features/oauth'
-import type { OpenBankingStack } from '@infra/open-banking/stack'
-import type { CfnTable } from 'aws-cdk-lib/aws-dynamodb'
+import type { ApiRoute, CriApi } from '@infra/cri/api/api'
+import type { CriFunction } from '@infra/cri/function'
+import type { CriStack } from '@infra/cri/stack'
+import type { LimeEndpointProfiles } from '@infra/lime/endpoint-profiles'
+import type { OAuthCommon } from '@infra/open-banking/features/oauth-common'
+import type { TokenReader } from '@infra/open-banking/features/token-rotator'
+import type { CfnResource } from 'aws-cdk-lib'
 
 import { criAlarm } from '@infra/cri/alarm'
 import { criApiInvokePermission } from '@infra/cri/api/api'
+import { criApiErrorRateAlarms } from '@infra/cri/api/error-rate-alarms'
 import { criCanaryDeployment } from '@infra/cri/canary-deployment'
-import { criDynamoTable } from '@infra/cri/dynamo-table'
+import { criDeploymentCheck } from '@infra/cri/deployment-check'
+import { criDynamoTable, tableAccess } from '@infra/cri/dynamo-table'
 import { criFunction } from '@infra/cri/function'
-import { criSsmParameter } from '@infra/cri/ssm-parameter'
+import { criSsmParameter, parameterReadPolicy } from '@infra/cri/ssm-parameter'
+import { criThrottleAlarm } from '@infra/cri/throttle-alarm'
 import { endpointProfileDimension } from '@infra/lime/endpoint-profiles'
 import { Fn } from 'aws-cdk-lib'
 
 type BankListCollaborators = {
-  oauthCommon: OAuth
+  endpointProfiles: LimeEndpointProfiles
+  oauthCommon: OAuthCommon
   privateApi: CriApi
-  tokenTable: CfnTable
+  tokenReader: TokenReader
+  tokenRotatorDeploymentCheck: CfnResource // the updater needs a token, so its check runs after
 }
 
-export const bankList = (stack: OpenBankingStack, collaborators: BankListCollaborators) => {
+export const bankList = (stack: CriStack, collaborators: BankListCollaborators) => {
+  const session = collaborators.oauthCommon.sessionReader
+  const token = collaborators.tokenReader
   const bankListTable = criDynamoTable(stack, 'BankListTable', { partitionKey: 'profile' })
 
-  criFunction(stack, 'BankListUpdaterFunction', {
+  const updaterFunction = criFunction(stack, 'BankListUpdaterFunction', {
     entry: 'src/bank-list/handler/bank-list-updater.ts',
     environment: {
+      ...token.environment,
       BANK_LIST_DB_TABLE_NAME: bankListTable.ref,
-      ENDPOINT_PROFILES: stack.endpointProfiles.enabled,
-      TOKEN_ROTATOR_DB_TABLE_NAME: collaborators.tokenTable.ref
+      ENDPOINT_PROFILES: collaborators.endpointProfiles.enabled
     },
-    events: {
-      ScheduledUpdate: { properties: { schedule: 'rate(1 minute)' }, type: 'Schedule' }
-    },
-    maximumRetryAttempts: 0,
-    name: 'bank-list-updater',
     policies: [
-      {
-        statement: [
-          {
-            Action: 'dynamodb:GetItem',
-            Effect: 'Allow',
-            Resource: collaborators.tokenTable.attrArn
-          },
-          {
-            Action: ['dynamodb:GetItem', 'dynamodb:PutItem'],
-            Effect: 'Allow',
-            Resource: bankListTable.attrArn
-          }
-        ]
-      },
-      stack.parameterReadPolicy('bank-list/*')
+      ...token.policies,
+      tableAccess(bankListTable, ['GetItem', 'PutItem']),
+      parameterReadPolicy(stack, 'bank-list/*')
     ],
+    schedule: 'rate(1 minute)',
     subnets: 'protected'
+  })
+  criDeploymentCheck(stack, updaterFunction, {
+    dependsOn: [collaborators.tokenRotatorDeploymentCheck]
   })
 
   const retrieverFunction = criFunction(stack, 'BankListRetrieverFunction', {
     entry: 'src/bank-list/handler/bank-list-retriever.ts',
     environment: {
-      BANK_LIST_DB_TABLE_NAME: bankListTable.ref,
-      SESSION_DB_TABLE_NAME: collaborators.oauthCommon.sessionTableName
+      ...session.environment,
+      BANK_LIST_DB_TABLE_NAME: bankListTable.ref
     },
-    name: 'bank-list-retriever',
-    policies: [
-      { dynamoDbReadPolicy: { tableName: collaborators.oauthCommon.sessionTableName } },
-      { kmsDecryptPolicy: { keyId: collaborators.oauthCommon.customerManagedKeyId } },
-      {
-        statement: [
-          { Action: 'dynamodb:GetItem', Effect: 'Allow', Resource: bankListTable.attrArn }
-        ]
-      }
-    ],
+    policies: [...session.policies, tableAccess(bankListTable, ['GetItem'])],
     subnets: 'private'
   })
-  criApiInvokePermission(stack, retrieverFunction)
-  criCanaryDeployment(stack, retrieverFunction, {
-    api: collaborators.privateApi,
-    method: 'GET',
-    path: '/banks'
-  })
 
-  stack.endpointProfiles.forEachProfile(({ condition, idPrefix, profile }) => {
+  const retrieverRoute: ApiRoute = { api: collaborators.privateApi, method: 'GET', path: '/banks' }
+  criApiInvokePermission(stack, retrieverFunction, collaborators.privateApi)
+  criCanaryDeployment(stack, retrieverFunction, retrieverRoute)
+  criApiErrorRateAlarms(stack, 'BankListRetriever', retrieverRoute)
+  criThrottleAlarm(stack, retrieverFunction)
+
+  collaborators.endpointProfiles.forEachProfile(({ condition, idPrefix, profile }) => {
     criSsmParameter(stack, `${idPrefix}BankListEndpointParameter`, {
       condition,
       description: `Bank list endpoint for ${profile}`,
       path: `bank-list/${profile}/endpoint-url`,
-      value: Fn.sub('${BaseUrl}/api/v2.0/banks', { BaseUrl: stack.endpointProfiles.url(profile) })
+      value: Fn.sub('${BaseUrl}/api/v2.0/banks', {
+        BaseUrl: collaborators.endpointProfiles.url(profile)
+      })
     })
 
-    const metric = (metricName: string) => ({
-      dimensions: [
-        { name: 'service', value: Fn.sub('${CriIdentifier}-bank-list-updater') },
-        endpointProfileDimension(profile)
-      ],
+    const metric = (fn: CriFunction, metricName: string) => ({
+      dimensions: [{ name: 'service', value: fn.serviceName }, endpointProfileDimension(profile)],
       metricName,
-      namespace: stack.parameters.criIdentifier.valueAsString
+      namespace: fn.metricsNamespace
     })
 
     criAlarm(stack, `${idPrefix}BankListSizeDropAlarm`, {
@@ -110,7 +97,11 @@ export const bankList = (stack: OpenBankingStack, collaborators: BankListCollabo
         },
         {
           id: 'size',
-          metricStat: { metric: metric('bank_list_size'), period: 60, stat: 'Minimum' },
+          metricStat: {
+            metric: metric(updaterFunction, 'bank_list_size'),
+            period: 60,
+            stat: 'Minimum'
+          },
           returnData: false
         }
       ],
@@ -122,16 +113,39 @@ export const bankList = (stack: OpenBankingStack, collaborators: BankListCollabo
     })
 
     criAlarm(stack, `${idPrefix}BankListEmptyAlarm`, {
-      ...metric('bank_list_size'),
       comparisonOperator: 'LessThanThreshold',
       condition,
       datapointsToAlarm: 1,
-      description: `${profile} bank list is empty.`,
+      description: `${profile} bank list stored by the updater or served by the retriever is empty.`,
       evaluationPeriods: 1,
+      metrics: [
+        {
+          expression: 'MIN([stored, served])',
+          id: 'emptiest',
+          label: 'Smallest bank list size stored or served',
+          returnData: true
+        },
+        {
+          id: 'stored',
+          metricStat: {
+            metric: metric(updaterFunction, 'bank_list_size'),
+            period: 60,
+            stat: 'Maximum'
+          },
+          returnData: false
+        },
+        {
+          id: 'served',
+          metricStat: {
+            metric: metric(retrieverFunction, 'bank_list_size'),
+            period: 60,
+            stat: 'Maximum'
+          },
+          returnData: false
+        }
+      ],
       name: `bank-list-empty-${profile.toLowerCase()}`,
-      period: 60,
       severity: 'critical',
-      statistic: 'Maximum',
       threshold: 1,
       treatMissingData: 'notBreaching'
     })
@@ -151,7 +165,11 @@ export const bankList = (stack: OpenBankingStack, collaborators: BankListCollabo
         },
         {
           id: 'updates',
-          metricStat: { metric: metric('bank_list_updated'), period: 900, stat: 'Sum' },
+          metricStat: {
+            metric: metric(updaterFunction, 'bank_list_updated'),
+            period: 900,
+            stat: 'Sum'
+          },
           returnData: false
         }
       ],

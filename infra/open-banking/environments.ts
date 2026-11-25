@@ -1,5 +1,4 @@
-import type { Environment } from '@infra/cri/environment'
-import type { CriEnvironmentConfig } from '@infra/cri/stack'
+import type { CriEnvironmentConfig, Environment } from '@infra/cri/environment'
 import type { EndpointProfileUrls } from '@infra/lime/endpoint-profiles'
 
 export type EnvironmentConfig = { endpointProfiles: EndpointProfileUrls } & CriEnvironmentConfig
@@ -24,6 +23,7 @@ export const environmentConfig: Record<Environment, EnvironmentConfig> = {
       UAT: ecospendSandboxUrl
     },
     logFullErrors: true,
+    logGroupRetentionInDays: 30,
     memorySize: 1024,
     provisionedConcurrentExecutions: 0,
     vcDomain: 'review-ob.dev.account.gov.uk'
@@ -36,6 +36,7 @@ export const environmentConfig: Record<Environment, EnvironmentConfig> = {
       UAT: ecospendSandboxUrl
     },
     logFullErrors: true,
+    logGroupRetentionInDays: 30,
     memorySize: 1024,
     provisionedConcurrentExecutions: 1,
     vcDomain: 'review-ob.build.account.gov.uk'
@@ -48,6 +49,7 @@ export const environmentConfig: Record<Environment, EnvironmentConfig> = {
       UAT: ecospendSandboxUrl
     },
     logFullErrors: true,
+    logGroupRetentionInDays: 30,
     memorySize: 1024,
     provisionedConcurrentExecutions: 1,
     vcDomain: 'review-ob.staging.account.gov.uk'
@@ -59,6 +61,7 @@ export const environmentConfig: Record<Environment, EnvironmentConfig> = {
       UAT: ecospendSandboxUrl
     },
     logFullErrors: false,
+    logGroupRetentionInDays: 30,
     memorySize: 1024,
     provisionedConcurrentExecutions: 1,
     vcDomain: 'review-ob.integration.account.gov.uk'
@@ -70,6 +73,7 @@ export const environmentConfig: Record<Environment, EnvironmentConfig> = {
       LIVE: ecospendLiveUrl
     },
     logFullErrors: false,
+    logGroupRetentionInDays: 365,
     memorySize: 1024,
     provisionedConcurrentExecutions: 1,
     vcDomain: 'review-ob.account.gov.uk'

@@ -1,3 +1,4 @@
+import type { CriFunctionPolicy } from '@infra/cri/function'
 import type { CriStack } from '@infra/cri/stack'
 
 import { Fn } from 'aws-cdk-lib'
@@ -7,7 +8,6 @@ export type CriDynamoTableConfig = {
   globalSecondaryIndexes?: CriDynamoTableIndex[]
   partitionKey: string
   sortKey?: string
-  tableName?: string
   ttlAttribute?: string
 }
 
@@ -17,6 +17,8 @@ export type CriDynamoTableIndex = {
   projection: CfnTable.ProjectionProperty
   sortKey?: string
 }
+
+export type DynamoDbAction = 'GetItem' | 'PutItem'
 
 const keySchema = (partitionKey: string, sortKey?: string): CfnTable.KeySchemaProperty[] => [
   { attributeName: partitionKey, keyType: 'HASH' },
@@ -59,9 +61,18 @@ export const criDynamoTable = (
       )
     },
     sseSpecification: { sseEnabled: true },
-    ...(config.tableName && { tableName: config.tableName }),
     ...(config.ttlAttribute && {
       timeToLiveSpecification: { attributeName: config.ttlAttribute, enabled: true }
     })
   })
 }
+
+export const tableAccess = (table: CfnTable, actions: DynamoDbAction[]): CriFunctionPolicy => ({
+  statement: [
+    {
+      Action: actions.map((action) => `dynamodb:${action}`),
+      Effect: 'Allow',
+      Resource: table.attrArn
+    }
+  ]
+})

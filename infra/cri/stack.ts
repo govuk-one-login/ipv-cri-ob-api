@@ -1,39 +1,18 @@
 import type { CriConditions } from '@infra/cri/conditions'
-import type { Environment } from '@infra/cri/environment'
-import type { CriFunctionPolicy } from '@infra/cri/function'
+import type { CriEnvironmentConfig, Environment } from '@infra/cri/environment'
 import type { CriStackParameters } from '@infra/cri/stack-parameters'
 import type { App, IStackSynthesizer } from 'aws-cdk-lib'
 
 import { criConditions } from '@infra/cri/conditions'
-import { byEnvironment } from '@infra/cri/environment'
+import { byEnvironment, environmentConfigurationRow } from '@infra/cri/environment'
 import { criStackParameters } from '@infra/cri/stack-parameters'
 import { Aws, BootstraplessSynthesizer, CfnMapping, Fn, Stack, Token } from 'aws-cdk-lib'
-
-export type CriEnvironmentConfig = {
-  dynatraceLayer: string
-  dynatraceSecretArn: string
-  logFullErrors: boolean
-  memorySize: number
-  provisionedConcurrentExecutions: number
-  vcDomain: string
-}
-
-export type CriEnvironmentConfigKey = keyof CriEnvironmentConfig
 
 export type CriStackConfig = {
   criName: string
   description: string
   environmentConfig: Record<Environment, CriEnvironmentConfig>
 }
-
-const environmentConfigurationRow = (config: CriEnvironmentConfig) => ({
-  dynatraceLayer: config.dynatraceLayer,
-  dynatraceSecretArn: config.dynatraceSecretArn,
-  logFullErrors: String(config.logFullErrors),
-  memorySize: config.memorySize,
-  provisionedConcurrentExecutions: config.provisionedConcurrentExecutions,
-  vcDomain: config.vcDomain
-})
 
 export class CriStack extends Stack {
   readonly conditions: CriConditions
@@ -61,7 +40,7 @@ export class CriStack extends Stack {
       )
     })
 
-    this.conditions = criConditions(this, this.parameters, (key) => this.environmentValue(key))
+    this.conditions = criConditions(this, this.parameters)
     this.parameterPrefix = Token.asString(
       Fn.conditionIf(
         this.conditions.useParameterPrefix.logicalId,
@@ -78,20 +57,7 @@ export class CriStack extends Stack {
     )
   }
 
-  environmentValue(key: CriEnvironmentConfigKey): string {
+  environmentValue(key: keyof CriEnvironmentConfig): string {
     return this.environmentConfiguration.findInMap(this.parameters.environment.valueAsString, key)
-  }
-
-  // e.g. parameterName('bank-list/STUB/endpoint-url') is /<prefix>/bank-list/STUB/endpoint-url
-  parameterName(path: string): string {
-    return Fn.sub(`/\${Prefix}/${path}`, { Prefix: this.parameterPrefix })
-  }
-
-  parameterReadPolicy(path: string): CriFunctionPolicy {
-    return {
-      ssmParameterReadPolicy: {
-        parameterName: Fn.sub(`\${Prefix}/${path}`, { Prefix: this.parameterPrefix })
-      }
-    }
   }
 }

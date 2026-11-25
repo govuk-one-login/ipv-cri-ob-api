@@ -1,18 +1,27 @@
 import type { CriStack } from '@infra/cri/stack'
 
-import { Aws, Fn, Token } from 'aws-cdk-lib'
+import { findOrCreate } from '@infra/cri/find-or-create'
+import { functionAlias, functionVersionNumber } from '@infra/cri/sam'
+import { Aws, CfnCondition, Fn, Token } from 'aws-cdk-lib'
 import { CfnLogGroup } from 'aws-cdk-lib/aws-logs'
 import { CfnFunction } from 'aws-cdk-lib/aws-sam'
 import { parse } from 'node:path'
 
+export type CriFunction = {
+  alias: string
+  metricsNamespace: string
+  name: string
+  resource: CfnFunction
+  serviceName: string
+  version: string
+}
+
 export type CriFunctionConfig = {
   entry: string
   environment?: Record<string, string>
-  events?: Record<string, CfnFunction.EventSourceProperty>
-  maximumRetryAttempts?: number
-  name: string
   policies?: CriFunctionPolicy[]
   provisionedConcurrency?: boolean
+  schedule?: string
   subnets: 'private' | 'protected'
 }
 
@@ -48,17 +57,45 @@ const dynatraceSecret = (stack: CriStack, key: string) =>
     SecretArn: stack.environmentValue('dynatraceSecretArn')
   })
 
+const useCodeSigning = (stack: CriStack) =>
+  findOrCreate(
+    stack,
+    'UseCodeSigning',
+    (id) =>
+      new CfnCondition(stack, id, {
+        expression: Fn.conditionNot(
+          Fn.conditionEquals(stack.parameters.codeSigningConfigArn, 'none')
+        )
+      })
+  )
+
+const addProvisionedConcurrency = (stack: CriStack) =>
+  findOrCreate(
+    stack,
+    'AddProvisionedConcurrency',
+    (id) =>
+      new CfnCondition(stack, id, {
+        expression: Fn.conditionNot(
+          Fn.conditionEquals(stack.environmentValue('provisionedConcurrentExecutions'), 0)
+        )
+      })
+  )
+
 export const criFunction = (
   stack: CriStack,
   id: string,
   config: CriFunctionConfig
-): CfnFunction => {
-  const { conditions, parameters } = stack
-  const { entry, name } = config
+): CriFunction => {
+  const { parameters } = stack
+  const { entry } = config
+  const { name } = parse(entry)
+  const functionName = Fn.sub(`\${AWS::StackName}-${name}`)
+  const metricsNamespace = parameters.criIdentifier.valueAsString
+  const serviceName = Fn.sub(`\${CriIdentifier}-${name}`)
 
   const logGroup = new CfnLogGroup(stack, `${id}LogGroup`, {
     logGroupName: Fn.sub(`/aws/lambda/\${AWS::StackName}-${name}`),
-    retentionInDays: parameters.logGroupRetentionInDays.valueAsNumber
+    retentionInDays: Token.asNumber(stack.environmentValue('logGroupRetentionInDays'))
   })
 
   const fn = new CfnFunction(stack, id, {
@@ -66,7 +103,7 @@ export const criFunction = (
     autoPublishAlias: 'live',
     codeSigningConfigArn: Token.asString(
       Fn.conditionIf(
-        conditions.useCodeSigning.logicalId,
+        useCodeSigning(stack).logicalId,
         parameters.codeSigningConfigArn.valueAsString,
         Aws.NO_VALUE
       )
@@ -85,24 +122,24 @@ export const criFunction = (
         LOG_FULL_ERRORS: stack.environmentValue('logFullErrors'),
         PARAMETER_PREFIX: stack.parameterPrefix,
         POWERTOOLS_LOG_LEVEL: 'INFO',
-        POWERTOOLS_METRICS_NAMESPACE: parameters.criIdentifier.valueAsString,
-        POWERTOOLS_SERVICE_NAME: Fn.sub(`\${CriIdentifier}-${name}`),
+        POWERTOOLS_METRICS_NAMESPACE: metricsNamespace,
+        POWERTOOLS_SERVICE_NAME: serviceName,
         ...config.environment
       }
     },
-    ...(config.events && { events: config.events }),
-    functionName: Fn.sub(`\${AWS::StackName}-${name}`),
-    ...(config.maximumRetryAttempts !== undefined && {
-      eventInvokeConfig: { maximumRetryAttempts: config.maximumRetryAttempts }
+    ...(config.schedule && {
+      eventInvokeConfig: { maximumRetryAttempts: 0 },
+      events: { Schedule: { properties: { schedule: config.schedule }, type: 'Schedule' } }
     }),
-    handler: `${parse(entry).name}.handler`,
+    functionName,
+    handler: `${name}.handler`,
     layers: [stack.environmentValue('dynatraceLayer')],
     memorySize: Token.asNumber(stack.environmentValue('memorySize')),
     permissionsBoundary: stack.permissionsBoundary,
     policies: ['AWSLambdaBasicExecutionRole', 'AWSXrayWriteOnlyAccess', ...(config.policies ?? [])],
     ...(config.provisionedConcurrency && {
       provisionedConcurrencyConfig: Fn.conditionIf(
-        conditions.addProvisionedConcurrency.logicalId,
+        addProvisionedConcurrency(stack).logicalId,
         {
           ProvisionedConcurrentExecutions: stack.environmentValue('provisionedConcurrentExecutions')
         },
@@ -124,5 +161,12 @@ export const criFunction = (
   fn.addPropertyOverride('LoggingConfig', { LogGroup: logGroup.ref })
   fn.cfnOptions.metadata = esbuildMetadata(entry)
 
-  return fn
+  return {
+    alias: functionAlias(fn),
+    metricsNamespace,
+    name: functionName,
+    resource: fn,
+    serviceName,
+    version: functionVersionNumber(fn)
+  }
 }

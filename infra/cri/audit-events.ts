@@ -3,8 +3,7 @@ import type { CriStack } from '@infra/cri/stack'
 
 import { Fn } from 'aws-cdk-lib'
 
-// what a function needs to publish audit events to TxMA
-export const auditProducer = (stack: CriStack) => ({
+export const auditEventsProducer = (stack: CriStack) => ({
   environment: {
     AUDIT_COMPONENT_ID: stack.environmentValue('vcDomain'),
     AUDIT_EVENT_NAME_PREFIX: stack.parameters.auditEventNamePrefix.valueAsString,

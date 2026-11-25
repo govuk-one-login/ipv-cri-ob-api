@@ -48,6 +48,11 @@ export default defineConfig({
         }
       },
       {
+        resolve: {
+          alias: {
+            '@infra': path.resolve(import.meta.dirname, 'infra')
+          }
+        },
         test: {
           include: ['test/infra/**/*.test.ts'],
           name: 'infra'

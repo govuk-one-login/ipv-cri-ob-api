@@ -1,19 +1,19 @@
 import type { CriApi } from '@infra/cri/api/api'
-import type { OpenBankingStack } from '@infra/open-banking/stack'
+import type { CriFunctionPolicy } from '@infra/cri/function'
+import type { CriStack } from '@infra/cri/stack'
 
-import { criSsmParameter } from '@infra/cri/ssm-parameter'
-import { CfnCondition, Fn } from 'aws-cdk-lib'
+import { Fn } from 'aws-cdk-lib'
 import { CfnApplication } from 'aws-cdk-lib/aws-sam'
 
-export type OAuth = ReturnType<typeof oauth>
+export type OAuthCommon = ReturnType<typeof oauthCommon>
 
-type OAuthCollaborators = {
+type OAuthCommonCollaborators = {
   privateApi: CriApi
   publicApi: CriApi
 }
 
-export const oauth = (stack: OpenBankingStack, { privateApi, publicApi }: OAuthCollaborators) => {
-  const { conditions, parameters } = stack
+export const oauthCommon = (stack: CriStack, collaborators: OAuthCommonCollaborators) => {
+  const { parameters } = stack
   const criUrl = Fn.sub('https://${domain}', { domain: stack.environmentValue('vcDomain') })
 
   const app = new CfnApplication(stack, 'OAuth', {
@@ -26,8 +26,8 @@ export const oauth = (stack: OpenBankingStack, { privateApi, publicApi }: OAuthC
       AuditEventNamePrefix: parameters.auditEventNamePrefix.valueAsString,
       CriAudience: criUrl,
       CriIdentifier: parameters.criIdentifier.valueAsString,
-      CriPrivateApiGwName: privateApi.name,
-      CriPublicApiGwName: publicApi.name,
+      CriPrivateApiGwName: collaborators.privateApi.name,
+      CriPublicApiGwName: collaborators.publicApi.name,
       CriVcIssuer: criUrl,
       Environment: parameters.environment.valueAsString,
       IPVCoreRedirectURI: 'https://cri.core.build.stubs.account.gov.uk/callback',
@@ -42,25 +42,18 @@ export const oauth = (stack: OpenBankingStack, { privateApi, publicApi }: OAuthC
     }
   })
   const output = (name: string) => app.getAtt(`Outputs.${name}`).toString()
-  const stackName = output('StackName')
-
-  criSsmParameter(stack, 'OAuthCommonStackNameParam', {
-    condition: new CfnCondition(stack, 'CreateTestResourcesParam', {
-      expression: Fn.conditionAnd(
-        conditions.isDeployedFromPipeline,
-        Fn.conditionNot(conditions.isProduction)
-      )
-    }),
-    description:
-      'The stack currently used for OAuth (oauth-common). Only required for test-resources.',
-    sharedName: '/common-cri/oauth-common/stack-name',
-    value: stackName
-  })
+  const sessionTableName = output('DbSessionTableName')
 
   return {
-    customerManagedKeyId: output('DbCustomerManagedKeyID'),
     personIdentityTableName: output('DbPersonIdentityTableName'),
-    sessionTableName: output('DbSessionTableName'),
-    stackName
+    // what a function needs to read the oauth-common session
+    sessionReader: {
+      environment: { SESSION_DB_TABLE_NAME: sessionTableName },
+      policies: [
+        { dynamoDbReadPolicy: { tableName: sessionTableName } },
+        { kmsDecryptPolicy: { keyId: output('DbCustomerManagedKeyID') } }
+      ] satisfies CriFunctionPolicy[]
+    },
+    stackName: output('StackName')
   }
 }

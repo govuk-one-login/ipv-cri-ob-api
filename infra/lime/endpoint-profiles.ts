@@ -37,7 +37,6 @@ export const limeEndpointProfiles = (
     mapping: byEnvironment((env) => ({ enabled: enabledIn(env).join('|'), ...urls[env] }))
   })
 
-  // profile specific resources only exist in pipeline deployments to environments with that profile
   const createResources = (profile: EndpointProfile) =>
     new CfnCondition(stack, `Create${pascalCase(profile)}EndpointProfileResources`, {
       expression: Fn.conditionAnd(
@@ -50,11 +49,9 @@ export const limeEndpointProfiles = (
       )
     })
 
-  const conditions = {
-    LIVE: createResources('LIVE'),
-    STUB: createResources('STUB'),
-    UAT: createResources('UAT')
-  }
+  const conditions = Object.fromEntries(
+    endpointProfiles.map((profile) => [profile, createResources(profile)])
+  ) as Record<EndpointProfile, CfnCondition>
 
   return {
     enabled: mapping.findInMap(environment.valueAsString, 'enabled'), // e.g. STUB|UAT

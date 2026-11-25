@@ -1,22 +1,28 @@
-import type { CriApi } from '@infra/cri/api/api'
-import type { OAuth } from '@infra/open-banking/features/oauth'
-import type { OpenBankingStack } from '@infra/open-banking/stack'
-import type { CfnTable } from 'aws-cdk-lib/aws-dynamodb'
+import type { ApiRoute, CriApi } from '@infra/cri/api/api'
+import type { CriStack } from '@infra/cri/stack'
+import type { LimeEndpointProfiles } from '@infra/lime/endpoint-profiles'
+import type { OAuthCommon } from '@infra/open-banking/features/oauth-common'
+import type { TokenReader } from '@infra/open-banking/features/token-rotator'
 
 import { criApiInvokePermission } from '@infra/cri/api/api'
+import { criApiErrorRateAlarms } from '@infra/cri/api/error-rate-alarms'
 import { criCanaryDeployment } from '@infra/cri/canary-deployment'
-import { criDynamoTable } from '@infra/cri/dynamo-table'
+import { criDynamoTable, tableAccess } from '@infra/cri/dynamo-table'
 import { criFunction } from '@infra/cri/function'
-import { criSsmParameter } from '@infra/cri/ssm-parameter'
+import { criSsmParameter, parameterReadPolicy } from '@infra/cri/ssm-parameter'
+import { criThrottleAlarm } from '@infra/cri/throttle-alarm'
 import { Fn } from 'aws-cdk-lib'
 
 type ConsentsCollaborators = {
-  oauthCommon: OAuth
+  endpointProfiles: LimeEndpointProfiles
+  oauthCommon: OAuthCommon
   privateApi: CriApi
-  tokenTable: CfnTable
+  tokenReader: TokenReader
 }
 
-export const consents = (stack: OpenBankingStack, collaborators: ConsentsCollaborators) => {
+export const consents = (stack: CriStack, collaborators: ConsentsCollaborators) => {
+  const session = collaborators.oauthCommon.sessionReader
+  const token = collaborators.tokenReader
   const consentsTable = criDynamoTable(stack, 'ConsentsTable', {
     partitionKey: 'sessionId',
     ttlAttribute: 'ttl'
@@ -25,47 +31,36 @@ export const consents = (stack: OpenBankingStack, collaborators: ConsentsCollabo
   const consentsFunction = criFunction(stack, 'ConsentsFunction', {
     entry: 'src/consents/handler/consents.ts',
     environment: {
-      CONSENTS_DB_TABLE_NAME: consentsTable.ref,
-      TOKEN_ROTATOR_DB_TABLE_NAME: collaborators.tokenTable.ref,
-      SESSION_DB_TABLE_NAME: collaborators.oauthCommon.sessionTableName
+      ...session.environment,
+      ...token.environment,
+      CONSENTS_DB_TABLE_NAME: consentsTable.ref
     },
-    name: 'consents',
     policies: [
-      { dynamoDbReadPolicy: { tableName: collaborators.oauthCommon.sessionTableName } },
-      { kmsDecryptPolicy: { keyId: collaborators.oauthCommon.customerManagedKeyId } },
-      {
-        statement: [
-          {
-            Action: ['dynamodb:GetItem', 'dynamodb:PutItem'],
-            Effect: 'Allow',
-            Resource: consentsTable.attrArn
-          },
-          {
-            Action: 'dynamodb:GetItem',
-            Effect: 'Allow',
-            Resource: collaborators.tokenTable.attrArn
-          }
-        ]
-      },
-      stack.parameterReadPolicy('consents/*')
+      ...session.policies,
+      ...token.policies,
+      tableAccess(consentsTable, ['GetItem', 'PutItem']),
+      parameterReadPolicy(stack, 'consents/*')
     ],
     provisionedConcurrency: true,
     subnets: 'protected'
   })
-  criApiInvokePermission(stack, consentsFunction)
-  criCanaryDeployment(stack, consentsFunction, {
+  const consentsRoute: ApiRoute = {
     api: collaborators.privateApi,
     method: 'POST',
     path: '/consents'
-  })
+  }
+  criApiInvokePermission(stack, consentsFunction, collaborators.privateApi)
+  criCanaryDeployment(stack, consentsFunction, consentsRoute)
+  criApiErrorRateAlarms(stack, 'Consents', consentsRoute)
+  criThrottleAlarm(stack, consentsFunction)
 
-  stack.endpointProfiles.forEachProfile(({ condition, idPrefix, profile }) => {
+  collaborators.endpointProfiles.forEachProfile(({ condition, idPrefix, profile }) => {
     criSsmParameter(stack, `${idPrefix}ConsentsEndpointParameter`, {
       condition,
       description: `Consents endpoint for ${profile}`,
       path: `consents/${profile}/endpoint-url`,
       value: Fn.sub('${BaseUrl}/api/v3.0/consents', {
-        BaseUrl: stack.endpointProfiles.url(profile)
+        BaseUrl: collaborators.endpointProfiles.url(profile)
       })
     })
   })

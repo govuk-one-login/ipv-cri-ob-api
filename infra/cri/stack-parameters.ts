@@ -25,7 +25,7 @@ export const criStackParameters = (stack: Stack) => ({
     default: 'pipeline',
     description:
       "Set to anything other than 'pipeline' for manual or pre-merge test stacks. " +
-      'These skip alarms, usage plans and endpoint profile resources, and their private API is reachable from outside the VPC.',
+      'These skip alarms, usage plans and other pipeline-only resources, and their private API is reachable from outside the VPC.',
     type: 'String'
   }),
   environment: new CfnParameter(stack, 'Environment', {
@@ -38,11 +38,6 @@ export const criStackParameters = (stack: Stack) => ({
     default: 'AllAtOnce',
     description: 'Specifies the configuration to enable gradual Lambda deployments',
     type: 'String'
-  }),
-  logGroupRetentionInDays: new CfnParameter(stack, 'LogGroupRetentionInDays', {
-    default: 30,
-    description: 'Retention for all log groups',
-    type: 'Number'
   }),
   parameterPrefix: new CfnParameter(stack, 'ParameterPrefix', {
     default: 'none',

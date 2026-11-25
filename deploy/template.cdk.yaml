@@ -19,7 +19,7 @@ Parameters:
   DeploymentType:
     Type: String
     Default: pipeline
-    Description: Set to anything other than 'pipeline' for manual or pre-merge test stacks. These skip alarms, usage plans and endpoint profile resources, and their private API is reachable from outside the VPC.
+    Description: Set to anything other than 'pipeline' for manual or pre-merge test stacks. These skip alarms, usage plans and other pipeline-only resources, and their private API is reachable from outside the VPC.
   Environment:
     Type: String
     AllowedValues:
@@ -34,10 +34,6 @@ Parameters:
     Type: String
     Default: AllAtOnce
     Description: Specifies the configuration to enable gradual Lambda deployments
-  LogGroupRetentionInDays:
-    Type: Number
-    Default: 30
-    Description: Retention for all log groups
   ParameterPrefix:
     Type: String
     Default: none
@@ -56,6 +52,7 @@ Mappings:
       dynatraceLayer: arn:aws:lambda:eu-west-2:216552277552:layer:Dynatrace_OneAgent_1_329_73_20260123-140641_with_collector_nodejs_arm:1
       dynatraceSecretArn: arn:aws:secretsmanager:eu-west-2:216552277552:secret:DynatraceNonProductionVariables
       logFullErrors: "true"
+      logGroupRetentionInDays: 30
       memorySize: 1024
       provisionedConcurrentExecutions: 0
       vcDomain: review-ob.dev.account.gov.uk
@@ -63,6 +60,7 @@ Mappings:
       dynatraceLayer: arn:aws:lambda:eu-west-2:216552277552:layer:Dynatrace_OneAgent_1_329_73_20260123-140641_with_collector_nodejs_arm:1
       dynatraceSecretArn: arn:aws:secretsmanager:eu-west-2:216552277552:secret:DynatraceNonProductionVariables
       logFullErrors: "true"
+      logGroupRetentionInDays: 30
       memorySize: 1024
       provisionedConcurrentExecutions: 1
       vcDomain: review-ob.build.account.gov.uk
@@ -70,6 +68,7 @@ Mappings:
       dynatraceLayer: arn:aws:lambda:eu-west-2:216552277552:layer:Dynatrace_OneAgent_1_329_73_20260123-140641_with_collector_nodejs_arm:1
       dynatraceSecretArn: arn:aws:secretsmanager:eu-west-2:216552277552:secret:DynatraceNonProductionVariables
       logFullErrors: "true"
+      logGroupRetentionInDays: 30
       memorySize: 1024
       provisionedConcurrentExecutions: 1
       vcDomain: review-ob.staging.account.gov.uk
@@ -77,6 +76,7 @@ Mappings:
       dynatraceLayer: arn:aws:lambda:eu-west-2:216552277552:layer:Dynatrace_OneAgent_1_329_73_20260123-140641_with_collector_nodejs_arm:1
       dynatraceSecretArn: arn:aws:secretsmanager:eu-west-2:216552277552:secret:DynatraceNonProductionVariables
       logFullErrors: "false"
+      logGroupRetentionInDays: 30
       memorySize: 1024
       provisionedConcurrentExecutions: 1
       vcDomain: review-ob.integration.account.gov.uk
@@ -84,6 +84,7 @@ Mappings:
       dynatraceLayer: arn:aws:lambda:eu-west-2:216552277552:layer:Dynatrace_OneAgent_1_329_73_20260123-140641_with_collector_nodejs_arm:1
       dynatraceSecretArn: arn:aws:secretsmanager:eu-west-2:216552277552:secret:DynatraceProductionVariables
       logFullErrors: "false"
+      logGroupRetentionInDays: 365
       memorySize: 1024
       provisionedConcurrentExecutions: 1
       vcDomain: review-ob.account.gov.uk
@@ -111,30 +112,10 @@ Conditions:
     Fn::Equals:
       - Ref: DeploymentType
       - pipeline
-  AddProvisionedConcurrency:
-    Fn::Not:
-      - Fn::Equals:
-          - Fn::FindInMap:
-              - EnvironmentConfiguration
-              - Ref: Environment
-              - provisionedConcurrentExecutions
-          - 0
   IsProduction:
     Fn::Equals:
       - Ref: Environment
       - production
-  UseCanaryDeploymentAlarms:
-    Fn::And:
-      - Condition: IsDeployedFromPipeline
-      - Fn::Not:
-          - Fn::Equals:
-              - Ref: LambdaDeploymentPreference
-              - AllAtOnce
-  UseCodeSigning:
-    Fn::Not:
-      - Fn::Equals:
-          - Ref: CodeSigningConfigArn
-          - none
   UseParameterPrefix:
     Fn::Not:
       - Fn::Equals:
@@ -145,12 +126,6 @@ Conditions:
       - Fn::Equals:
           - Ref: PermissionsBoundary
           - none
-  CreateLiveEndpointProfileResources:
-    Fn::And:
-      - Condition: IsDeployedFromPipeline
-      - Fn::Equals:
-          - Ref: Environment
-          - production
   CreateStubEndpointProfileResources:
     Fn::And:
       - Condition: IsDeployedFromPipeline
@@ -180,6 +155,32 @@ Conditions:
           - Fn::Equals:
               - Ref: Environment
               - integration
+  CreateLiveEndpointProfileResources:
+    Fn::And:
+      - Condition: IsDeployedFromPipeline
+      - Fn::Equals:
+          - Ref: Environment
+          - production
+  UseCodeSigning:
+    Fn::Not:
+      - Fn::Equals:
+          - Ref: CodeSigningConfigArn
+          - none
+  UseCanaryDeploymentAlarms:
+    Fn::And:
+      - Condition: IsDeployedFromPipeline
+      - Fn::Not:
+          - Fn::Equals:
+              - Ref: LambdaDeploymentPreference
+              - AllAtOnce
+  AddProvisionedConcurrency:
+    Fn::Not:
+      - Fn::Equals:
+          - Fn::FindInMap:
+              - EnvironmentConfiguration
+              - Ref: Environment
+              - provisionedConcurrentExecutions
+          - 0
   CreateTestResourcesParam:
     Fn::And:
       - Condition: IsDeployedFromPipeline
@@ -642,12 +643,12 @@ Resources:
           - LoggingKmsKey
           - Arn
       LogGroupName:
-        Fn::Sub:
-          - /aws/apigateway/${AWS::StackName}-${Api}-public-AccessLogs
-          - Api:
-              Ref: PublicAPI
+        Fn::Sub: /aws/apigateway/${AWS::StackName}-public-AccessLogs
       RetentionInDays:
-        Ref: LogGroupRetentionInDays
+        Fn::FindInMap:
+          - EnvironmentConfiguration
+          - Ref: Environment
+          - logGroupRetentionInDays
   PublicAPIUsagePlan:
     Type: AWS::ApiGateway::UsagePlan
     Properties:
@@ -696,22 +697,22 @@ Resources:
         ResourcePolicy:
           CustomStatements:
             - Action: execute-api:Invoke
-              Effect: Allow
               Principal: "*"
               Resource:
                 - execute-api:/*
+              Effect: Allow
             - Fn::If:
                 - IsDeployedFromPipeline
                 - Action: execute-api:Invoke
+                  Principal: "*"
+                  Resource:
+                    - execute-api:/*
                   Condition:
                     StringNotEquals:
                       aws:SourceVpce:
                         - Fn::ImportValue:
                             Fn::Sub: ${VpcStackName}-ExecuteApiGatewayEndpointId
                   Effect: Deny
-                  Principal: "*"
-                  Resource:
-                    - execute-api:/*
                 - Ref: AWS::NoValue
       DefinitionBody:
         openapi: 3.0.1
@@ -1090,12 +1091,12 @@ Resources:
           - LoggingKmsKey
           - Arn
       LogGroupName:
-        Fn::Sub:
-          - /aws/apigateway/${AWS::StackName}-${Api}-private-AccessLogs
-          - Api:
-              Ref: PrivateAPI
+        Fn::Sub: /aws/apigateway/${AWS::StackName}-private-AccessLogs
       RetentionInDays:
-        Ref: LogGroupRetentionInDays
+        Fn::FindInMap:
+          - EnvironmentConfiguration
+          - Ref: Environment
+          - logGroupRetentionInDays
   PrivateAPIUsagePlan:
     Type: AWS::ApiGateway::UsagePlan
     Properties:
@@ -1163,17 +1164,6 @@ Resources:
             - UsePermissionsBoundary
             - Ref: PermissionsBoundary
             - Ref: AWS::NoValue
-  OAuthCommonStackNameParam:
-    Type: AWS::SSM::Parameter
-    Properties:
-      Description: The stack currently used for OAuth (oauth-common). Only required for test-resources.
-      Name: /common-cri/oauth-common/stack-name
-      Type: String
-      Value:
-        Fn::GetAtt:
-          - OAuth
-          - Outputs.StackName
-    Condition: CreateTestResourcesParam
   TokenRotatorTable:
     Type: AWS::DynamoDB::Table
     Properties:
@@ -1201,7 +1191,10 @@ Resources:
       LogGroupName:
         Fn::Sub: /aws/lambda/${AWS::StackName}-ecospend-token-rotator
       RetentionInDays:
-        Ref: LogGroupRetentionInDays
+        Fn::FindInMap:
+          - EnvironmentConfiguration
+          - Ref: Environment
+          - logGroupRetentionInDays
   EcospendTokenRotatorFunction:
     Type: AWS::Serverless::Function
     Properties:
@@ -1295,7 +1288,7 @@ Resources:
       EventInvokeConfig:
         MaximumRetryAttempts: 0
       Events:
-        ScheduledRotation:
+        Schedule:
           Properties:
             Schedule: rate(1 minute)
           Type: Schedule
@@ -1371,6 +1364,80 @@ Resources:
           - .js=.mjs
         Sourcemap: true
         Target: node24
+  EcospendTokenRotatorFunctionDeploymentCheck:
+    Type: Custom::AsyncDeploymentCheck
+    Properties:
+      ServiceTimeout: 300
+      ServiceToken:
+        Ref: EcospendTokenRotatorFunction.Alias
+      Version:
+        Fn::GetAtt:
+          - EcospendTokenRotatorFunction.Version
+          - Version
+  EcospendTokenRotatorErrorAlarm:
+    Type: AWS::CloudWatch::Alarm
+    Properties:
+      ActionsEnabled: true
+      AlarmActions:
+        - Fn::ImportValue: build-notifications-WarningAlertsTopicArn
+      AlarmDescription:
+        Fn::Sub: Ecospend token rotator has failed 3 consecutive times in ${Environment}. If unresolved the Ecospend access token will expire.
+      AlarmName:
+        Fn::Sub: ${AWS::StackName}-${Environment}-ecospend-token-rotator-error
+      ComparisonOperator: GreaterThanOrEqualToThreshold
+      DatapointsToAlarm: 3
+      Dimensions:
+        - Name: service
+          Value:
+            Fn::Sub: ${CriIdentifier}-ecospend-token-rotator
+        - Name: lambda
+          Value:
+            Fn::Sub: ${AWS::StackName}-ecospend-token-rotator
+        - Name: result
+          Value: error
+      EvaluationPeriods: 3
+      MetricName: lambda_result
+      Namespace:
+        Ref: CriIdentifier
+      OKActions:
+        - Fn::ImportValue: build-notifications-WarningAlertsTopicArn
+      Period: 60
+      Statistic: Sum
+      Threshold: 1
+      TreatMissingData: notBreaching
+    Condition: IsDeployedFromPipeline
+  EcospendTokenRotatorNotRunningAlarm:
+    Type: AWS::CloudWatch::Alarm
+    Properties:
+      ActionsEnabled: true
+      AlarmActions:
+        - Fn::ImportValue: build-notifications-WarningAlertsTopicArn
+      AlarmDescription:
+        Fn::Sub: Ecospend token rotator has not run successfully for 3 minutes in ${Environment}. If unresolved the Ecospend access token will expire.
+      AlarmName:
+        Fn::Sub: ${AWS::StackName}-${Environment}-ecospend-token-rotator-not-running
+      ComparisonOperator: LessThanThreshold
+      DatapointsToAlarm: 3
+      Dimensions:
+        - Name: service
+          Value:
+            Fn::Sub: ${CriIdentifier}-ecospend-token-rotator
+        - Name: lambda
+          Value:
+            Fn::Sub: ${AWS::StackName}-ecospend-token-rotator
+        - Name: result
+          Value: success
+      EvaluationPeriods: 3
+      MetricName: lambda_result
+      Namespace:
+        Ref: CriIdentifier
+      OKActions:
+        - Fn::ImportValue: build-notifications-WarningAlertsTopicArn
+      Period: 60
+      Statistic: Sum
+      Threshold: 1
+      TreatMissingData: breaching
+    Condition: IsDeployedFromPipeline
   BankListTable:
     Type: AWS::DynamoDB::Table
     Properties:
@@ -1395,7 +1462,10 @@ Resources:
       LogGroupName:
         Fn::Sub: /aws/lambda/${AWS::StackName}-bank-list-updater
       RetentionInDays:
-        Ref: LogGroupRetentionInDays
+        Fn::FindInMap:
+          - EnvironmentConfiguration
+          - Ref: Environment
+          - logGroupRetentionInDays
   BankListUpdaterFunction:
     Type: AWS::Serverless::Function
     Properties:
@@ -1470,6 +1540,8 @@ Resources:
             Ref: CriIdentifier
           POWERTOOLS_SERVICE_NAME:
             Fn::Sub: ${CriIdentifier}-bank-list-updater
+          TOKEN_ROTATOR_DB_TABLE_NAME:
+            Ref: TokenRotatorTable
           BANK_LIST_DB_TABLE_NAME:
             Ref: BankListTable
           ENDPOINT_PROFILES:
@@ -1477,12 +1549,10 @@ Resources:
               - EndpointProfiles
               - Ref: Environment
               - enabled
-          TOKEN_ROTATOR_DB_TABLE_NAME:
-            Ref: TokenRotatorTable
       EventInvokeConfig:
         MaximumRetryAttempts: 0
       Events:
-        ScheduledUpdate:
+        Schedule:
           Properties:
             Schedule: rate(1 minute)
           Type: Schedule
@@ -1508,12 +1578,14 @@ Resources:
         - AWSLambdaBasicExecutionRole
         - AWSXrayWriteOnlyAccess
         - Statement:
-            - Action: dynamodb:GetItem
+            - Action:
+                - dynamodb:GetItem
               Effect: Allow
               Resource:
                 Fn::GetAtt:
                   - TokenRotatorTable
                   - Arn
+        - Statement:
             - Action:
                 - dynamodb:GetItem
                 - dynamodb:PutItem
@@ -1564,13 +1636,28 @@ Resources:
           - .js=.mjs
         Sourcemap: true
         Target: node24
+  BankListUpdaterFunctionDeploymentCheck:
+    Type: Custom::AsyncDeploymentCheck
+    Properties:
+      ServiceTimeout: 300
+      ServiceToken:
+        Ref: BankListUpdaterFunction.Alias
+      Version:
+        Fn::GetAtt:
+          - BankListUpdaterFunction.Version
+          - Version
+    DependsOn:
+      - EcospendTokenRotatorFunctionDeploymentCheck
   BankListRetrieverFunctionLogGroup:
     Type: AWS::Logs::LogGroup
     Properties:
       LogGroupName:
         Fn::Sub: /aws/lambda/${AWS::StackName}-bank-list-retriever
       RetentionInDays:
-        Ref: LogGroupRetentionInDays
+        Fn::FindInMap:
+          - EnvironmentConfiguration
+          - Ref: Environment
+          - logGroupRetentionInDays
   BankListRetrieverFunction:
     Type: AWS::Serverless::Function
     Properties:
@@ -1659,12 +1746,12 @@ Resources:
             Ref: CriIdentifier
           POWERTOOLS_SERVICE_NAME:
             Fn::Sub: ${CriIdentifier}-bank-list-retriever
-          BANK_LIST_DB_TABLE_NAME:
-            Ref: BankListTable
           SESSION_DB_TABLE_NAME:
             Fn::GetAtt:
               - OAuth
               - Outputs.DbSessionTableName
+          BANK_LIST_DB_TABLE_NAME:
+            Ref: BankListTable
       FunctionName:
         Fn::Sub: ${AWS::StackName}-bank-list-retriever
       Handler: bank-list-retriever.handler
@@ -1697,7 +1784,8 @@ Resources:
                 - OAuth
                 - Outputs.DbCustomerManagedKeyID
         - Statement:
-            - Action: dynamodb:GetItem
+            - Action:
+                - dynamodb:GetItem
               Effect: Allow
               Resource:
                 Fn::GetAtt:
@@ -1743,6 +1831,11 @@ Resources:
       FunctionName:
         Ref: BankListRetrieverFunction.Alias
       Principal: apigateway.amazonaws.com
+      SourceArn:
+        Fn::Sub:
+          - arn:${AWS::Partition}:execute-api:${AWS::Region}:${AWS::AccountId}:${Api}/*
+          - Api:
+              Ref: PrivateAPI
   BankListRetrieverFunctionCanaryErrors:
     Type: AWS::CloudWatch::Alarm
     Properties:
@@ -1757,7 +1850,7 @@ Resources:
       Dimensions:
         - Name: FunctionName
           Value:
-            Ref: BankListRetrieverFunction
+            Fn::Sub: ${AWS::StackName}-bank-list-retriever
         - Name: ExecutedVersion
           Value:
             Fn::GetAtt:
@@ -1826,6 +1919,159 @@ Resources:
           - UsePermissionsBoundary
           - Ref: PermissionsBoundary
           - Ref: AWS::NoValue
+  BankListRetriever5xxErrorRateWarningAlarm:
+    Type: AWS::CloudWatch::Alarm
+    Properties:
+      ActionsEnabled: true
+      AlarmActions:
+        - Fn::ImportValue: build-notifications-WarningAlertsTopicArn
+      AlarmDescription: 5XX error rate from GET /banks exceeds 20%.
+      AlarmName:
+        Fn::Sub: ${AWS::StackName}-${Environment}-BankListRetriever-5xx-error-rate-warning
+      ComparisonOperator: GreaterThanOrEqualToThreshold
+      DatapointsToAlarm: 2
+      EvaluationPeriods: 5
+      Metrics:
+        - Expression: IF(requests < 5 || errors < 2, 0, errorPercentage)
+          Id: errorThreshold
+          Label: errorThreshold
+          ReturnData: true
+        - Id: requests
+          MetricStat:
+            Metric:
+              Dimensions:
+                - Name: ApiName
+                  Value:
+                    Fn::Sub: ${AWS::StackName}-PrivateOpenBankingAPI
+                - Name: Method
+                  Value: GET
+                - Name: Resource
+                  Value: /banks
+                - Name: Stage
+                  Value:
+                    Ref: Environment
+              MetricName: Count
+              Namespace: AWS/ApiGateway
+            Period: 60
+            Stat: Sum
+          ReturnData: false
+        - Expression: (errors / requests) * 100
+          Id: errorPercentage
+          Label: errorPercentage
+          ReturnData: false
+        - Id: errors
+          MetricStat:
+            Metric:
+              Dimensions:
+                - Name: ApiName
+                  Value:
+                    Fn::Sub: ${AWS::StackName}-PrivateOpenBankingAPI
+                - Name: Method
+                  Value: GET
+                - Name: Resource
+                  Value: /banks
+                - Name: Stage
+                  Value:
+                    Ref: Environment
+              MetricName: 5XXError
+              Namespace: AWS/ApiGateway
+            Period: 60
+            Stat: Sum
+          ReturnData: false
+      OKActions:
+        - Fn::ImportValue: build-notifications-WarningAlertsTopicArn
+      Threshold: 20
+      TreatMissingData: notBreaching
+    Condition: IsDeployedFromPipeline
+  BankListRetriever5xxErrorRateCriticalAlarm:
+    Type: AWS::CloudWatch::Alarm
+    Properties:
+      ActionsEnabled: true
+      AlarmActions:
+        - Fn::ImportValue: build-notifications-CriticalAlertsTopicArn
+      AlarmDescription: 5XX error rate from GET /banks exceeds 80%.
+      AlarmName:
+        Fn::Sub: ${AWS::StackName}-${Environment}-BankListRetriever-5xx-error-rate-critical
+      ComparisonOperator: GreaterThanOrEqualToThreshold
+      DatapointsToAlarm: 2
+      EvaluationPeriods: 5
+      Metrics:
+        - Expression: IF(requests < 5 || errors < 2, 0, errorPercentage)
+          Id: errorThreshold
+          Label: errorThreshold
+          ReturnData: true
+        - Id: requests
+          MetricStat:
+            Metric:
+              Dimensions:
+                - Name: ApiName
+                  Value:
+                    Fn::Sub: ${AWS::StackName}-PrivateOpenBankingAPI
+                - Name: Method
+                  Value: GET
+                - Name: Resource
+                  Value: /banks
+                - Name: Stage
+                  Value:
+                    Ref: Environment
+              MetricName: Count
+              Namespace: AWS/ApiGateway
+            Period: 60
+            Stat: Sum
+          ReturnData: false
+        - Expression: (errors / requests) * 100
+          Id: errorPercentage
+          Label: errorPercentage
+          ReturnData: false
+        - Id: errors
+          MetricStat:
+            Metric:
+              Dimensions:
+                - Name: ApiName
+                  Value:
+                    Fn::Sub: ${AWS::StackName}-PrivateOpenBankingAPI
+                - Name: Method
+                  Value: GET
+                - Name: Resource
+                  Value: /banks
+                - Name: Stage
+                  Value:
+                    Ref: Environment
+              MetricName: 5XXError
+              Namespace: AWS/ApiGateway
+            Period: 60
+            Stat: Sum
+          ReturnData: false
+      OKActions:
+        - Fn::ImportValue: build-notifications-CriticalAlertsTopicArn
+      Threshold: 80
+      TreatMissingData: notBreaching
+    Condition: IsDeployedFromPipeline
+  BankListRetrieverFunctionThrottleAlarm:
+    Type: AWS::CloudWatch::Alarm
+    Properties:
+      ActionsEnabled: true
+      AlarmActions:
+        - Fn::ImportValue: build-notifications-WarningAlertsTopicArn
+      AlarmDescription: BankListRetrieverFunction is being throttled.
+      AlarmName:
+        Fn::Sub: ${AWS::StackName}-${Environment}-BankListRetrieverFunction-throttled
+      ComparisonOperator: GreaterThanThreshold
+      DatapointsToAlarm: 1
+      Dimensions:
+        - Name: FunctionName
+          Value:
+            Fn::Sub: ${AWS::StackName}-bank-list-retriever
+      EvaluationPeriods: 1
+      MetricName: Throttles
+      Namespace: AWS/Lambda
+      OKActions:
+        - Fn::ImportValue: build-notifications-WarningAlertsTopicArn
+      Period: 60
+      Statistic: Sum
+      Threshold: 1
+      TreatMissingData: notBreaching
+    Condition: IsDeployedFromPipeline
   StubBankListEndpointParameter:
     Type: AWS::SSM::Parameter
     Properties:
@@ -1889,25 +2135,49 @@ Resources:
       ActionsEnabled: true
       AlarmActions:
         - Fn::ImportValue: build-notifications-CriticalAlertsTopicArn
-      AlarmDescription: STUB bank list is empty.
+      AlarmDescription: STUB bank list stored by the updater or served by the retriever is empty.
       AlarmName:
         Fn::Sub: ${AWS::StackName}-${Environment}-bank-list-empty-stub
       ComparisonOperator: LessThanThreshold
       DatapointsToAlarm: 1
-      Dimensions:
-        - Name: service
-          Value:
-            Fn::Sub: ${CriIdentifier}-bank-list-updater
-        - Name: endpoint_profile
-          Value: STUB
       EvaluationPeriods: 1
-      MetricName: bank_list_size
-      Namespace:
-        Ref: CriIdentifier
+      Metrics:
+        - Expression: MIN([stored, served])
+          Id: emptiest
+          Label: Smallest bank list size stored or served
+          ReturnData: true
+        - Id: stored
+          MetricStat:
+            Metric:
+              Dimensions:
+                - Name: service
+                  Value:
+                    Fn::Sub: ${CriIdentifier}-bank-list-updater
+                - Name: endpoint_profile
+                  Value: STUB
+              MetricName: bank_list_size
+              Namespace:
+                Ref: CriIdentifier
+            Period: 60
+            Stat: Maximum
+          ReturnData: false
+        - Id: served
+          MetricStat:
+            Metric:
+              Dimensions:
+                - Name: service
+                  Value:
+                    Fn::Sub: ${CriIdentifier}-bank-list-retriever
+                - Name: endpoint_profile
+                  Value: STUB
+              MetricName: bank_list_size
+              Namespace:
+                Ref: CriIdentifier
+            Period: 60
+            Stat: Maximum
+          ReturnData: false
       OKActions:
         - Fn::ImportValue: build-notifications-CriticalAlertsTopicArn
-      Period: 60
-      Statistic: Maximum
       Threshold: 1
       TreatMissingData: notBreaching
     Condition: CreateStubEndpointProfileResources
@@ -2011,25 +2281,49 @@ Resources:
       ActionsEnabled: true
       AlarmActions:
         - Fn::ImportValue: build-notifications-CriticalAlertsTopicArn
-      AlarmDescription: UAT bank list is empty.
+      AlarmDescription: UAT bank list stored by the updater or served by the retriever is empty.
       AlarmName:
         Fn::Sub: ${AWS::StackName}-${Environment}-bank-list-empty-uat
       ComparisonOperator: LessThanThreshold
       DatapointsToAlarm: 1
-      Dimensions:
-        - Name: service
-          Value:
-            Fn::Sub: ${CriIdentifier}-bank-list-updater
-        - Name: endpoint_profile
-          Value: UAT
       EvaluationPeriods: 1
-      MetricName: bank_list_size
-      Namespace:
-        Ref: CriIdentifier
+      Metrics:
+        - Expression: MIN([stored, served])
+          Id: emptiest
+          Label: Smallest bank list size stored or served
+          ReturnData: true
+        - Id: stored
+          MetricStat:
+            Metric:
+              Dimensions:
+                - Name: service
+                  Value:
+                    Fn::Sub: ${CriIdentifier}-bank-list-updater
+                - Name: endpoint_profile
+                  Value: UAT
+              MetricName: bank_list_size
+              Namespace:
+                Ref: CriIdentifier
+            Period: 60
+            Stat: Maximum
+          ReturnData: false
+        - Id: served
+          MetricStat:
+            Metric:
+              Dimensions:
+                - Name: service
+                  Value:
+                    Fn::Sub: ${CriIdentifier}-bank-list-retriever
+                - Name: endpoint_profile
+                  Value: UAT
+              MetricName: bank_list_size
+              Namespace:
+                Ref: CriIdentifier
+            Period: 60
+            Stat: Maximum
+          ReturnData: false
       OKActions:
         - Fn::ImportValue: build-notifications-CriticalAlertsTopicArn
-      Period: 60
-      Statistic: Maximum
       Threshold: 1
       TreatMissingData: notBreaching
     Condition: CreateUatEndpointProfileResources
@@ -2133,25 +2427,49 @@ Resources:
       ActionsEnabled: true
       AlarmActions:
         - Fn::ImportValue: build-notifications-CriticalAlertsTopicArn
-      AlarmDescription: LIVE bank list is empty.
+      AlarmDescription: LIVE bank list stored by the updater or served by the retriever is empty.
       AlarmName:
         Fn::Sub: ${AWS::StackName}-${Environment}-bank-list-empty-live
       ComparisonOperator: LessThanThreshold
       DatapointsToAlarm: 1
-      Dimensions:
-        - Name: service
-          Value:
-            Fn::Sub: ${CriIdentifier}-bank-list-updater
-        - Name: endpoint_profile
-          Value: LIVE
       EvaluationPeriods: 1
-      MetricName: bank_list_size
-      Namespace:
-        Ref: CriIdentifier
+      Metrics:
+        - Expression: MIN([stored, served])
+          Id: emptiest
+          Label: Smallest bank list size stored or served
+          ReturnData: true
+        - Id: stored
+          MetricStat:
+            Metric:
+              Dimensions:
+                - Name: service
+                  Value:
+                    Fn::Sub: ${CriIdentifier}-bank-list-updater
+                - Name: endpoint_profile
+                  Value: LIVE
+              MetricName: bank_list_size
+              Namespace:
+                Ref: CriIdentifier
+            Period: 60
+            Stat: Maximum
+          ReturnData: false
+        - Id: served
+          MetricStat:
+            Metric:
+              Dimensions:
+                - Name: service
+                  Value:
+                    Fn::Sub: ${CriIdentifier}-bank-list-retriever
+                - Name: endpoint_profile
+                  Value: LIVE
+              MetricName: bank_list_size
+              Namespace:
+                Ref: CriIdentifier
+            Period: 60
+            Stat: Maximum
+          ReturnData: false
       OKActions:
         - Fn::ImportValue: build-notifications-CriticalAlertsTopicArn
-      Period: 60
-      Statistic: Maximum
       Threshold: 1
       TreatMissingData: notBreaching
     Condition: CreateLiveEndpointProfileResources
@@ -2219,7 +2537,10 @@ Resources:
       LogGroupName:
         Fn::Sub: /aws/lambda/${AWS::StackName}-consents
       RetentionInDays:
-        Ref: LogGroupRetentionInDays
+        Fn::FindInMap:
+          - EnvironmentConfiguration
+          - Ref: Environment
+          - logGroupRetentionInDays
   ConsentsFunction:
     Type: AWS::Serverless::Function
     Properties:
@@ -2308,14 +2629,14 @@ Resources:
             Ref: CriIdentifier
           POWERTOOLS_SERVICE_NAME:
             Fn::Sub: ${CriIdentifier}-consents
-          CONSENTS_DB_TABLE_NAME:
-            Ref: ConsentsTable
-          TOKEN_ROTATOR_DB_TABLE_NAME:
-            Ref: TokenRotatorTable
           SESSION_DB_TABLE_NAME:
             Fn::GetAtt:
               - OAuth
               - Outputs.DbSessionTableName
+          TOKEN_ROTATOR_DB_TABLE_NAME:
+            Ref: TokenRotatorTable
+          CONSENTS_DB_TABLE_NAME:
+            Ref: ConsentsTable
       FunctionName:
         Fn::Sub: ${AWS::StackName}-consents
       Handler: consents.handler
@@ -2350,17 +2671,19 @@ Resources:
         - Statement:
             - Action:
                 - dynamodb:GetItem
+              Effect: Allow
+              Resource:
+                Fn::GetAtt:
+                  - TokenRotatorTable
+                  - Arn
+        - Statement:
+            - Action:
+                - dynamodb:GetItem
                 - dynamodb:PutItem
               Effect: Allow
               Resource:
                 Fn::GetAtt:
                   - ConsentsTable
-                  - Arn
-            - Action: dynamodb:GetItem
-              Effect: Allow
-              Resource:
-                Fn::GetAtt:
-                  - TokenRotatorTable
                   - Arn
         - SSMParameterReadPolicy:
             ParameterName:
@@ -2420,6 +2743,11 @@ Resources:
       FunctionName:
         Ref: ConsentsFunction.Alias
       Principal: apigateway.amazonaws.com
+      SourceArn:
+        Fn::Sub:
+          - arn:${AWS::Partition}:execute-api:${AWS::Region}:${AWS::AccountId}:${Api}/*
+          - Api:
+              Ref: PrivateAPI
   ConsentsFunctionCanaryErrors:
     Type: AWS::CloudWatch::Alarm
     Properties:
@@ -2434,7 +2762,7 @@ Resources:
       Dimensions:
         - Name: FunctionName
           Value:
-            Ref: ConsentsFunction
+            Fn::Sub: ${AWS::StackName}-consents
         - Name: ExecutedVersion
           Value:
             Fn::GetAtt:
@@ -2484,6 +2812,159 @@ Resources:
       TreatMissingData: notBreaching
       Unit: Count
     Condition: UseCanaryDeploymentAlarms
+  Consents5xxErrorRateWarningAlarm:
+    Type: AWS::CloudWatch::Alarm
+    Properties:
+      ActionsEnabled: true
+      AlarmActions:
+        - Fn::ImportValue: build-notifications-WarningAlertsTopicArn
+      AlarmDescription: 5XX error rate from POST /consents exceeds 20%.
+      AlarmName:
+        Fn::Sub: ${AWS::StackName}-${Environment}-Consents-5xx-error-rate-warning
+      ComparisonOperator: GreaterThanOrEqualToThreshold
+      DatapointsToAlarm: 2
+      EvaluationPeriods: 5
+      Metrics:
+        - Expression: IF(requests < 5 || errors < 2, 0, errorPercentage)
+          Id: errorThreshold
+          Label: errorThreshold
+          ReturnData: true
+        - Id: requests
+          MetricStat:
+            Metric:
+              Dimensions:
+                - Name: ApiName
+                  Value:
+                    Fn::Sub: ${AWS::StackName}-PrivateOpenBankingAPI
+                - Name: Method
+                  Value: POST
+                - Name: Resource
+                  Value: /consents
+                - Name: Stage
+                  Value:
+                    Ref: Environment
+              MetricName: Count
+              Namespace: AWS/ApiGateway
+            Period: 60
+            Stat: Sum
+          ReturnData: false
+        - Expression: (errors / requests) * 100
+          Id: errorPercentage
+          Label: errorPercentage
+          ReturnData: false
+        - Id: errors
+          MetricStat:
+            Metric:
+              Dimensions:
+                - Name: ApiName
+                  Value:
+                    Fn::Sub: ${AWS::StackName}-PrivateOpenBankingAPI
+                - Name: Method
+                  Value: POST
+                - Name: Resource
+                  Value: /consents
+                - Name: Stage
+                  Value:
+                    Ref: Environment
+              MetricName: 5XXError
+              Namespace: AWS/ApiGateway
+            Period: 60
+            Stat: Sum
+          ReturnData: false
+      OKActions:
+        - Fn::ImportValue: build-notifications-WarningAlertsTopicArn
+      Threshold: 20
+      TreatMissingData: notBreaching
+    Condition: IsDeployedFromPipeline
+  Consents5xxErrorRateCriticalAlarm:
+    Type: AWS::CloudWatch::Alarm
+    Properties:
+      ActionsEnabled: true
+      AlarmActions:
+        - Fn::ImportValue: build-notifications-CriticalAlertsTopicArn
+      AlarmDescription: 5XX error rate from POST /consents exceeds 80%.
+      AlarmName:
+        Fn::Sub: ${AWS::StackName}-${Environment}-Consents-5xx-error-rate-critical
+      ComparisonOperator: GreaterThanOrEqualToThreshold
+      DatapointsToAlarm: 2
+      EvaluationPeriods: 5
+      Metrics:
+        - Expression: IF(requests < 5 || errors < 2, 0, errorPercentage)
+          Id: errorThreshold
+          Label: errorThreshold
+          ReturnData: true
+        - Id: requests
+          MetricStat:
+            Metric:
+              Dimensions:
+                - Name: ApiName
+                  Value:
+                    Fn::Sub: ${AWS::StackName}-PrivateOpenBankingAPI
+                - Name: Method
+                  Value: POST
+                - Name: Resource
+                  Value: /consents
+                - Name: Stage
+                  Value:
+                    Ref: Environment
+              MetricName: Count
+              Namespace: AWS/ApiGateway
+            Period: 60
+            Stat: Sum
+          ReturnData: false
+        - Expression: (errors / requests) * 100
+          Id: errorPercentage
+          Label: errorPercentage
+          ReturnData: false
+        - Id: errors
+          MetricStat:
+            Metric:
+              Dimensions:
+                - Name: ApiName
+                  Value:
+                    Fn::Sub: ${AWS::StackName}-PrivateOpenBankingAPI
+                - Name: Method
+                  Value: POST
+                - Name: Resource
+                  Value: /consents
+                - Name: Stage
+                  Value:
+                    Ref: Environment
+              MetricName: 5XXError
+              Namespace: AWS/ApiGateway
+            Period: 60
+            Stat: Sum
+          ReturnData: false
+      OKActions:
+        - Fn::ImportValue: build-notifications-CriticalAlertsTopicArn
+      Threshold: 80
+      TreatMissingData: notBreaching
+    Condition: IsDeployedFromPipeline
+  ConsentsFunctionThrottleAlarm:
+    Type: AWS::CloudWatch::Alarm
+    Properties:
+      ActionsEnabled: true
+      AlarmActions:
+        - Fn::ImportValue: build-notifications-WarningAlertsTopicArn
+      AlarmDescription: ConsentsFunction is being throttled.
+      AlarmName:
+        Fn::Sub: ${AWS::StackName}-${Environment}-ConsentsFunction-throttled
+      ComparisonOperator: GreaterThanThreshold
+      DatapointsToAlarm: 1
+      Dimensions:
+        - Name: FunctionName
+          Value:
+            Fn::Sub: ${AWS::StackName}-consents
+      EvaluationPeriods: 1
+      MetricName: Throttles
+      Namespace: AWS/Lambda
+      OKActions:
+        - Fn::ImportValue: build-notifications-WarningAlertsTopicArn
+      Period: 60
+      Statistic: Sum
+      Threshold: 1
+      TreatMissingData: notBreaching
+    Condition: IsDeployedFromPipeline
   StubConsentsEndpointParameter:
     Type: AWS::SSM::Parameter
     Properties:
@@ -2556,7 +3037,10 @@ Resources:
       LogGroupName:
         Fn::Sub: /aws/lambda/${AWS::StackName}-issue-credential
       RetentionInDays:
-        Ref: LogGroupRetentionInDays
+        Fn::FindInMap:
+          - EnvironmentConfiguration
+          - Ref: Environment
+          - logGroupRetentionInDays
   IssueCredentialFunction:
     Type: AWS::Serverless::Function
     Properties:
@@ -2654,6 +3138,10 @@ Resources:
             Ref: AuditEventNamePrefix
           AUDIT_QUEUE_URL:
             Fn::ImportValue: txma-infrastructure-AuditEventQueueUrl
+          SESSION_DB_TABLE_NAME:
+            Fn::GetAtt:
+              - OAuth
+              - Outputs.DbSessionTableName
           IDENTITY_SCORE_DB_TABLE_NAME: blah
           JWT_TTL_SECONDS: "7200"
           KMS_SIGNING_KEY_ID:
@@ -2662,10 +3150,6 @@ Resources:
             Fn::GetAtt:
               - OAuth
               - Outputs.DbPersonIdentityTableName
-          SESSION_DB_TABLE_NAME:
-            Fn::GetAtt:
-              - OAuth
-              - Outputs.DbSessionTableName
           VC_DOMAIN:
             Fn::FindInMap:
               - EnvironmentConfiguration
@@ -2707,16 +3191,16 @@ Resources:
               Fn::GetAtt:
                 - OAuth
                 - Outputs.DbSessionTableName
-        - DynamoDBReadPolicy:
-            TableName:
-              Fn::GetAtt:
-                - OAuth
-                - Outputs.DbPersonIdentityTableName
         - KMSDecryptPolicy:
             KeyId:
               Fn::GetAtt:
                 - OAuth
                 - Outputs.DbCustomerManagedKeyID
+        - DynamoDBReadPolicy:
+            TableName:
+              Fn::GetAtt:
+                - OAuth
+                - Outputs.DbPersonIdentityTableName
         - Statement:
             - Action:
                 - kms:Sign
@@ -2772,6 +3256,11 @@ Resources:
       FunctionName:
         Ref: IssueCredentialFunction.Alias
       Principal: apigateway.amazonaws.com
+      SourceArn:
+        Fn::Sub:
+          - arn:${AWS::Partition}:execute-api:${AWS::Region}:${AWS::AccountId}:${Api}/*
+          - Api:
+              Ref: PublicAPI
   IssueCredentialFunctionCanaryErrors:
     Type: AWS::CloudWatch::Alarm
     Properties:
@@ -2786,7 +3275,7 @@ Resources:
       Dimensions:
         - Name: FunctionName
           Value:
-            Ref: IssueCredentialFunction
+            Fn::Sub: ${AWS::StackName}-issue-credential
         - Name: ExecutedVersion
           Value:
             Fn::GetAtt:
@@ -2933,7 +3422,10 @@ Resources:
       LogGroupName:
         Fn::Sub: /aws/lambda/${AWS::StackName}-webhook-ingest
       RetentionInDays:
-        Ref: LogGroupRetentionInDays
+        Fn::FindInMap:
+          - EnvironmentConfiguration
+          - Ref: Environment
+          - logGroupRetentionInDays
   WebhookIngestFunction:
     Type: AWS::Serverless::Function
     Properties:
@@ -3107,6 +3599,11 @@ Resources:
       FunctionName:
         Ref: WebhookIngestFunction.Alias
       Principal: apigateway.amazonaws.com
+      SourceArn:
+        Fn::Sub:
+          - arn:${AWS::Partition}:execute-api:${AWS::Region}:${AWS::AccountId}:${Api}/*
+          - Api:
+              Ref: PublicAPI
   WebhookDeadLetterQueueAlarm:
     Type: AWS::CloudWatch::Alarm
     Properties:
@@ -3217,6 +3714,17 @@ Resources:
       Threshold: 1
       TreatMissingData: notBreaching
     Condition: IsDeployedFromPipeline
+  OAuthCommonStackNameParam:
+    Type: AWS::SSM::Parameter
+    Properties:
+      Description: The stack currently used for OAuth (oauth-common). Only required for test-resources.
+      Name: /common-cri/oauth-common/stack-name
+      Type: String
+      Value:
+        Fn::GetAtt:
+          - OAuth
+          - Outputs.StackName
+    Condition: CreateTestResourcesParam
 Outputs:
   StackName:
     Description: CloudFormation stack name

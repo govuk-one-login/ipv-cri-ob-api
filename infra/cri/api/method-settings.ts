@@ -14,7 +14,6 @@ export type ThrottledRoute = {
   throttle: ApiThrottling
 }
 
-// every route's throttling unless the route sets its own, and the usage plans' limits
 export const defaultThrottling: ApiThrottling = { burstLimit: 400, rateLimit: 200 }
 
 const methodSetting = (
@@ -31,7 +30,6 @@ const methodSetting = (
   ThrottlingRateLimit: rateLimit
 })
 
-// the API's default settings, then one for each route with its own throttling
 export const methodSettings = (stack: CriStack, throttledRoutes: ThrottledRoute[]) => [
   methodSetting(stack, defaultThrottling),
   ...throttledRoutes.map(({ throttle, ...route }) => methodSetting(stack, throttle, route))
