@@ -14,19 +14,28 @@ repos:
       - id: detect-private-key
         name: detect private keys
 
+  # before cfn-lint so it lints the freshest template
+  - repo: local
+    hooks:
+      - id: infra-synth
+        name: synthesise infra into cloud assembly
+        entry: npm run infra:synth
+        language: system
+        pass_filenames: false
+
   - repo: https://github.com/aws-cloudformation/cfn-lint
     rev: v1.46.0
     hooks:
       - id: cfn-lint
         name: cfn lint
-        files: template\.ya?ml$
+        files: template(\.cdk)?\.ya?ml$
 
   - repo: https://github.com/bridgecrewio/checkov.git
     rev: 3.2.506
     hooks:
       - id: checkov
         name: checkov
-        files: template\.ya?ml$
+        files: template(\.cdk)?\.ya?ml$
         args: [--soft-fail]
 
   - repo: https://github.com/Yelp/detect-secrets
@@ -35,6 +44,7 @@ repos:
       - id: detect-secrets
         name: detect secrets
         args: ['--baseline', '.secrets.baseline']
+        exclude: ^deploy/template\.cdk\.yaml$
 
   - repo: local
     hooks:
