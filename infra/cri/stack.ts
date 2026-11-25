@@ -12,6 +12,7 @@ export type CriStackConfig = {
   criName: string
   description: string
   environmentConfig: Record<Environment, CriEnvironmentConfig>
+  supportManualUrl: string
 }
 
 export class CriStack extends Stack {
@@ -20,6 +21,7 @@ export class CriStack extends Stack {
   readonly parameterPrefix: string
   readonly parameters: CriStackParameters
   readonly permissionsBoundary: string
+  readonly supportManualUrl: string
   private readonly environmentConfiguration: CfnMapping
 
   constructor(scope: App, id: string, config: CriStackConfig) {
@@ -32,6 +34,7 @@ export class CriStack extends Stack {
     this.addTransform('AWS::Serverless-2016-10-31')
 
     this.criName = config.criName
+    this.supportManualUrl = config.supportManualUrl
     this.parameters = criStackParameters(this)
 
     this.environmentConfiguration = new CfnMapping(this, 'EnvironmentConfiguration', {

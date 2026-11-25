@@ -15,5 +15,6 @@ export const testStack = () =>
       memorySize: 1024,
       provisionedConcurrentExecutions: environment === 'dev' ? 0 : 1,
       vcDomain: `review-test.${environment}.account.gov.uk`
-    }))
+    })),
+    supportManualUrl: 'https://manual.example.test/'
   })

@@ -53,7 +53,7 @@ export const criAlarm = (stack: CriStack, id: string, config: CriAlarmConfig): C
     ...metric,
     actionsEnabled: true,
     alarmActions: actions,
-    alarmDescription: description,
+    alarmDescription: `${description} [support manual: ${stack.supportManualUrl}]`,
     alarmName: Fn.sub(`\${AWS::StackName}-\${Environment}-${name}`),
     ...(notifyOnOk && { okActions: actions })
   })

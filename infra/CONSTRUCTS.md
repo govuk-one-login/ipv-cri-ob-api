@@ -111,8 +111,9 @@ Take `stack` as the CDK scope and read only what you need from it. If a construc
 specific, prefer passing it in config over reaching into the stack.
 
 Don't add to `CriStack`. A resource is created where it's used, not eagerly on the stack. The stack
-holds only what every construct reads: the CRI's name, parameters, stack-wide conditions, the
-environment mapping, the parameter prefix and the permissions boundary.
+holds only what every construct reads: the CRI's name, its support manual URL (which every alarm
+links), parameters, stack-wide conditions, the environment mapping, the parameter prefix and the
+permissions boundary.
 
 Features take `CriStack` and receive what they share with other features (endpoint profiles,
 tables, APIs, oauth-common) as `collaborators`, so `stack.ts` shows every dependency.

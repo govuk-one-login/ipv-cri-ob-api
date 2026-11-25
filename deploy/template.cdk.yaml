@@ -1381,7 +1381,10 @@ Resources:
       AlarmActions:
         - Fn::ImportValue: build-notifications-WarningAlertsTopicArn
       AlarmDescription:
-        Fn::Sub: Ecospend token rotator has failed 3 consecutive times in ${Environment}. If unresolved the Ecospend access token will expire.
+        Fn::Join:
+          - ""
+          - - Fn::Sub: Ecospend token rotator has failed 3 consecutive times in ${Environment}. If unresolved the Ecospend access token will expire.
+            - " [support manual: https://team-manual.account.gov.uk/teams/CRI-Lime-team/supporting-cri-lime/]"
       AlarmName:
         Fn::Sub: ${AWS::StackName}-${Environment}-ecospend-token-rotator-error
       ComparisonOperator: GreaterThanOrEqualToThreshold
@@ -1413,7 +1416,10 @@ Resources:
       AlarmActions:
         - Fn::ImportValue: build-notifications-WarningAlertsTopicArn
       AlarmDescription:
-        Fn::Sub: Ecospend token rotator has not run successfully for 3 minutes in ${Environment}. If unresolved the Ecospend access token will expire.
+        Fn::Join:
+          - ""
+          - - Fn::Sub: Ecospend token rotator has not run successfully for 3 minutes in ${Environment}. If unresolved the Ecospend access token will expire.
+            - " [support manual: https://team-manual.account.gov.uk/teams/CRI-Lime-team/supporting-cri-lime/]"
       AlarmName:
         Fn::Sub: ${AWS::StackName}-${Environment}-ecospend-token-rotator-not-running
       ComparisonOperator: LessThanThreshold
@@ -1842,7 +1848,7 @@ Resources:
       ActionsEnabled: true
       AlarmActions:
         - Fn::ImportValue: build-notifications-WarningAlertsTopicArn
-      AlarmDescription: Errors returned from BankListRetrieverFunction
+      AlarmDescription: "Errors returned from BankListRetrieverFunction [support manual: https://team-manual.account.gov.uk/teams/CRI-Lime-team/supporting-cri-lime/]"
       AlarmName:
         Fn::Sub: ${AWS::StackName}-${Environment}-BankListRetrieverFunction-canary-errors
       ComparisonOperator: GreaterThanOrEqualToThreshold
@@ -1873,7 +1879,7 @@ Resources:
       ActionsEnabled: true
       AlarmActions:
         - Fn::ImportValue: build-notifications-WarningAlertsTopicArn
-      AlarmDescription: 5XX responses from GET /banks
+      AlarmDescription: "5XX responses from GET /banks [support manual: https://team-manual.account.gov.uk/teams/CRI-Lime-team/supporting-cri-lime/]"
       AlarmName:
         Fn::Sub: ${AWS::StackName}-${Environment}-BankListRetrieverFunction-canary-5xx
       ComparisonOperator: GreaterThanOrEqualToThreshold
@@ -1925,7 +1931,7 @@ Resources:
       ActionsEnabled: true
       AlarmActions:
         - Fn::ImportValue: build-notifications-WarningAlertsTopicArn
-      AlarmDescription: 5XX error rate from GET /banks exceeds 20%.
+      AlarmDescription: "5XX error rate from GET /banks exceeds 20%. [support manual: https://team-manual.account.gov.uk/teams/CRI-Lime-team/supporting-cri-lime/]"
       AlarmName:
         Fn::Sub: ${AWS::StackName}-${Environment}-BankListRetriever-5xx-error-rate-warning
       ComparisonOperator: GreaterThanOrEqualToThreshold
@@ -1989,7 +1995,7 @@ Resources:
       ActionsEnabled: true
       AlarmActions:
         - Fn::ImportValue: build-notifications-CriticalAlertsTopicArn
-      AlarmDescription: 5XX error rate from GET /banks exceeds 80%.
+      AlarmDescription: "5XX error rate from GET /banks exceeds 80%. [support manual: https://team-manual.account.gov.uk/teams/CRI-Lime-team/supporting-cri-lime/]"
       AlarmName:
         Fn::Sub: ${AWS::StackName}-${Environment}-BankListRetriever-5xx-error-rate-critical
       ComparisonOperator: GreaterThanOrEqualToThreshold
@@ -2053,7 +2059,7 @@ Resources:
       ActionsEnabled: true
       AlarmActions:
         - Fn::ImportValue: build-notifications-WarningAlertsTopicArn
-      AlarmDescription: BankListRetrieverFunction is being throttled.
+      AlarmDescription: "BankListRetrieverFunction is being throttled. [support manual: https://team-manual.account.gov.uk/teams/CRI-Lime-team/supporting-cri-lime/]"
       AlarmName:
         Fn::Sub: ${AWS::StackName}-${Environment}-BankListRetrieverFunction-throttled
       ComparisonOperator: GreaterThanThreshold
@@ -2100,7 +2106,7 @@ Resources:
       ActionsEnabled: true
       AlarmActions:
         - Fn::ImportValue: build-notifications-WarningAlertsTopicArn
-      AlarmDescription: STUB bank list size dropped by more than 10% between updater runs.
+      AlarmDescription: "STUB bank list size dropped by more than 10% between updater runs. [support manual: https://team-manual.account.gov.uk/teams/CRI-Lime-team/supporting-cri-lime/]"
       AlarmName:
         Fn::Sub: ${AWS::StackName}-${Environment}-bank-list-size-drop-stub
       ComparisonOperator: LessThanThreshold
@@ -2135,7 +2141,7 @@ Resources:
       ActionsEnabled: true
       AlarmActions:
         - Fn::ImportValue: build-notifications-CriticalAlertsTopicArn
-      AlarmDescription: STUB bank list stored by the updater or served by the retriever is empty.
+      AlarmDescription: "STUB bank list stored by the updater or served by the retriever is empty. [support manual: https://team-manual.account.gov.uk/teams/CRI-Lime-team/supporting-cri-lime/]"
       AlarmName:
         Fn::Sub: ${AWS::StackName}-${Environment}-bank-list-empty-stub
       ComparisonOperator: LessThanThreshold
@@ -2187,7 +2193,7 @@ Resources:
       ActionsEnabled: true
       AlarmActions:
         - Fn::ImportValue: build-notifications-WarningAlertsTopicArn
-      AlarmDescription: STUB bank list has not been updated for 2 hours.
+      AlarmDescription: "STUB bank list has not been updated for 2 hours. [support manual: https://team-manual.account.gov.uk/teams/CRI-Lime-team/supporting-cri-lime/]"
       AlarmName:
         Fn::Sub: ${AWS::StackName}-${Environment}-bank-list-not-updated-stub
       ComparisonOperator: LessThanThreshold
@@ -2246,7 +2252,7 @@ Resources:
       ActionsEnabled: true
       AlarmActions:
         - Fn::ImportValue: build-notifications-WarningAlertsTopicArn
-      AlarmDescription: UAT bank list size dropped by more than 10% between updater runs.
+      AlarmDescription: "UAT bank list size dropped by more than 10% between updater runs. [support manual: https://team-manual.account.gov.uk/teams/CRI-Lime-team/supporting-cri-lime/]"
       AlarmName:
         Fn::Sub: ${AWS::StackName}-${Environment}-bank-list-size-drop-uat
       ComparisonOperator: LessThanThreshold
@@ -2281,7 +2287,7 @@ Resources:
       ActionsEnabled: true
       AlarmActions:
         - Fn::ImportValue: build-notifications-CriticalAlertsTopicArn
-      AlarmDescription: UAT bank list stored by the updater or served by the retriever is empty.
+      AlarmDescription: "UAT bank list stored by the updater or served by the retriever is empty. [support manual: https://team-manual.account.gov.uk/teams/CRI-Lime-team/supporting-cri-lime/]"
       AlarmName:
         Fn::Sub: ${AWS::StackName}-${Environment}-bank-list-empty-uat
       ComparisonOperator: LessThanThreshold
@@ -2333,7 +2339,7 @@ Resources:
       ActionsEnabled: true
       AlarmActions:
         - Fn::ImportValue: build-notifications-WarningAlertsTopicArn
-      AlarmDescription: UAT bank list has not been updated for 2 hours.
+      AlarmDescription: "UAT bank list has not been updated for 2 hours. [support manual: https://team-manual.account.gov.uk/teams/CRI-Lime-team/supporting-cri-lime/]"
       AlarmName:
         Fn::Sub: ${AWS::StackName}-${Environment}-bank-list-not-updated-uat
       ComparisonOperator: LessThanThreshold
@@ -2392,7 +2398,7 @@ Resources:
       ActionsEnabled: true
       AlarmActions:
         - Fn::ImportValue: build-notifications-WarningAlertsTopicArn
-      AlarmDescription: LIVE bank list size dropped by more than 10% between updater runs.
+      AlarmDescription: "LIVE bank list size dropped by more than 10% between updater runs. [support manual: https://team-manual.account.gov.uk/teams/CRI-Lime-team/supporting-cri-lime/]"
       AlarmName:
         Fn::Sub: ${AWS::StackName}-${Environment}-bank-list-size-drop-live
       ComparisonOperator: LessThanThreshold
@@ -2427,7 +2433,7 @@ Resources:
       ActionsEnabled: true
       AlarmActions:
         - Fn::ImportValue: build-notifications-CriticalAlertsTopicArn
-      AlarmDescription: LIVE bank list stored by the updater or served by the retriever is empty.
+      AlarmDescription: "LIVE bank list stored by the updater or served by the retriever is empty. [support manual: https://team-manual.account.gov.uk/teams/CRI-Lime-team/supporting-cri-lime/]"
       AlarmName:
         Fn::Sub: ${AWS::StackName}-${Environment}-bank-list-empty-live
       ComparisonOperator: LessThanThreshold
@@ -2479,7 +2485,7 @@ Resources:
       ActionsEnabled: true
       AlarmActions:
         - Fn::ImportValue: build-notifications-WarningAlertsTopicArn
-      AlarmDescription: LIVE bank list has not been updated for 2 hours.
+      AlarmDescription: "LIVE bank list has not been updated for 2 hours. [support manual: https://team-manual.account.gov.uk/teams/CRI-Lime-team/supporting-cri-lime/]"
       AlarmName:
         Fn::Sub: ${AWS::StackName}-${Environment}-bank-list-not-updated-live
       ComparisonOperator: LessThanThreshold
@@ -2754,7 +2760,7 @@ Resources:
       ActionsEnabled: true
       AlarmActions:
         - Fn::ImportValue: build-notifications-WarningAlertsTopicArn
-      AlarmDescription: Errors returned from ConsentsFunction
+      AlarmDescription: "Errors returned from ConsentsFunction [support manual: https://team-manual.account.gov.uk/teams/CRI-Lime-team/supporting-cri-lime/]"
       AlarmName:
         Fn::Sub: ${AWS::StackName}-${Environment}-ConsentsFunction-canary-errors
       ComparisonOperator: GreaterThanOrEqualToThreshold
@@ -2785,7 +2791,7 @@ Resources:
       ActionsEnabled: true
       AlarmActions:
         - Fn::ImportValue: build-notifications-WarningAlertsTopicArn
-      AlarmDescription: 5XX responses from POST /consents
+      AlarmDescription: "5XX responses from POST /consents [support manual: https://team-manual.account.gov.uk/teams/CRI-Lime-team/supporting-cri-lime/]"
       AlarmName:
         Fn::Sub: ${AWS::StackName}-${Environment}-ConsentsFunction-canary-5xx
       ComparisonOperator: GreaterThanOrEqualToThreshold
@@ -2818,7 +2824,7 @@ Resources:
       ActionsEnabled: true
       AlarmActions:
         - Fn::ImportValue: build-notifications-WarningAlertsTopicArn
-      AlarmDescription: 5XX error rate from POST /consents exceeds 20%.
+      AlarmDescription: "5XX error rate from POST /consents exceeds 20%. [support manual: https://team-manual.account.gov.uk/teams/CRI-Lime-team/supporting-cri-lime/]"
       AlarmName:
         Fn::Sub: ${AWS::StackName}-${Environment}-Consents-5xx-error-rate-warning
       ComparisonOperator: GreaterThanOrEqualToThreshold
@@ -2882,7 +2888,7 @@ Resources:
       ActionsEnabled: true
       AlarmActions:
         - Fn::ImportValue: build-notifications-CriticalAlertsTopicArn
-      AlarmDescription: 5XX error rate from POST /consents exceeds 80%.
+      AlarmDescription: "5XX error rate from POST /consents exceeds 80%. [support manual: https://team-manual.account.gov.uk/teams/CRI-Lime-team/supporting-cri-lime/]"
       AlarmName:
         Fn::Sub: ${AWS::StackName}-${Environment}-Consents-5xx-error-rate-critical
       ComparisonOperator: GreaterThanOrEqualToThreshold
@@ -2946,7 +2952,7 @@ Resources:
       ActionsEnabled: true
       AlarmActions:
         - Fn::ImportValue: build-notifications-WarningAlertsTopicArn
-      AlarmDescription: ConsentsFunction is being throttled.
+      AlarmDescription: "ConsentsFunction is being throttled. [support manual: https://team-manual.account.gov.uk/teams/CRI-Lime-team/supporting-cri-lime/]"
       AlarmName:
         Fn::Sub: ${AWS::StackName}-${Environment}-ConsentsFunction-throttled
       ComparisonOperator: GreaterThanThreshold
@@ -3267,7 +3273,7 @@ Resources:
       ActionsEnabled: true
       AlarmActions:
         - Fn::ImportValue: build-notifications-WarningAlertsTopicArn
-      AlarmDescription: Errors returned from IssueCredentialFunction
+      AlarmDescription: "Errors returned from IssueCredentialFunction [support manual: https://team-manual.account.gov.uk/teams/CRI-Lime-team/supporting-cri-lime/]"
       AlarmName:
         Fn::Sub: ${AWS::StackName}-${Environment}-IssueCredentialFunction-canary-errors
       ComparisonOperator: GreaterThanOrEqualToThreshold
@@ -3298,7 +3304,7 @@ Resources:
       ActionsEnabled: true
       AlarmActions:
         - Fn::ImportValue: build-notifications-WarningAlertsTopicArn
-      AlarmDescription: 5XX responses from POST /credential/issue
+      AlarmDescription: "5XX responses from POST /credential/issue [support manual: https://team-manual.account.gov.uk/teams/CRI-Lime-team/supporting-cri-lime/]"
       AlarmName:
         Fn::Sub: ${AWS::StackName}-${Environment}-IssueCredentialFunction-canary-5xx
       ComparisonOperator: GreaterThanOrEqualToThreshold
@@ -3611,7 +3617,10 @@ Resources:
       AlarmActions:
         - Fn::ImportValue: build-notifications-WarningAlertsTopicArn
       AlarmDescription:
-        Fn::Sub: Webhook messages have failed processing and landed on the dead letter queue in ${Environment}.
+        Fn::Join:
+          - ""
+          - - Fn::Sub: Webhook messages have failed processing and landed on the dead letter queue in ${Environment}.
+            - " [support manual: https://team-manual.account.gov.uk/teams/CRI-Lime-team/supporting-cri-lime/]"
       AlarmName:
         Fn::Sub: ${AWS::StackName}-${Environment}-webhook-dlq-not-empty
       ComparisonOperator: GreaterThanOrEqualToThreshold
@@ -3642,7 +3651,10 @@ Resources:
             - Fn::ImportValue: build-notifications-PagerDutySNSTopicArn
             - Fn::ImportValue: build-notifications-CriticalAlertsTopicArn
       AlarmDescription:
-        Fn::Sub: OpenBanking ${Environment} API Gateway 5XX errors
+        Fn::Join:
+          - ""
+          - - Fn::Sub: OpenBanking ${Environment} API Gateway 5XX errors
+            - " [support manual: https://team-manual.account.gov.uk/teams/CRI-Lime-team/supporting-cri-lime/]"
       AlarmName:
         Fn::Sub: ${AWS::StackName}-${Environment}-api-gateway-5xx-errors
       ComparisonOperator: GreaterThanThreshold
@@ -3695,7 +3707,10 @@ Resources:
             - Fn::ImportValue: build-notifications-PagerDutySNSTopicArn
             - Fn::ImportValue: build-notifications-CriticalAlertsTopicArn
       AlarmDescription:
-        Fn::Sub: OpenBanking ${Environment} lambda errors
+        Fn::Join:
+          - ""
+          - - Fn::Sub: OpenBanking ${Environment} lambda errors
+            - " [support manual: https://team-manual.account.gov.uk/teams/CRI-Lime-team/supporting-cri-lime/]"
       AlarmName:
         Fn::Sub: ${AWS::StackName}-${Environment}-lambda-errors
       ComparisonOperator: GreaterThanThreshold

@@ -4,6 +4,7 @@ import { byEnvironment } from '@infra/cri/environment'
 import { criSsmParameter } from '@infra/cri/ssm-parameter'
 import { CriStack } from '@infra/cri/stack'
 import { limeEndpointProfiles } from '@infra/lime/endpoint-profiles'
+import { supportManualUrl } from '@infra/lime/support-manual'
 import { environmentConfig } from '@infra/open-banking/environments'
 import { apiGateways } from '@infra/open-banking/features/api-gateways'
 import { bankList } from '@infra/open-banking/features/bank-list'
@@ -21,7 +22,8 @@ export class OpenBankingStack extends CriStack {
     super(scope, id, {
       criName: 'OpenBanking',
       description: 'Digital Identity IPV CRI Open Banking API',
-      environmentConfig
+      environmentConfig,
+      supportManualUrl
     })
 
     const endpointProfiles = limeEndpointProfiles(

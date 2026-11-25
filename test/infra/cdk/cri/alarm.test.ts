@@ -32,11 +32,12 @@ describe('criAlarm', () => {
     ['warning', warningAlerts],
     ['critical', criticalAlerts],
     ['page', { 'Fn::If': ['IsProduction', pagerdutyAlerts, criticalAlerts] }]
-  ])('notifies the %s topic, under its condition', (severity, topic) => {
+  ])('notifies the %s topic, with the support manual, under its condition', (severity, topic) => {
     synthAlarm({ notifyOnOk: true, severity }).hasResource('AWS::CloudWatch::Alarm', {
       Condition: 'IsDeployedFromPipeline',
       Properties: Match.objectLike({
         AlarmActions: [topic],
+        AlarmDescription: 'Example alarm [support manual: https://manual.example.test/]',
         AlarmName: { 'Fn::Sub': '${AWS::StackName}-${Environment}-example' },
         OKActions: [topic]
       })

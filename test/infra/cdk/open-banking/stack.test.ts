@@ -1,4 +1,5 @@
 import { criApp } from '@infra/cri/app'
+import { supportManualUrl } from '@infra/lime/support-manual'
 import { OpenBankingStack } from '@infra/open-banking/stack'
 import { Match, Template } from 'aws-cdk-lib/assertions'
 import { describe, expect, it } from 'vitest'
@@ -94,6 +95,15 @@ describe('OpenBankingStack', () => {
         )
       )
     })
+  })
+
+  it('links every alarm to the Lime support manual', () => {
+    const alarms = Object.values(template.findResources('AWS::CloudWatch::Alarm'))
+
+    expect(alarms.length).toBeGreaterThan(0)
+    for (const alarm of alarms) {
+      expect(JSON.stringify(alarm['Properties'])).toContain(supportManualUrl)
+    }
   })
 
   it('checks every scheduled function when it is deployed', () => {
